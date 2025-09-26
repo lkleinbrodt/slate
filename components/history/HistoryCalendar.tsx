@@ -1,12 +1,15 @@
-import { Animated, StyleSheet, Text, View } from "react-native";
 import React, { useState } from "react";
+import { Animated, StyleSheet, Text, View } from "react-native";
 
-import { Calendar } from "react-native-calendars";
 import { useHistoryStore } from "@/lib/stores/historyStore";
+import { Calendar } from "react-native-calendars";
 
-export const HistoryCalendar = () => {
-  const { calendarData, earliestDate, currentDate, actions } =
-    useHistoryStore();
+interface HistoryCalendarProps {
+  onDayPress: (date: string) => void;
+}
+
+export const HistoryCalendar = ({ onDayPress }: HistoryCalendarProps) => {
+  const { calendarData, loadCalendarData } = useHistoryStore();
 
   const [currentDisplayedMonth, setCurrentDisplayedMonth] = useState(
     new Date().toISOString().substring(0, 7)
@@ -15,22 +18,23 @@ export const HistoryCalendar = () => {
   const [notificationOpacity] = useState(new Animated.Value(0));
   const [notificationText, setNotificationText] = useState("");
 
+  const currentDate = new Date().toISOString().split("T")[0];
+
   const getMarkedDates = () => {
     const marked = {};
     for (const date in calendarData) {
       const day = calendarData[date];
-      const ratio =
-        day.totalHabits > 0 ? day.completedHabits / day.totalHabits : 0;
-      let color = "#E5E7EB"; // Gray for no habits
-      if (day.totalHabits > 0) {
-        if (ratio === 1) color = "#10B981"; // Green
-        else if (ratio > 0) color = "#F59E0B"; // Yellow
-        else color = "#EF4444"; // Red
+      let color = "#E5E7EB"; // Gray for no data
+
+      if (day.habitsCompleted > 0) {
+        if (day.isPerfectDay) color = "#10B981"; // Green for perfect day
+        else color = "#F59E0B"; // Yellow for partial completion
       }
+
       (marked as any)[date] = {
         customStyles: {
           container: { backgroundColor: color },
-          text: { color: "white", children: day.completedTasks },
+          text: { color: "white" },
         },
       };
     }
@@ -38,7 +42,10 @@ export const HistoryCalendar = () => {
   };
 
   const getMinDate = () => {
-    return earliestDate || currentDate;
+    // Allow going back 6 months
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    return sixMonthsAgo.toISOString().split("T")[0];
   };
 
   const getMaxDate = () => {
@@ -47,22 +54,18 @@ export const HistoryCalendar = () => {
 
   const isDateDisabled = (date: string) => {
     // Disable future dates
-    if (date > currentDate) return true;
-
-    // Disable dates before earliest history
-    if (earliestDate && date < earliestDate) return true;
-
-    return false;
+    return date > currentDate;
   };
 
   const canNavigateLeft = () => {
-    if (!earliestDate) return false;
-    const earliestMonth = earliestDate.substring(0, 7); // YYYY-MM
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const earliestMonth = sixMonthsAgo.toISOString().substring(0, 7);
     return currentDisplayedMonth > earliestMonth;
   };
 
   const canNavigateRight = () => {
-    const currentMonthStr = currentDate.substring(0, 7); // YYYY-MM
+    const currentMonthStr = currentDate.substring(0, 7);
     return currentDisplayedMonth < currentMonthStr;
   };
 
@@ -91,16 +94,14 @@ export const HistoryCalendar = () => {
         minDate={getMinDate()}
         maxDate={getMaxDate()}
         onMonthChange={(month) => {
-          // Only allow loading months that have history data
           const monthDate = month.dateString;
           if (isDateDisabled(monthDate)) return;
           setCurrentDisplayedMonth(monthDate.substring(0, 7));
-          actions.loadCalendarDataForMonth(monthDate);
+          loadCalendarData(monthDate.substring(0, 7));
         }}
         onDayPress={(day) => {
-          // Only allow selecting dates that have history data
           if (isDateDisabled(day.dateString)) return;
-          actions.selectDay(day.dateString);
+          onDayPress(day.dateString);
         }}
         onPressArrowLeft={(subtractMonth) => {
           if (canNavigateLeft()) {

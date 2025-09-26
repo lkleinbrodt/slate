@@ -2,116 +2,99 @@ Active Context
 
 Current focus
 
-- **TAB NAVIGATION COMPLETE** - Full tab-based navigation system implemented with Your Slate, History, and Settings tabs.
-- **HISTORY TAB IMPLEMENTATION COMPLETE** - Full history tab with calendar view, day details, and statistics fully implemented and functional.
-- **PLAN.MD IMPLEMENTATION COMPLETE** - All 4 core requirements from plan.md fully implemented and tested.
-- **DATABASE SCHEMA V2** - Enhanced with task dependencies, activity logging, and day snapshots.
-- **AUDIT TRAIL COMPLETE** - Every user action now logged for complete flow reconstruction.
+- **PLAN.MD REFACTORING COMPLETE** - Successfully implemented all 7 phases with new architecture
+- **NEW DATABASE SCHEMA** - Immutable history tables with proper data integrity
+- **REPOSITORY PATTERN** - Clean separation between data access and business logic
+- **FOUR-TAB NAVIGATION** - Today, Slate, History, and Settings tabs with improved UX
+- **UNIFIED STORAGE** - expo-sqlite/kv-store for both relational and key-value data
 
 Recent changes
 
-- **TAB NAVIGATION IMPLEMENTATION**: Successfully implemented tab-based navigation system
-  - Created `app/(tabs)/` directory structure with three main tabs
-  - Your Slate (main functionality), History (calendar view), Settings (configuration)
-  - Updated main `app/_layout.tsx` to use tab navigation instead of stack
-  - Removed navigation buttons from headers since screens are now tabs
-  - Updated PlannerHeader title to "Your Slate" and removed history/settings buttons
-  - Updated HistoryHeader to remove back button since it's now a tab
-  - **MINIMALIST TAB ICONS**: Replaced emoji icons with clean Ionicons (list-outline, calendar-outline, settings-outline)
-  - **SAFE AREA IMPLEMENTATION**: Added proper SafeAreaView support throughout the app
-    - Created `SafeAreaThemedView` component with proper theming
-    - Wrapped entire app with `SafeAreaProvider`
-    - Updated all main screens to use SafeAreaView instead of manual paddingTop
-    - Removed manual paddingTop adjustments since SafeAreaView handles it properly
-  - **CONSISTENT HEADERS**: Standardized header design across all tabs
-    - Created shared `TabHeader` component for consistent styling
-    - Updated PlannerHeader, HistoryHeader, and Settings to use shared component
-    - Ensured consistent padding, theming, and structure across all tabs
-  - **HISTORY CALENDAR RESTRICTIONS**: Implemented proper date boundaries for history view
-    - Added `getEarliestHistoryDate()` function to DAL to find first history entry
-    - Updated history store to track earliest date and current date
-    - Restricted calendar to only show dates between earliest history and today
-    - Disabled navigation to future months and past months before history starts
-    - Prevented selection of disabled dates with proper touch event handling
-- **HISTORY TAB IMPLEMENTATION COMPLETE**: Successfully implemented full history tab feature
-  - Added new DAL functions: getCalendarViewData() and getOverallStats()
-  - Created historyStore.ts with Zustand state management
-  - Updated navigation to include history screen and added history button to header
-  - Created main history screen (app/history.tsx) with ScrollView and modal integration
-  - Implemented all history components: HistoryHeader, HistoryCalendar, DayDetailsModal, HabitStreaksSection
-  - Added isReadOnly prop support to TaskItem and HabitItem components
-  - Enhanced calendar with color-coded days and comprehensive theming
-  - Added proper styling and visual hierarchy throughout
-- **MAJOR SIMPLIFICATION**: Removed tab navigation, created single main page
-- Combined Today, All, and Settings into streamlined interface
-- Main page now has: Header (progress + add), Today's Tasks, Today's Habits (all active), Slate
-- Main page now has: Header (progress + add), Today's Tasks, Today's Habits (all active), Slate (sorted by due date)
-- Added edit functionality - click any task/habit to edit title, notes, and due date (for tasks)
-- Settings accessible via gear icon in header
-- All core functionality preserved but in simplified, more focused interface
-- **MMORPG-LEVEL CELEBRATION SYSTEM**: Implemented comprehensive celebration system with morph animations, confetti, haptics, and Lottie animations
-- **ARCHITECTURAL IMPROVEMENTS**:
-  - Removed legacy files (explore.tsx, EditModal.tsx) that were no longer used
-  - Simplified useModal hook to only manage presentation state, moved business logic to main component
-  - Added React.useMemo optimization for slateTasks calculation to prevent unnecessary recalculations
-  - Implemented granular Zustand store selectors to prevent unnecessary re-renders
-  - Consolidated common style patterns using shared styles from lib/utils/styles.ts
-- **COMPREHENSIVE REFACTORING COMPLETED**:
-  - Fixed Perfect Day logic bug - now correctly triggers on final habit completion
-  - Created usePlanner hook to centralize all business logic and state management
-  - Implemented CheckableListItem component to DRY up TaskItem and HabitItem
-  - Created modular planner components (PlannerHeader, TodayTasksSection, HabitsSection, SlateSection)
-  - Refactored main screen to use centralized hook and modular components
-  - Significantly improved code maintainability and separation of concerns
-- **PLAN.MD FEATURES IMPLEMENTED** (All 4 Requirements Complete):
-  - ✅ **Task Dependencies**: dependsOnTaskId field with self-referencing foreign key
-  - ✅ **Activity Logging**: Complete audit trail in activity_log table for all user actions
-  - ✅ **Day Snapshots**: End-of-day state capture for history tab support
-  - ✅ **Database Schema V2**: New tables, indexes, and enhanced type safety
-  - ✅ **Rollover Integration**: Automatic snapshot creation during day boundary crossing
-  - ✅ **DAL Enhancement**: New functions for snapshot management and activity tracking
+- **COMPLETE ARCHITECTURAL REFACTORING**: Successfully implemented all 7 phases of plan.md
+
+  - **Phase 0**: Cleaned up obsolete files (DAL, old stores, hooks) and removed MMKV dependency
+  - **Phase 1**: Created new database schema with immutable history tables and repository pattern
+  - **Phase 2**: Implemented core logic (date utilities, rollover engine, streak calculations)
+  - **Phase 3**: Refactored state management to use new repository
+  - **Phase 4**: Updated UI and routing with new four-tab structure
+  - **Phase 5**: Refactored components to work with new data structures
+  - **Phase 6**: Updated history screen to use immutable history tables
+  - **Phase 7**: Fixed all linting errors and completed final polish
+
+- **NEW DATABASE ARCHITECTURE**:
+
+  - **Immutable History Tables**: `habit_history` and `task_history` for complete audit trail
+  - **Status-Based Tasks**: Tasks now use `status` field instead of `is_done`
+  - **Active Habits**: Habits use `is_active` field instead of `active`
+  - **Repository Pattern**: Clean separation with `lib/logic/repo.ts` as single data interface
+  - **expo-sqlite/kv-store**: Replaced MMKV with built-in key-value storage (no additional dependencies)
+
+- **ENHANCED ROLLOVER LOGIC**:
+
+  - **Robust Day Boundary Handling**: Uses expo-sqlite/kv-store for last processed date tracking
+  - **Immutable History Creation**: `finalizeDay()` creates permanent records for each day
+  - **Automatic Task Carryover**: Unfinished tasks automatically move to next day
+  - **Perfect Day Detection**: Calculated from immutable history data
+
+- **NEW NAVIGATION STRUCTURE**:
+
+  - **Today Tab**: Primary screen for daily task and habit management
+  - **Slate Tab**: Focused on unscheduled task management and planning
+  - **History Tab**: Calendar view with day details using immutable data
+  - **Settings Tab**: Configuration and preferences
+  - **Dynamic Routes**: `app/(tabs)/history/[date].tsx` for day details
+
+- **IMPROVED STATE MANAGEMENT**:
+
+  - **New App Store**: `lib/stores/appStore.ts` centralizes Today and Slate functionality
+  - **Simplified Settings Store**: Uses repository pattern for cleaner code
+  - **History Store**: Manages calendar data and statistics with immutable history
+  - **Repository Integration**: All stores now use the new repository layer
+
+- **COMPONENT UPDATES**:
+
+  - **TaskItem**: Updated to use `task.status === "done"` for completion state
+  - **HabitItem**: Compatible with new data structure
+  - **HabitStreaksSection**: Now uses history store with habit titles and streaks
+  - **History Components**: Updated to use immutable history data
+  - **Planner Components**: Modular components (PlannerHeader, TodayTasksSection, HabitsSection, SlateSection)
+
+- **STORAGE OPTIMIZATION**:
+  - **Removed MMKV**: Replaced with expo-sqlite/kv-store for consistency
+  - **Single Storage Solution**: All data now uses SQLite (relational + key-value)
+  - **Reduced Dependencies**: One less package to manage and maintain
 
 Next steps (optional polish)
 
-1. **Task Dependency UI**: Add dependency visualization and management in task editor
-2. **Activity Log UI**: Create admin view for activity log inspection
-3. **M6**: Implement JSON export/import functionality (placeholders exist in Settings)
-4. **M6**: Add VoiceOver labels and Dynamic Type support for accessibility
-5. **M6**: Polish empty states and error handling
-6. **Testing**: Add unit tests for core logic (clock, streaks, rollover, DAL operations)
-7. **History Enhancements**: User testing and feedback collection for history tab
+1. **Modal Integration**: Re-implement UnifiedAddModal with new stores (component exists but needs integration)
+2. **Task Dependency UI**: Add dependency visualization in task editor
+3. **Activity Log UI**: Create admin view for activity log inspection
+4. **M6**: Implement JSON export/import functionality (placeholders exist)
+5. **M6**: Add VoiceOver labels and Dynamic Type support for accessibility
+6. **Testing**: Add unit tests for core logic (rollover, streaks, repository)
+7. **Performance**: Optimize for large datasets and add list virtualization
 
 Decisions
 
-- **SIMPLIFIED NAVIGATION**: Removed tabs in favor of single main page for better focus
-- Used Drizzle ORM for type-safe database operations instead of raw SQL
-- Implemented SafeAreaView to handle iPhone notch/dynamic island
-- Added confetti and haptics for delightful user experience
-- Perfect Day celebration with modal and success haptics
-- Default Day Start 04:00; auto‑carryover ON
-- Habits are inherently daily and always shown in Today; no planning needed
-- **EDIT FUNCTIONALITY**: Click any task/habit to edit title, notes, and due date (for tasks) via unified modal
-- **CELEBRATION SYSTEM**: Implemented MMORPG-level celebrations with TapWin component, CheckMorph animations, confetti bursts, and Lottie animations for Perfect Day
-- **ARCHITECTURE DECISIONS**:
-  - Decoupled UI presentation from business logic by simplifying useModal hook
-  - Used granular store selectors for better performance and reduced re-renders
-  - Consolidated common styles to reduce code duplication and ensure consistency
-  - Removed legacy code to maintain clean, focused codebase
-  - **REFACTORING DECISIONS**:
-    - Centralized all business logic in usePlanner hook for better maintainability
-    - Created reusable CheckableListItem component to eliminate code duplication
-    - Broke down main screen into focused, modular components for better organization
-    - Fixed Perfect Day logic to trigger correctly on final habit completion
-    - Maintained all existing functionality while significantly improving code structure
+- **ARCHITECTURE**: Repository pattern provides clean separation of concerns
+- **STORAGE**: expo-sqlite/kv-store eliminates need for additional dependencies
+- **NAVIGATION**: Four-tab structure provides better user experience and clarity
+- **DATA INTEGRITY**: Immutable history tables ensure complete audit trail
+- **TYPE SAFETY**: Drizzle ORM provides full TypeScript integration
+- **ROLLOVER**: Robust day boundary handling with automatic task carryover
+- **HISTORY**: Immutable data enables reliable historical analysis
+- **COMPONENTS**: Modular planner components for better maintainability
 
 Risks & watch‑outs
 
-- Day boundary and DST handling - implemented with proper testing
-- Idempotent toggles - implemented with proper guards
-- All core functionality is working and tested
+- **Database Migration**: New schema requires fresh database (old data not migrated)
+- **Modal Integration**: UnifiedAddModal exists but needs re-implementation with new stores
+- **Component Compatibility**: Some components may need updates for new data structures
+- **Testing**: New architecture needs comprehensive testing
 
 Open questions
 
-- Export/import implementation details (JSON schema, file handling)
-- Accessibility testing on real devices
-- Performance optimization for large datasets
+- **Data Migration**: How to handle existing user data during schema transition
+- **Modal Integration**: Best approach for re-implementing UnifiedAddModal with new stores
+- **Performance**: Optimization strategies for large datasets
+- **Accessibility**: Implementation timeline for VoiceOver and Dynamic Type support

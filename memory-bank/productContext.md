@@ -28,9 +28,11 @@ User experience goals
 
 Primary surfaces
 
-- **Main Screen**: Single-page design combining Today (habits + selected tasks), Slate (remaining tasks), and progress header.
-- **Settings**: Accessible via gear icon - notifications, day start, auto‑carryover, haptics/sound, export/import.
-- **Unified Modal**: Single modal for adding/editing both tasks and habits.
+- **Today Tab**: Daily task and habit management with progress header and completion tracking.
+- **Slate Tab**: Unscheduled task management and planning for Today.
+- **History Tab**: Calendar view with day details and statistics using immutable history.
+- **Settings Tab**: Configuration for notifications, day start, auto‑carryover, haptics/sound, export/import.
+- **Unified Modal**: Single modal for adding/editing both tasks and habits (needs re-implementation).
 
 Scope boundaries (V0)
 

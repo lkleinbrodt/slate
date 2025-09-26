@@ -1,12 +1,12 @@
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 
-import { CheckableListItem } from "./CheckableListItem";
-import { IconSymbol } from "./ui/icon-symbol";
-import React from "react";
-import { TaskItemProps } from "./types";
-import { ThemedText } from "./themed-text";
-import { listItemStyles } from "@/lib/utils/styles";
 import { useThemeColor } from "@/hooks/use-theme-color";
+import { listItemStyles } from "@/lib/utils/styles";
+import React from "react";
+import { CheckableListItem } from "./CheckableListItem";
+import { ThemedText } from "./themed-text";
+import { TaskItemProps } from "./types";
+import { IconSymbol } from "./ui/icon-symbol";
 
 export const TaskItem: React.FC<TaskItemProps> = ({
   task,
@@ -20,7 +20,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 
   const handleToggle = () => {
     if (!isReadOnly) {
-      onToggle(task.id, !isCompleted);
+      onToggle(task.id, task.status === "done"); // Pass current completed status
     }
   };
 
@@ -43,7 +43,10 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   };
 
   return (
-    <CheckableListItem isCompleted={isCompleted} onToggle={handleToggle}>
+    <CheckableListItem
+      isCompleted={task.status === "done"}
+      onToggle={handleToggle}
+    >
       <View style={styles.content}>
         <View style={{ flex: 1 }}>
           <ThemedText

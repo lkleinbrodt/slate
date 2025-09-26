@@ -1,47 +1,63 @@
 import "react-native-reanimated";
 
-import { ActivityIndicator, AppState, Text, View } from "react-native";
 import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
-import { initializeApp, isAppReady } from "@/lib/app/init";
 import { useEffect, useState } from "react";
+import { ActivityIndicator, AppState, Text, View } from "react-native";
 
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { initializeDatabase } from "@/lib/db/connection";
+import { getToday } from "@/lib/logic/dates";
+import { processRollover } from "@/lib/logic/rollover";
+import { useAppStore } from "@/lib/stores/appStore";
+import { useSettingsStore } from "@/lib/stores/settings";
 import { ActionSheetProvider } from "@expo/react-native-action-sheet";
-import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useColorScheme } from "@/hooks/use-color-scheme";
-import { useSlateStore } from "@/lib/stores/slateStore";
-
-export const unstable_settings = {
-  anchor: "index",
-};
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [initError, setInitError] = useState<string | null>(null);
-  const takeSnapshot = useSlateStore((s) => s.actions.takeSnapshot);
+  const [isReady, setIsReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { dayStart, loadSettings } = useSettingsStore();
+  const { init: initAppStore } = useAppStore();
 
   useEffect(() => {
-    initializeApp()
-      .then(() => setIsInitialized(true))
-      .catch((error) => {
-        console.error("App initialization failed:", error);
-        setInitError(error.message);
-      });
+    const initialize = async () => {
+      try {
+        await initializeDatabase();
+        await loadSettings();
+
+        // This needs to be called after settings are loaded
+        const today = getToday(useSettingsStore.getState().dayStart);
+        await processRollover(today);
+
+        await initAppStore();
+        setIsReady(true);
+      } catch (e) {
+        console.error("Initialization failed:", e);
+        setError(e instanceof Error ? e.message : "An unknown error occurred.");
+      }
+    };
+    initialize();
+
     const sub = AppState.addEventListener("change", (state) => {
-      if (/inactive|background/.test(state)) {
-        takeSnapshot();
+      if (state === "active") {
+        console.log(
+          "App became active, re-checking rollover and refreshing data."
+        );
+        const today = getToday(useSettingsStore.getState().dayStart);
+        processRollover(today).then(() => useAppStore.getState().refreshData());
       }
     });
     return () => sub.remove();
-  }, []);
+  }, [loadSettings, initAppStore]);
 
-  if (initError) {
+  if (error) {
     return (
       <View
         style={{
@@ -51,19 +67,17 @@ export default function RootLayout() {
           padding: 20,
         }}
       >
-        <Text style={{ fontSize: 18, marginBottom: 10, textAlign: "center" }}>
-          Failed to initialize app
-        </Text>
-        <Text style={{ color: "red", textAlign: "center" }}>{initError}</Text>
+        <Text>Failed to initialize app</Text>
+        <Text style={{ color: "red" }}>{error}</Text>
       </View>
     );
   }
 
-  if (!isInitialized || !isAppReady()) {
+  if (!isReady) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" />
-        <Text style={{ marginTop: 10, fontSize: 16 }}>Loading Slate...</Text>
+        <Text>Loading Slate...</Text>
       </View>
     );
   }

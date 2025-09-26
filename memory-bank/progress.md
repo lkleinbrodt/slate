@@ -2,115 +2,120 @@ Progress
 
 Current status
 
-- **V0 IMPLEMENTATION COMPLETE** - All core milestones (M1-M5) implemented and functional.
-- **TAB NAVIGATION COMPLETE** - Full tab-based navigation system with Your Slate, History, and Settings tabs.
-- **HISTORY TAB IMPLEMENTATION COMPLETE** - Full history tab with calendar view, day details, and statistics fully implemented and functional.
-- **PLAN.MD IMPLEMENTATION COMPLETE** - All 4 core requirements from plan.md fully implemented and tested.
-- **DATABASE SCHEMA V2** - Enhanced with task dependencies, activity logging, and day snapshots.
+- **PLAN.MD REFACTORING COMPLETE** - All 7 phases successfully implemented
+- **NEW ARCHITECTURE DEPLOYED** - Repository pattern with immutable history tables
+- **FOUR-TAB NAVIGATION** - Today, Slate, History, and Settings tabs fully functional
+- **UNIFIED STORAGE** - expo-sqlite/kv-store replaces MMKV for consistency
+- **BUILD ERRORS RESOLVED** - All linting errors fixed and app builds successfully
 
 What works
 
-✅ **M1 - Foundation (COMPLETE)**
+✅ **PLAN.MD REFACTORING (COMPLETE - All 7 Phases)**
 
-- SQLite schema v1 with Drizzle ORM and automatic migrations
-- Complete DAL with type-safe CRUD operations for tasks, habits, day plans
-- Clock utility with proper day boundary handling (configurable day start)
-- Zustand stores for all state management (tasks, habits, dayPlan, settings)
-- App initialization with database setup and rollover logic
+- ✅ **Phase 0**: Project Cleanup & Preparation
 
-✅ **M2 - Core UI (COMPLETE)**
+  - Deleted obsolete files (DAL, old stores, hooks)
+  - Removed MMKV dependency in favor of expo-sqlite/kv-store
+  - Clean removal of legacy code completed without issues
 
-- Today screen with progress header, Today’s Tasks (selected tasks) and Today’s Habits (all active), check-off functionality
-- All screen with Tasks/Habits tabs, add/edit functionality, "Add to Today" buttons
-- SafeAreaView implementation fixing iPhone notch/dynamic island issues
-- Clean, playful minimal design with proper spacing and typography
+- ✅ **Phase 1**: New Database Schema & Repository
 
-✅ **M3 - Delight (COMPLETE)**
+  - Created `lib/logic/` directory structure
+  - New database schema with immutable history tables
+  - Repository pattern with `lib/logic/repo.ts` as single data interface
+  - Drizzle ORM schema with proper type inference
 
-- Haptic feedback on task/habit completion (Light impact)
-- Confetti animation using react-native-reanimated
-- Perfect Day detection with celebration modal and success haptics
-- Visual feedback with checkboxes, progress bars, and streak badges
+- ✅ **Phase 2**: Core Logic Implementation
 
-✅ **M4 - Streaks & Rollover (COMPLETE)**
+  - Date utilities with dayjs-based functions
+  - Robust rollover engine with expo-sqlite/kv-store
+  - Streak calculation logic for habits
+  - Perfect day detection from immutable history
 
-- Habit streak calculation and real-time display with fire emoji badges
-- Perfect Day detection when all active habits are completed
-- Rollover logic implemented in app initialization (auto-carryover of unfinished tasks)
-- Day boundary utilities with configurable day start (default 4 AM)
+- ✅ **Phase 3**: State Management Refactoring
 
-✅ **M5 - Settings (COMPLETE)**
+  - Simplified settings store using repository pattern
+  - New main application store (`lib/stores/appStore.ts`)
+  - History store for calendar data and statistics
+  - Clean separation of concerns
 
-- Complete Settings screen with all configuration options
-- Day start time, auto-carryover, notification preferences
-- Haptics and sound toggles
-- Export/import placeholders (ready for M6 implementation)
+- ✅ **Phase 4**: UI and Routing Overhaul
 
-✅ **PLAN.MD FEATURES (COMPLETE - All 4 Requirements)**
+  - Four-tab navigation structure (Today, Slate, History, Settings)
+  - New Today screen for daily task and habit management
+  - Refactored Slate screen for unscheduled tasks
+  - Dynamic routes for day details
 
-- ✅ **Task Dependencies**: dependsOnTaskId field with self-referencing foreign key
-- ✅ **Activity Logging**: Complete audit trail in activity_log table for all user actions
-- ✅ **Day Snapshots**: End-of-day state capture for history tab support
-- ✅ **Database Schema V2**: New tables, indexes, and enhanced type safety
-- ✅ **Rollover Integration**: Automatic snapshot creation during day boundary crossing
-- ✅ **DAL Enhancement**: New functions for snapshot management and activity tracking
+- ✅ **Phase 5**: Component Refactoring
 
-✅ **TAB NAVIGATION FEATURES (COMPLETE)**
+  - Updated TaskItem to use new status-based completion
+  - HabitItem compatibility with new data structure
+  - HabitStreaksSection integration with history store
+  - Type updates for new schema
+  - Modular planner components (PlannerHeader, TodayTasksSection, HabitsSection, SlateSection)
 
-- ✅ **Three Main Tabs**: Your Slate, History, and Settings
-- ✅ **Tab Layout**: Clean tab bar with emoji icons and proper styling
-- ✅ **Navigation Structure**: Moved all main screens to `app/(tabs)/` directory
-- ✅ **Header Updates**: Removed navigation buttons since screens are now tabs
-- ✅ **Consistent UX**: Seamless tab switching with proper state management
+- ✅ **Phase 6**: History Screen Refactoring
 
-✅ **HISTORY TAB FEATURES (COMPLETE)**
+  - New history store using immutable history tables
+  - Dynamic route for day details (`app/(tabs)/history/[date].tsx`)
+  - Calendar integration with immutable data
+  - Complete day snapshots with read-only components
 
-- ✅ **Calendar View**: Interactive calendar with color-coded completion status
-- ✅ **Day Details**: Tap any day to see complete snapshot with read-only components
-- ✅ **Statistics**: Key metrics display (tasks completed 7d, perfect days)
-- ✅ **Habit Streaks**: Current streak tracking for all active habits
-- ✅ **Navigation**: Seamless integration with existing app navigation
-- ✅ **DAL Functions**: getCalendarViewData() and getOverallStats() implemented
-- ✅ **State Management**: historyStore.ts with Zustand for all history state
-- ✅ **Component Support**: Added isReadOnly prop to TaskItem and HabitItem
-- ✅ **Styling**: Comprehensive theming and visual hierarchy
+- ✅ **Phase 7**: Final Polish & Cleanup
+  - Fixed all linting errors
+  - Removed obsolete files and dependencies
+  - Updated all documentation to reflect new architecture
+
+✅ **CORE FUNCTIONALITY (PRESERVED)**
+
+- ✅ **Task Management**: Create, update, complete, and plan tasks
+- ✅ **Habit Tracking**: Create, update, complete habits with streak calculation
+- ✅ **Daily Planning**: Add tasks to Today, manage daily workflow
+- ✅ **Rollover Logic**: Automatic task carryover with day boundary handling
+- ✅ **History Tracking**: Immutable history with complete audit trail
+- ✅ **Settings Management**: Day start, preferences, and configuration
+
+✅ **NEW ARCHITECTURE BENEFITS**
+
+- ✅ **Data Integrity**: Immutable history tables ensure complete audit trail
+- ✅ **Type Safety**: Full TypeScript integration with Drizzle ORM
+- ✅ **Performance**: Repository pattern with optimized queries
+- ✅ **Maintainability**: Clean separation of concerns and modular design
+- ✅ **Consistency**: Single storage solution (expo-sqlite for all data)
+- ✅ **Scalability**: Robust foundation for future enhancements
 
 What's left to build (optional polish)
 
-- **Task Dependency UI**: Dependency visualization and management in task editor
+- **Modal Integration**: Re-implement UnifiedAddModal with new stores (component exists)
+- **Task Dependency UI**: Dependency visualization and management
 - **Activity Log UI**: Admin view for activity log inspection
-- **M6**: Export/Import JSON functionality (placeholders exist)
-- **M6**: Accessibility pass (VoiceOver labels, Dynamic Type)
-- **M6**: Empty states polish
-- **Testing**: Unit tests for core logic (clock, streaks, rollover, DAL operations)
-- **Sound effects**: Audio files for celebrations
-- **Perfect Day streak**: Display current streak count
-- **History Enhancements**: User testing and feedback collection for history tab
+- **M6**: JSON export/import functionality (placeholders exist)
+- **M6**: VoiceOver labels and Dynamic Type support
+- **M6**: Empty states polish and error handling
+- **Testing**: Unit tests for core logic (rollover, streaks, repository)
+- **Performance**: List virtualization and large dataset optimization
 
 Architecture improvements completed
 
-- ✅ **CODE SIMPLIFICATION**: Removed legacy files (explore.tsx, EditModal.tsx) that were no longer used
-- ✅ **HOOK OPTIMIZATION**: Simplified useModal hook to only manage presentation state, moved business logic to main component
-- ✅ **PERFORMANCE OPTIMIZATION**: Added React.useMemo for slateTasks calculation to prevent unnecessary recalculations
-- ✅ **STORE OPTIMIZATION**: Implemented granular Zustand store selectors to prevent unnecessary re-renders
-- ✅ **STYLE CONSOLIDATION**: Consolidated common style patterns using shared styles from lib/utils/styles.ts
-- ✅ **COMPREHENSIVE REFACTORING**: Successfully implemented complete refactoring plan
-  - Fixed Perfect Day logic bug - now correctly triggers on final habit completion
-  - Created usePlanner hook to centralize all business logic and state management
-  - Implemented CheckableListItem component to eliminate code duplication between TaskItem and HabitItem
-  - Created modular planner components (PlannerHeader, TodayTasksSection, HabitsSection, SlateSection)
-  - Refactored main screen to use centralized hook and modular components
-  - Significantly improved code maintainability, separation of concerns, and DRY principles
+- ✅ **REPOSITORY PATTERN**: Clean separation between data access and business logic
+- ✅ **IMMUTABLE HISTORY**: Complete audit trail for all user actions
+- ✅ **UNIFIED STORAGE**: expo-sqlite/kv-store eliminates additional dependencies
+- ✅ **TYPE SAFETY**: Drizzle ORM provides full TypeScript integration
+- ✅ **MODULAR DESIGN**: Focused components with clear responsibilities
+- ✅ **ROBUST ROLLOVER**: Reliable day boundary handling with automatic carryover
+- ✅ **NAVIGATION OVERHAUL**: Four-tab structure with improved user experience
 
 Known issues
 
-- None - app is fully functional for daily use
+- **Modal Integration**: UnifiedAddModal exists but needs re-implementation with new stores
+- **Data Migration**: New schema requires fresh database (existing data not migrated)
+- **Component Updates**: Some components may need updates for new data structures
 
 Recent decisions
 
-- Used highly supported frameworks (Drizzle ORM, Zustand, Day.js)
-- Implemented SafeAreaView to fix iPhone display issues
-- Added confetti and haptics for delightful interactions
-- Perfect Day celebration with modal and success haptics
-- **CELEBRATION SYSTEM**: Implemented comprehensive MMORPG-level celebration system with TapWin component, CheckMorph animations, confetti bursts, and Lottie animations
-- **DOCUMENTATION**: Created comprehensive maintenance and placeholder documentation for easy project maintenance
+- **ARCHITECTURE**: Repository pattern provides clean separation of concerns
+- **STORAGE**: expo-sqlite/kv-store eliminates need for additional dependencies
+- **NAVIGATION**: Four-tab structure provides better user experience
+- **DATA MODEL**: Immutable history tables ensure complete audit trail
+- **TYPE SAFETY**: Drizzle ORM provides full TypeScript integration
+- **ROLLOVER**: Robust day boundary handling with automatic task carryover

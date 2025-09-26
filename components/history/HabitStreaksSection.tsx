@@ -1,29 +1,27 @@
 import { StyleSheet, View } from "react-native";
 
-import React from "react";
 import { ThemedText } from "@/components/themed-text";
-import { useHabitStreaks } from "@/hooks/useHabitStreaks";
-import { useSettingsStore } from "@/lib/stores/settings";
-import { useSlateStore } from "@/lib/stores/slateStore";
+import { useHistoryStore } from "@/lib/stores/historyStore";
+import React from "react";
 
 export const HabitStreaksSection = () => {
-  const { habits } = useSlateStore();
-  const dayStart = useSettingsStore((s) => s.dayStart);
-  const streaks = useHabitStreaks({ dayStart });
+  const { overallStats } = useHistoryStore();
 
   return (
     <View style={styles.container}>
       <ThemedText type="subtitle" style={styles.title}>
         Current Streaks
       </ThemedText>
-      {habits.map((habit) => (
-        <View key={habit.id} style={styles.habitRow}>
-          <ThemedText style={styles.habitTitle}>{habit.title}</ThemedText>
-          <ThemedText style={styles.streakText}>
-            🔥 {streaks[habit.id] || 0}
-          </ThemedText>
-        </View>
-      ))}
+      {Object.entries(overallStats.currentStreaks).map(
+        ([habitId, habitData]) => (
+          <View key={habitId} style={styles.habitRow}>
+            <ThemedText style={styles.habitTitle}>{habitData.title}</ThemedText>
+            <ThemedText style={styles.streakText}>
+              🔥 {habitData.streak}
+            </ThemedText>
+          </View>
+        )
+      )}
     </View>
   );
 };

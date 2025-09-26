@@ -126,27 +126,27 @@ slate/
 
 #### .cursor/rules/memory-bank.mdc
 
-The file `memory-bank.mdc` outlines the structure and importance of a documentation system known as the Memory Bank, utilized by a software engineer named Cline, who has a unique memory reset feature affecting every session. This documentation is critical for ensuring project continuity and understanding, as Cline relies exclusively on it to guide his work after each reset. 
+The file `memory-bank.mdc` outlines the structure and importance of a documentation system known as the Memory Bank, utilized by a software engineer named Cline, who has a unique memory reset feature affecting every session. This documentation is critical for ensuring project continuity and understanding, as Cline relies exclusively on it to guide his work after each reset.
 
-The Memory Bank consists of core Markdown files that articulate the project's foundation, context, current focus, system architecture, technology specifics, and progress. Key files include `projectbrief.md`, `productContext.md`, and `activeContext.md`, among others. 
+The Memory Bank consists of core Markdown files that articulate the project's foundation, context, current focus, system architecture, technology specifics, and progress. Key files include `projectbrief.md`, `productContext.md`, and `activeContext.md`, among others.
 
 The document emphasizes workflows for planning and execution, stipulating that documentation must be updated regularly, especially when new patterns emerge or significant changes are made. The structured approach ensures clarity and consistency across tasks. This file is integral to the project, providing a framework for maintaining operational knowledge and guiding Cline's efforts as he navigates his work.
 
 #### .gitignore
 
-The .gitignore file specifies a set of patterns for files and directories that should be ignored by Git during version control. It includes common directories related to dependencies, such as node_modules, and excludes builds and configurations from Expo, native builds, and Metro-specific files. 
+The .gitignore file specifies a set of patterns for files and directories that should be ignored by Git during version control. It includes common directories related to dependencies, such as node_modules, and excludes builds and configurations from Expo, native builds, and Metro-specific files.
 
-This file is crucial as it prevents unwanted files from being tracked, ensuring a cleaner and more streamlined repository. It helps to maintain only the necessary source code and configuration files, reducing clutter and avoiding potential conflicts or sensitive information leaks. 
+This file is crucial as it prevents unwanted files from being tracked, ensuring a cleaner and more streamlined repository. It helps to maintain only the necessary source code and configuration files, reducing clutter and avoiding potential conflicts or sensitive information leaks.
 
-The .gitignore's entries relate to other parts of the project by identifying which generated or environment-specific files to discard, thereby supporting development practices that rely on clean working directories. Key aspects include ignoring local environment files (.env*.local) and build artifacts (dist/, web-build/, /ios, /android) while explicitly mentioning typescript build info (*.tsbuildinfo). 
+The .gitignore's entries relate to other parts of the project by identifying which generated or environment-specific files to discard, thereby supporting development practices that rely on clean working directories. Key aspects include ignoring local environment files (.env*.local) and build artifacts (dist/, web-build/, /ios, /android) while explicitly mentioning typescript build info (*.tsbuildinfo).
 
 No functions or classes are defined, as this file solely serves a configuration purpose. There are no notable side effects since its main role is to dictate what Git tracks or ignores.
 
 #### MAINTENANCE.md
 
-The MAINTENANCE.md file provides a comprehensive maintenance guide for the Slate app, outlining best practices for maintaining and extending the application effectively. It emphasizes file organization, covering core files, components, and business logic, which aids developers in navigating the codebase. 
+The MAINTENANCE.md file provides a comprehensive maintenance guide for the Slate app, outlining best practices for maintaining and extending the application effectively. It emphasizes file organization, covering core files, components, and business logic, which aids developers in navigating the codebase.
 
-Key imports include various app components and utilities for state management and database operations. This guide is crucial for ensuring consistency and quality as it delineates processes for adding features, managing the database, executing UI changes, and optimizing performance. 
+Key imports include various app components and utilities for state management and database operations. This guide is crucial for ensuring consistency and quality as it delineates processes for adding features, managing the database, executing UI changes, and optimizing performance.
 
 Main sections highlight common tasks, debugging strategies, testing frameworks, and update procedures, emphasizing a proactive approach to maintenance. The document also addresses security considerations, focusing on data protection and user privacy.
 
@@ -158,13 +158,13 @@ PLACEHOLDERS.md serves as a comprehensive inventory of placeholders and TODO ite
 
 The document details several key areas, including a Celebration System, Export/Import functionality, Notifications, and Accessibility improvements, all aimed at refining the application’s core features. Each section specifies its location in the codebase, the current status, and necessary implementation actions.
 
-Noteworthy imports/exports involve various sound effects and Lottie animations, while main functions include sound playback integration and user notification settings. 
+Noteworthy imports/exports involve various sound effects and Lottie animations, while main functions include sound playback integration and user notification settings.
 
 It connects to the project by ensuring that essential features are not overlooked, paving the way for future enhancements such as cloud sync and calendar integration. The outlined placeholders also include technical aspects like error handling and performance optimization, ensuring a robust and user-friendly application. Overall, this document is crucial for the ongoing development and refinement of the Slate app.
 
 #### README.md
 
-The README.md file provides an overview of the Slate app, a local-first iOS productivity tool that integrates task management and habit tracking. It emphasizes user-friendly features that allow individuals to organize and prioritize tasks and habits seamlessly within a single interface. 
+The README.md file provides an overview of the Slate app, a local-first iOS productivity tool that integrates task management and habit tracking. It emphasizes user-friendly features that allow individuals to organize and prioritize tasks and habits seamlessly within a single interface.
 
 Key functionalities include adding tasks and habits, planning daily activities, checking off completed items with visual rewards, tracking habit streaks, and auto-carryover of unfinished tasks. The installation and startup instructions guide users to set up the app via npm.
 
@@ -172,7 +172,7 @@ Slate is designed to maintain user data locally, ensuring privacy and accessibil
 
 This file is crucial for onboarding and familiarizing users with Slate's capabilities, which enhances overall project usability. The well-defined features and project structure outlined foster an efficient development and user experience.
 
-#### app/(tabs)/_layout.tsx
+#### app/(tabs)/\_layout.tsx
 
 The file `_layout.tsx` defines a tab layout component for a React Native application using Expo Router. It creates a navigation structure with three tabs: "Your Slate," "History," and "Settings," each associated with respective screens. The file is important as it establishes the primary user interface for navigating different sections of the app.
 
@@ -208,11 +208,11 @@ Key exports include the `SettingsScreen` component that encapsulates all UI elem
 
 Overall, this file interacts with the rest of the application by centralizing settings management, making it integral to the app's configuration capabilities.
 
-#### app/_layout.tsx
+#### app/\_layout.tsx
 
 The file `app/_layout.tsx` defines the main layout component (`RootLayout`) for a React Native application, leveraging Expo and React Navigation. It initializes the app during its first render, checking for readiness and potential errors. This component is crucial as it sets up the app's theme, handles loading states, and provides a structure for navigation.
 
-Key functionalities include leveraging state hooks for initialization status and error handling, displaying an activity indicator while the app loads, and managing light/dark themes based on user preferences. 
+Key functionalities include leveraging state hooks for initialization status and error handling, displaying an activity indicator while the app loads, and managing light/dark themes based on user preferences.
 
 The file imports significant modules such as `ActivityIndicator`, `ThemeProvider`, and navigation-related components from React Navigation and Expo, ensuring that the app adheres to safe area guidelines and action sheets.
 
@@ -220,9 +220,9 @@ The `RootLayout` wraps the entire app in necessary providers like `SafeAreaProvi
 
 #### app/modal.tsx
 
-The file `app/modal.tsx` defines a React component for a modal screen within a mobile application built using React Native and Expo. The `ModalScreen` function returns a themed view that displays a title and a link for navigation back to the home screen. 
+The file `app/modal.tsx` defines a React component for a modal screen within a mobile application built using React Native and Expo. The `ModalScreen` function returns a themed view that displays a title and a link for navigation back to the home screen.
 
-This file is significant because it contributes to the app's user interface by providing a modal that enhances user experience through clear navigation options. It relies on two key imports: `Link` from `expo-router` for navigation and custom components `ThemedText` and `ThemedView` to ensure consistent styling. 
+This file is significant because it contributes to the app's user interface by providing a modal that enhances user experience through clear navigation options. It relies on two key imports: `Link` from `expo-router` for navigation and custom components `ThemedText` and `ThemedView` to ensure consistent styling.
 
 The main function exported is `ModalScreen`, which is responsible for rendering the modal's content and styling, including a flexbox layout defined in the `styles` constant. The notable side effect is the user interface's dynamic behavior; when the "Go to home screen" link is activated, it dismisses the modal and navigates back to the home screen. This modal screen interacts with the broader application structure to handle navigation and theming consistently.
 
@@ -236,7 +236,7 @@ Main attributes include support for typed routes and a customizable runtime vers
 
 #### assets/lottie/perfect-day-badge.json
 
-The file "perfect-day-badge.json" defines a Lottie animation for a "Perfect Day Badge," which is a visually appealing graphic likely used in an application or website. It specifies the animation's version, frame rate, dimensions, and keyframes for multiple layers, including a badge circle and a checkmark. 
+The file "perfect-day-badge.json" defines a Lottie animation for a "Perfect Day Badge," which is a visually appealing graphic likely used in an application or website. It specifies the animation's version, frame rate, dimensions, and keyframes for multiple layers, including a badge circle and a checkmark.
 
 This file matters as Lottie files enable developers to use animations that are lightweight and vector-based, enhancing user experience without excessive file sizes. It integrates with other components of the project that require visual feedback or gamification features, such as badges for accomplishments or progress.
 
@@ -274,13 +274,13 @@ Notable side effects include starting a timer to call `onComplete` and clearing 
 
 #### components/ConfirmationDialog.tsx
 
-The `ConfirmationDialog.tsx` file defines a reusable confirmation dialog component for React Native applications. It allows developers to present users with a modal prompt that can confirm or cancel actions, crucial for tasks requiring user acknowledgment, such as deleting items. 
+The `ConfirmationDialog.tsx` file defines a reusable confirmation dialog component for React Native applications. It allows developers to present users with a modal prompt that can confirm or cancel actions, crucial for tasks requiring user acknowledgment, such as deleting items.
 
 This component matters because it enhances user experience by providing a standardized interface for critical decisions, ensuring that users are aware of the consequences of their actions. In relation to the project, it serves as a UI element that can be integrated across various screens where user confirmation is needed.
 
-Key imports include `react-native` for UI elements, `react-native-modal` for the modal functionality, and specialized components like `ThemedText` and `ThemedView` for consistent theming. 
+Key imports include `react-native` for UI elements, `react-native-modal` for the modal functionality, and specialized components like `ThemedText` and `ThemedView` for consistent theming.
 
-The component exports `ConfirmationDialog` as a functional component designed with props for visibility, title, messages, and callback functions for confirmation and cancellation. 
+The component exports `ConfirmationDialog` as a functional component designed with props for visibility, title, messages, and callback functions for confirmation and cancellation.
 
 Notable side effects include potential changes in app state based on user interactions with the confirmation buttons. Additionally, it customizes styles based on the application's theme, enhancing overall visual consistency.
 
@@ -288,9 +288,10 @@ Notable side effects include potential changes in app state based on user intera
 
 The `CustomDatePicker.tsx` file defines a React component for selecting dates within a mobile application using React Native. This component is vital for user interface interactions involving date selection, especially for features requiring a due date, enhancing user experience with intuitive calendar controls.
 
-The component imports essential UI elements from React Native (`Modal`, `Calendar`, etc.) and utility functions for date formatting. It exports a functional component consisting of props for visibility, selected date, callbacks for date selection, and closing the modal. 
+The component imports essential UI elements from React Native (`Modal`, `Calendar`, etc.) and utility functions for date formatting. It exports a functional component consisting of props for visibility, selected date, callbacks for date selection, and closing the modal.
 
 Key functionalities include:
+
 - Date selection logic, allowing only future dates.
 - State management for a temporary selected date.
 - Visual representation of marked dates, including today and future selections while disabling past dates.
@@ -309,11 +310,11 @@ The main functionalities of `FloatingModal` involve rendering its children withi
 
 #### components/HabitItem.tsx
 
-The `HabitItem.tsx` file defines a React component that represents an individual habit within a to-do list application built with React Native. This component is crucial for allowing users to view, toggle completion status, and edit their habits, enhancing user interaction and personal habit tracking. 
+The `HabitItem.tsx` file defines a React component that represents an individual habit within a to-do list application built with React Native. This component is crucial for allowing users to view, toggle completion status, and edit their habits, enhancing user interaction and personal habit tracking.
 
 It imports necessary libraries and components, including styles, a custom list item, and themed text, which facilitate consistent design and behavior within the app. The main export is the `HabitItem` component, which takes props like `habit`, `isCompleted`, `streak`, and callbacks for toggling and editing habits.
 
-Key functions include `handleToggle`, which toggles the completed state of the habit, and `handleEdit`, which initiates editing if not in read-only mode. Notably, it utilizes the `useThemeColor` hook to apply the appropriate icon color based on the current theme. 
+Key functions include `handleToggle`, which toggles the completed state of the habit, and `handleEdit`, which initiates editing if not in read-only mode. Notably, it utilizes the `useThemeColor` hook to apply the appropriate icon color based on the current theme.
 
 Its relationship to the broader project lies in its role in improving user experience through habit management, reliant on the overall state and context provided by the main application.
 
@@ -335,9 +336,9 @@ Key imports include `StyleSheet`, `View` from "react-native", and `ThemedText`. 
 
 #### components/SlateItem.tsx
 
-The file `SlateItem.tsx` defines a React functional component that represents an individual item in a task management interface. It facilitates user interaction by allowing tasks to be edited or added to a daily agenda. 
+The file `SlateItem.tsx` defines a React functional component that represents an individual item in a task management interface. It facilitates user interaction by allowing tasks to be edited or added to a daily agenda.
 
-The component imports essential utilities and components, such as `TouchableOpacity` for button actions, `ThemedText` for styled text presentation, and custom hooks for theme color management. Key props include `task`, `onEdit`, and `onAddToToday`, linking the component to task data and actions. 
+The component imports essential utilities and components, such as `TouchableOpacity` for button actions, `ThemedText` for styled text presentation, and custom hooks for theme color management. Key props include `task`, `onEdit`, and `onAddToToday`, linking the component to task data and actions.
 
 The main functions include an add button for today's tasks and an edit button, both of which handle respective user actions through callback functions. The layout is styled using a combination of internal styles and imported styling utilities, ensuring a cohesive design.
 
@@ -371,7 +372,7 @@ The main component exports the `CheckMorph` function, composed of two key shared
 
 #### components/celebration/ConfettiCannon.tsx
 
-The file `ConfettiCannon.tsx` defines a React component, `ConfettiCannonComponent`, that renders a confetti cannon effect based on incoming props. It allows customization of the confetti's characteristics, including the count, origin, colors, fade-out behavior, and whether it starts automatically. 
+The file `ConfettiCannon.tsx` defines a React component, `ConfettiCannonComponent`, that renders a confetti cannon effect based on incoming props. It allows customization of the confetti's characteristics, including the count, origin, colors, fade-out behavior, and whether it starts automatically.
 
 This component is significant within the project for enhancing celebratory user interface experiences, such as expressing success or joyous events. It leverages the `react-native-confetti-cannon` library, making it a reusable visual feature across potentially multiple parts of the application.
 
@@ -383,7 +384,7 @@ The `LevelUpAnimation.tsx` file defines a React component that handles a celebra
 
 The component imports essential functions from `react-native-reanimated` for animations and React for component structure and lifecycle management. It accepts `children` to display within the animated view and an optional `onComplete` callback for actions post-animation.
 
-Key functions in the component include `useEffect`, which triggers animations based on the `trigger` prop, and `useAnimatedStyle`, which computes the animated styles based on shared values. 
+Key functions in the component include `useEffect`, which triggers animations based on the `trigger` prop, and `useAnimatedStyle`, which computes the animated styles based on shared values.
 
 The main exports are the `LevelUpAnimation` function component and its associated styles. Notable side effects include the invocation of the optional `onComplete` callback after a delay of one second post-animation, allowing for further actions in response to the level-up event.
 
@@ -391,7 +392,7 @@ The main exports are the `LevelUpAnimation` function component and its associate
 
 The `PerfectDayCelebration.tsx` file defines a React Native component that presents a celebratory modal when a user completes all their daily habits. This component is significant for enhancing user experience by providing positive feedback through visual and haptic effects.
 
-Key imports include `expo-haptics` for tactile feedback, `react-native` for UI components, `React` for creating the component, and `ConfettiCannonComponent` for visual celebration effects. The main exported function, `PerfectDayCelebration`, accepts `visible`, `onClose`, and optional `streakCount` props. 
+Key imports include `expo-haptics` for tactile feedback, `react-native` for UI components, `React` for creating the component, and `ConfettiCannonComponent` for visual celebration effects. The main exported function, `PerfectDayCelebration`, accepts `visible`, `onClose`, and optional `streakCount` props.
 
 The modal triggers haptic feedback, confetti animations, and an Lottie animation upon visibility. It also displays a celebratory message and a streak count if applicable. The component automatically closes after three seconds, ensuring a smooth user experience.
 
@@ -401,7 +402,7 @@ This file integrates with the larger project to motivate users to maintain their
 
 The README.md file outlines the celebration system for the Slate MMORPG, focusing on providing engaging user feedback for task and habit completions. It includes several components: TapWin for interactive task completion with animations and haptics; CheckMorph for animated checkmarks; PerfectDayCelebration for celebrating significant achievements; LevelUpAnimation for container animations; and ConfettiCannonComponent for reusable confetti effects.
 
-These components are crucial for enhancing user experience by rewarding achievements, thus promoting user engagement and retention. Each component is customizable and optimized for performance across various interactions. 
+These components are crucial for enhancing user experience by rewarding achievements, thus promoting user engagement and retention. Each component is customizable and optimized for performance across various interactions.
 
 Key imports include `react-native-reanimated` for animations, `expo-haptics` for feedback, `lottie-react-native` for animations, and `react-native-svg` for vector graphics. The main functions involve creating visually appealing animations and tactile responses during user interactions that can be triggered through concise event handling.
 
@@ -409,13 +410,13 @@ Notable side effects include improved user interaction through animations and ha
 
 #### components/celebration/TapWin.tsx
 
-The TapWin.tsx file defines a React component called `TapWin`, which creates an animated, pressable button used typically in celebration contexts (e.g., confirming actions, leveling up). The component allows haptic feedback and visual scaling effects, enhancing the user interaction experience. 
+The TapWin.tsx file defines a React component called `TapWin`, which creates an animated, pressable button used typically in celebration contexts (e.g., confirming actions, leveling up). The component allows haptic feedback and visual scaling effects, enhancing the user interaction experience.
 
-This matters because it offers a visually engaging way to provide feedback to users while interacting with the application, promoting a more dynamic UI. 
+This matters because it offers a visually engaging way to provide feedback to users while interacting with the application, promoting a more dynamic UI.
 
 The component imports essential libraries like `expo-haptics` for haptic feedback and `react-native-reanimated` for handling animations. It exports the `TapWin` function, which accepts several props, including a callback for when a level-up occurs.
 
-Key functions include the `handlePress`, which manages user interactions, triggers haptic feedback, and runs the scaling animation. If the button is pressed while `checked` is false, it also calls the `onLevelUp` function. 
+Key functions include the `handlePress`, which manages user interactions, triggers haptic feedback, and runs the scaling animation. If the button is pressed while `checked` is false, it also calls the `onLevelUp` function.
 
 This component likely interacts with other parts of the application that require user input and feedback, making it crucial for user engagement in the codebase.
 
@@ -439,7 +440,7 @@ Key imports include `BottomTabBarButtonProps` from `@react-navigation/bottom-tab
 
 #### components/hello-wave.tsx
 
-The file `components/hello-wave.tsx` defines a React Native component called `HelloWave`. This component displays an animated text element that shows a waving hand emoji (👋). The animation is created using the `react-native-reanimated` library, applying a rotation transform to the text, making it appear to wave. 
+The file `components/hello-wave.tsx` defines a React Native component called `HelloWave`. This component displays an animated text element that shows a waving hand emoji (👋). The animation is created using the `react-native-reanimated` library, applying a rotation transform to the text, making it appear to wave.
 
 This component is significant as it enhances user engagement through animation, contributing to a lively and interactive user interface. It likely serves as part of a larger project focused on mobile application development where animations play a key role in user experience.
 
@@ -447,7 +448,7 @@ The main export of the file is the `HelloWave` function, which renders the anima
 
 #### components/history/DayDetailsModal.tsx
 
-The file `DayDetailsModal.tsx` defines a React functional component that renders a modal displaying detailed information for a specific day, including tasks and habits. It accepts three props: `visible` to control the modal's display, `snapshot` containing the day's data, and `onClose` for closing the modal. 
+The file `DayDetailsModal.tsx` defines a React functional component that renders a modal displaying detailed information for a specific day, including tasks and habits. It accepts three props: `visible` to control the modal's display, `snapshot` containing the day's data, and `onClose` for closing the modal.
 
 This component is significant as it enhances user interaction within a habit-tracking app, allowing users to view their progress on tasks and habits for a selected day. Integrating it into the project allows users to visualize and reflect on their daily accomplishments, which may improve user engagement.
 
@@ -465,11 +466,11 @@ Notable side effects include reliance on global stores for state management, whi
 
 #### components/history/HistoryCalendar.tsx
 
-The file `HistoryCalendar.tsx` defines a React functional component that provides a calendar interface to display user history related to habits. It integrates with a state management store `useHistoryStore`, allowing access to calendar data, date selection, and loading relevant data for different months. 
+The file `HistoryCalendar.tsx` defines a React functional component that provides a calendar interface to display user history related to habits. It integrates with a state management store `useHistoryStore`, allowing access to calendar data, date selection, and loading relevant data for different months.
 
-This component is significant for user engagement as it visualizes habit completion data, enhancing the user experience by allowing users to track their progress over time. 
+This component is significant for user engagement as it visualizes habit completion data, enhancing the user experience by allowing users to track their progress over time.
 
-Key imports include React Native components for UI (`View`, `Text`, `Animated`, `StyleSheet`) and the `Calendar` from `react-native-calendars`. The main exports are the `HistoryCalendar` component. 
+Key imports include React Native components for UI (`View`, `Text`, `Animated`, `StyleSheet`) and the `Calendar` from `react-native-calendars`. The main exports are the `HistoryCalendar` component.
 
 Core functions include `getMarkedDates`, which colors dates based on habit completion ratio, and various date handling functions like `getMinDate`, `getMaxDate`, and navigation checks. It features an animated notification system to inform users when trying to navigate beyond available history data.
 
@@ -497,15 +498,15 @@ Main functionalities involve calculating animated styles for the header image as
 
 The `HabitsSection.tsx` file defines a React functional component called `HabitsSection`, which displays a list of habits for a user. It takes in properties such as `habits`, `completedHabits`, `habitStreaks`, and callback functions `onToggle` and `onEdit`. The component renders a themed view containing a title and either the list of habits or a message indicating there are no habits available.
 
-This file is crucial for the user interface of a habit-tracking application, as it helps users visualize their habits and associated data, enhancing user engagement. 
+This file is crucial for the user interface of a habit-tracking application, as it helps users visualize their habits and associated data, enhancing user engagement.
 
-Key imports include `HabitItem`, which represents individual habits, and themed components for consistent styling. The main export is the `HabitsSection` component. 
+Key imports include `HabitItem`, which represents individual habits, and themed components for consistent styling. The main export is the `HabitsSection` component.
 
 Notable side effects involve rendering different UI states based on the presence of habits—either displaying a habit list with completion status and streaks or a prompt indicating no habits exist. This functionality is integrated into the broader application for tracking and managing personal habits effectively.
 
 #### components/planner/PlannerHeader.tsx
 
-The file `PlannerHeader.tsx` defines the `PlannerHeader` component, a key UI element in a planner application, built using React and React Native. It displays progress on tasks and habits, providing users with a visual summary of their accomplishments and a button to add new items. 
+The file `PlannerHeader.tsx` defines the `PlannerHeader` component, a key UI element in a planner application, built using React and React Native. It displays progress on tasks and habits, providing users with a visual summary of their accomplishments and a button to add new items.
 
 This component matters because it enhances user engagement by offering immediate feedback on progress, which is crucial for task and habit management applications. It interacts with other components like `ProgressTracker` and `AddButton`, suggesting that it is part of a broader functionality within the project focusing on organization and productivity.
 
@@ -513,7 +514,7 @@ Key imports include UI components such as `AddButton`, `ProgressTracker`, and `T
 
 #### components/planner/SlateSection.tsx
 
-The file `SlateSection.tsx` defines a React functional component named `SlateSection` that renders a section for displaying tasks in a planner application. It leverages the `SlateItem`, `ThemedText`, and `ThemedView` components to create a cohesive and themed user interface. 
+The file `SlateSection.tsx` defines a React functional component named `SlateSection` that renders a section for displaying tasks in a planner application. It leverages the `SlateItem`, `ThemedText`, and `ThemedView` components to create a cohesive and themed user interface.
 
 The `SlateSection` accepts props for an array of tasks and two callback functions: `onAddToToday` for adding tasks or habits to the current day, and `onEdit` for modifying task details. The component checks if there are tasks to display; if so, it renders each task using the `SlateItem` component. If there are no tasks, it shows a message indicating that the user is caught up.
 
@@ -536,6 +537,7 @@ The file `components/planner/index.ts` serves as an aggregation module for the p
 The importance of this file lies in its role in organizing the planner's UI elements, ensuring a modular design that improves code clarity. It directly relates to the overall project by contributing to the user interface, likely within a task management or productivity application.
 
 Key exports include:
+
 - `HabitsSection`
 - `PlannerHeader`
 - `SlateSection`
@@ -589,27 +591,27 @@ Key imports include various interfaces from `@/lib/types/common`, and the notabl
 
 #### components/ui/collapsible.tsx
 
-The `collapsible.tsx` file implements a React Native component called `Collapsible`, which provides a UI element that can expand or collapse to show or hide its children content. This component is significant as it enhances user interaction by allowing for a cleaner interface, organizing related information in a compact manner. It utilizes hooks like `useState` for managing the open/closed state and `useColorScheme` to adapt the design to light or dark themes. Key imports include `ThemedText`, `ThemedView`, and `IconSymbol`, which provide theming capabilities and icons. The component offers a responsive design and manages styles via `StyleSheet`. 
+The `collapsible.tsx` file implements a React Native component called `Collapsible`, which provides a UI element that can expand or collapse to show or hide its children content. This component is significant as it enhances user interaction by allowing for a cleaner interface, organizing related information in a compact manner. It utilizes hooks like `useState` for managing the open/closed state and `useColorScheme` to adapt the design to light or dark themes. Key imports include `ThemedText`, `ThemedView`, and `IconSymbol`, which provide theming capabilities and icons. The component offers a responsive design and manages styles via `StyleSheet`.
 
 The main function exported is `Collapsible`, which accepts `children` and `title` props. Notable side effects include the toggle functionality that alters the component's state and visual representation based on user interaction. This component integrates seamlessly into the broader project by ensuring consistent theming and enhancing the overall user experience.
 
 #### components/ui/icon-symbol.ios.tsx
 
-The file `icon-symbol.ios.tsx` defines a React Native component named `IconSymbol`, which is used to render icons using the `SymbolView` component from the `expo-symbols` library. This component allows developers to specify the icon's name, size, color, style, and weight. 
+The file `icon-symbol.ios.tsx` defines a React Native component named `IconSymbol`, which is used to render icons using the `SymbolView` component from the `expo-symbols` library. This component allows developers to specify the icon's name, size, color, style, and weight.
 
-The significance of this file lies in its ability to create scalable and customizable icon representations for iOS applications, which enhances the visual interface and user experience. 
+The significance of this file lies in its ability to create scalable and customizable icon representations for iOS applications, which enhances the visual interface and user experience.
 
-This component is part of a broader project that likely involves various UI elements, making it an essential building block for consistent design across the application. 
+This component is part of a broader project that likely involves various UI elements, making it an essential building block for consistent design across the application.
 
-Key imports include `SymbolView`, `SymbolViewProps`, and `SymbolWeight` from `expo-symbols`, as well as React Native's `StyleProp` and `ViewStyle`. 
+Key imports include `SymbolView`, `SymbolViewProps`, and `SymbolWeight` from `expo-symbols`, as well as React Native's `StyleProp` and `ViewStyle`.
 
 The main export is the `IconSymbol` function. Notable side effects are minimal; it primarily focuses on rendering icons without additional side effects.
 
 #### components/ui/icon-symbol.tsx
 
-The `icon-symbol.tsx` file defines a UI component for rendering icons using native SF Symbols on iOS and Material Icons on Android and web platforms. This component allows for a consistent visual experience across different operating systems while optimizing resource usage. 
+The `icon-symbol.tsx` file defines a UI component for rendering icons using native SF Symbols on iOS and Material Icons on Android and web platforms. This component allows for a consistent visual experience across different operating systems while optimizing resource usage.
 
-It includes a mapping of SF Symbol names to their corresponding Material Icon names, facilitating manual translation between the two icon systems. The primary export is the `IconSymbol` component, which accepts properties such as `name`, `size`, `color`, and `style`. 
+It includes a mapping of SF Symbol names to their corresponding Material Icon names, facilitating manual translation between the two icon systems. The primary export is the `IconSymbol` component, which accepts properties such as `name`, `size`, `color`, and `style`.
 
 This file is crucial in a project that employs cross-platform development, ensuring that the iconography remains visually cohesive and functional. The use of libraries like `@expo/vector-icons` and `expo-symbols` supports its integration, and it leverages key React and React Native types for props handling. Notable side effects may include rendering variations based on the platform, which the component abstracts away, allowing developers to focus on application logic rather than platform-specific discrepancies.
 
@@ -638,7 +640,7 @@ This file plays a crucial role in managing the application lifecycle within the 
 
 #### eslint.config.js
 
-The file `eslint.config.js` is a configuration file for ESLint, a tool used to analyze and enforce code quality standards in JavaScript projects. This configuration imports the standard Expo ESLint rules, allowing the project to adhere to best practices recommended by the Expo framework. It also specifies a custom rule to ignore the 'dist' directory, which is typically where built files reside, thereby preventing these files from being linted. 
+The file `eslint.config.js` is a configuration file for ESLint, a tool used to analyze and enforce code quality standards in JavaScript projects. This configuration imports the standard Expo ESLint rules, allowing the project to adhere to best practices recommended by the Expo framework. It also specifies a custom rule to ignore the 'dist' directory, which is typically where built files reside, thereby preventing these files from being linted.
 
 This file is important for maintaining code quality and consistency across the project, ensuring adherence to established style guidelines. It relates to the broader codebase by facilitating automatic linting processes and helping developers identify potential issues early in development. Notable imports include the `defineConfig` from ESLint and the `expoConfig` from the Expo ESLint configuration package. The main function here is the configuration export, which combines the Expo settings with custom directives. No critical side effects are noted beyond the enhanced code quality and ignored directories.
 
@@ -652,11 +654,11 @@ In the context of the broader project, this hook likely plays a role in responsi
 
 #### hooks/use-color-scheme.web.ts
 
-The `use-color-scheme.web.ts` file defines a custom React hook, `useColorScheme`, which manages the color scheme (light or dark mode) for a React web application. It bridges the color scheme from React Native (`useRNColorScheme`) with the need for client-side state management due to static rendering. 
+The `use-color-scheme.web.ts` file defines a custom React hook, `useColorScheme`, which manages the color scheme (light or dark mode) for a React web application. It bridges the color scheme from React Native (`useRNColorScheme`) with the need for client-side state management due to static rendering.
 
 This hook initializes a state variable `hasHydrated` to track the hydration state of the component. On the first render, it sets this variable to `true` using the `useEffect` hook to indicate that the component has hydrated. Until hydration occurs, it defaults to returning 'light' as the color scheme.
 
-This file is significant as it ensures a consistent theming experience across web and mobile applications while accommodating the challenges of server-side rendering. It relates closely to the overall project by facilitating adaptive UI based on user preferences. 
+This file is significant as it ensures a consistent theming experience across web and mobile applications while accommodating the challenges of server-side rendering. It relates closely to the overall project by facilitating adaptive UI based on user preferences.
 
 Key imports include React hooks (`useEffect`, `useState`) and the `useColorScheme` from React Native. The main export is the `useColorScheme` function, and the notable side effect is the hydration state affecting the returned color scheme.
 
@@ -694,17 +696,17 @@ Key exports include the `handleCompleteHabit` function and the visibility state 
 
 #### hooks/usePlanner.ts
 
-The `usePlanner.ts` file defines a custom React hook that manages the state and business logic for a planner screen within a productivity application. It consolidates state management for day plans, tasks, and habits, allowing for efficient interaction with various stores (day plans, tasks, habits, settings). 
+The `usePlanner.ts` file defines a custom React hook that manages the state and business logic for a planner screen within a productivity application. It consolidates state management for day plans, tasks, and habits, allowing for efficient interaction with various stores (day plans, tasks, habits, settings).
 
 Key functionalities include loading initial data, saving and managing tasks and habits, and handling user actions like adding or removing items from today’s plan. It employs React's `useMemo` for optimizing task sorting, and `useEffect` for initial data fetching.
 
-This hook is crucial as it centralizes the planner's logic, improving maintainability and reusability across components in the project. 
+This hook is crucial as it centralizes the planner's logic, improving maintainability and reusability across components in the project.
 
 Key imports include various store hooks for state management and utility functions for date handling. The main exported function, `usePlanner`, returns an object containing the current state and action handlers, ensuring a clean API for UI components. Notable side effects include API calls and user alerts in case of errors during state updates.
 
 #### hooks/useTaskCompletion.ts
 
-The file `hooks/useTaskCompletion.ts` defines a custom React hook, `useTaskCompletion`, that facilitates managing task completion while incorporating haptic feedback using the Expo Haptics library. This hook is significant as it enhances user experience by giving tactile response upon task completion, making interactions more engaging. It relates to the overall project by providing a reusable logic component that can be integrated wherever task completion occurs. 
+The file `hooks/useTaskCompletion.ts` defines a custom React hook, `useTaskCompletion`, that facilitates managing task completion while incorporating haptic feedback using the Expo Haptics library. This hook is significant as it enhances user experience by giving tactile response upon task completion, making interactions more engaging. It relates to the overall project by providing a reusable logic component that can be integrated wherever task completion occurs.
 
 Key imports include the Haptics module from the Expo library for the haptic feedback functionality, and `useCallback` from React to optimize performance by memoizing the `handleCompleteTask` function. The main function, `handleCompleteTask`, takes a task ID and a completion status, triggers haptic feedback if the task is marked complete, and calls an external `completeTask` function that handles the actual task update. Notable side effects include the potential triggering of device vibrations through haptic feedback, depending on the completion status of a task.
 
@@ -712,7 +714,7 @@ Key imports include the Haptics module from the Expo library for the haptic feed
 
 The file `lib/app/init.ts` is responsible for initializing the application upon startup. It does this by first establishing a connection to the database and then loading various user settings, tasks, habits, and daily plans. The importance of this file lies in its role as the entry point for application setup, ensuring that all necessary data is loaded before the app becomes operational.
 
-Key imports include database access methods from `../db/dal`, database connection functions from `../db/connection`, and state management hooks from different store modules such as `dayPlan`, `habits`, `settings`, and `tasks`. 
+Key imports include database access methods from `../db/dal`, database connection functions from `../db/connection`, and state management hooks from different store modules such as `dayPlan`, `habits`, `settings`, and `tasks`.
 
 The main exported function, `initializeApp`, coordinates the initialization process, including a specific rollover function that handles task carryover across days if applicable. The auxiliary function `runRolloverIfNeeded` checks whether the boundary between days has been crossed and manages the carryover of unfinished tasks.
 
@@ -740,7 +742,7 @@ The `dal.ts` file implements a Data Access Layer (DAL) for managing tasks and ha
 
 Key functions include `addTask`, `updateTask`, and `completeTask`, allowing users to manage their tasks, while `addHabit`, `updateHabit`, and `completeHabitForDate` serve similar purposes for habits. Importantly, the file calculates streaks for habits, providing motivation to users.
 
-Noteworthy imports include database schema objects from `schema`, a connection to the database, and utility functions for date handling. The DAL plays a crucial role in the overall architecture by abstracting database interactions, enabling the application to remain modular and maintainable. 
+Noteworthy imports include database schema objects from `schema`, a connection to the database, and utility functions for date handling. The DAL plays a crucial role in the overall architecture by abstracting database interactions, enabling the application to remain modular and maintainable.
 
 Key exports consist of various asynchronous functions that facilitate interaction with tasks, habits, activity logging, and statistics over time. The file also manages potential side effects through database insertions, deletions, or updates based on user actions.
 
@@ -772,7 +774,7 @@ Notable actions include `loadDayPlan`, `addToDay`, `removeFromDay`, and completi
 
 The file `lib/stores/habits.ts` defines a Zustand store for managing user habits within an application. It provides functionalities to load, add, update, delete, and complete habits, as well as retrieve streaks for habits. This store is integral to the habits feature, enabling users to track and manipulate their habits effectively.
 
-Key imports include data access functions from `dal` for database interactions, utility functions for state management, and types for TypeScript's type safety. The store interfaces with another store (`dayPlan`) to maintain references to habits. 
+Key imports include data access functions from `dal` for database interactions, utility functions for state management, and types for TypeScript's type safety. The store interfaces with another store (`dayPlan`) to maintain references to habits.
 
 The main exported function is `useHabitsStore`, which contains several asynchronous actions: `loadHabits`, `addHabit`, `updateHabit`, `deleteHabit`, `completeHabitForDate`, and `getHabitStreak`. Notable side effects include updating both local state and persistent data sources, as well as coordinating with the day plan store to maintain consistency.
 
@@ -798,27 +800,27 @@ Side effects include asynchronous interactions with the database and potential e
 
 #### lib/stores/storeFactory.ts
 
-The file `storeFactory.ts` serves as a factory for creating CRUD (Create, Read, Update, Delete) stores, optimizing common operations to minimize redundancy. It imports utility functions from `baseStore` for state management and error handling, utilizing the Zustand library for state creation. 
+The file `storeFactory.ts` serves as a factory for creating CRUD (Create, Read, Update, Delete) stores, optimizing common operations to minimize redundancy. It imports utility functions from `baseStore` for state management and error handling, utilizing the Zustand library for state creation.
 
-This file is crucial for maintaining a consistent interface for data manipulation across different parts of the project, enabling the clear management of entities like tasks and habits. The main exported function, `createCrudStore`, generates a store that includes methods for loading, adding, updating, and deleting items, along with error handling. 
+This file is crucial for maintaining a consistent interface for data manipulation across different parts of the project, enabling the clear management of entities like tasks and habits. The main exported function, `createCrudStore`, generates a store that includes methods for loading, adding, updating, and deleting items, along with error handling.
 
-The file also exports `CRUD_ERROR_MESSAGES`, a structure that centralizes error messages for various operations tied to different entity types. 
+The file also exports `CRUD_ERROR_MESSAGES`, a structure that centralizes error messages for various operations tied to different entity types.
 
 Key imports include utility functions for state management and error messages for operations, while its notable side effects involve direct updates to the application state based on CRUD operations. This promotes reusability and a cleaner codebase within the larger project.
 
 #### lib/stores/tasks.ts
 
-The file `lib/stores/tasks.ts` defines a Zustand store for managing tasks within a larger application, likely a task or project management tool. It imports necessary utility functions and types for error handling and task operations from other modules. 
+The file `lib/stores/tasks.ts` defines a Zustand store for managing tasks within a larger application, likely a task or project management tool. It imports necessary utility functions and types for error handling and task operations from other modules.
 
 This store is significant as it centralizes state management for tasks, facilitating operations like loading, adding, updating, completing, and deleting tasks. Additionally, it manages task planning and error states, enhancing user interaction by providing feedback during these operations.
 
-Key exports include the `useTasksStore` hook, allowing components to interact with the task state. Main functions in the store include `loadTasks`, `addTask`, `updateTask`, `completeTask`, `deleteTask`, `planTaskForDate`, and `unplanTaskForDate`. 
+Key exports include the `useTasksStore` hook, allowing components to interact with the task state. Main functions in the store include `loadTasks`, `addTask`, `updateTask`, `completeTask`, `deleteTask`, `planTaskForDate`, and `unplanTaskForDate`.
 
 Notably, it handles side effects like updating the day plan store upon adding or deleting tasks and managing error states for a better user experience. The store’s relationship with the day plan module underscores its integral role in task management and scheduling.
 
 #### lib/types/common.ts
 
-The file `lib/types/common.ts` defines shared TypeScript types and interfaces for a task and habit management application, aimed at reducing code duplication throughout the codebase. It includes base entity types and their specific types for tasks and habits, as well as types for day plans and state management. 
+The file `lib/types/common.ts` defines shared TypeScript types and interfaces for a task and habit management application, aimed at reducing code duplication throughout the codebase. It includes base entity types and their specific types for tasks and habits, as well as types for day plans and state management.
 
 Key exports include `BaseEntity`, `Task`, `Habit`, `DayPlan`, and various state interfaces like `TasksState` and `HabitsState`. These types are crucial for component prop definitions and API response handling, enabling a clear structure for data flow throughout the application.
 
@@ -834,11 +836,12 @@ This file is important for any parts of the project that require date handling, 
 
 #### lib/utils/dateFormat.ts
 
-The `dateFormat.ts` file contains utility functions for consistent date handling in the application. It provides methods to format dates for display, validate dates for task deadlines, and convert dates between formats suitable for user display and database storage. 
+The `dateFormat.ts` file contains utility functions for consistent date handling in the application. It provides methods to format dates for display, validate dates for task deadlines, and convert dates between formats suitable for user display and database storage.
 
 This file is crucial for ensuring uniform date representation across the app, which is essential for user interfaces and backend interactions involving dates. It facilitates seamless integration with other parts of the project that require date management, such as task scheduling and event tracking.
 
 Key exports include:
+
 - `formatDate`: Formats a date for UI display.
 - `isDateValid`: Checks if a date is valid for tasks.
 - `toLocalDateString`: Converts a Date object to a YYYY-MM-DD string.
@@ -852,6 +855,7 @@ Notable side effects include potential date formatting inconsistencies if the ut
 The `lib/utils/errorHandling.ts` file provides shared utilities for consistent error management across the application. It defines functions to extract error messages, create standardized error, success, and loading state objects, and provides common error messages for various operations.
 
 Key exports include:
+
 - `getErrorMessage`: Extracts a message from an error object or returns a fallback message.
 - `createErrorState`: Generates an error state object using the extracted message.
 - `createSuccessState`: Returns a success state object indicating no errors.
@@ -867,6 +871,7 @@ The `styles.ts` file provides shared styling utilities for a React Native applic
 This file is important as it centralizes styling, promoting reusability and maintainability across the project. The defined styles are structured to accommodate variations (e.g., primary and secondary button styles) and can be easily updated in one place.
 
 Key exports include:
+
 - `buttonStyles`, `inputStyles`, `modalStyles`, `listItemStyles`, `emptyStateStyles`, `progressStyles`, and `badgeStyles`, which provide predefined styles.
 - Helper functions `createSpacing` and `createBorderRadius` for consistent spacing and border radius management.
 
@@ -874,7 +879,7 @@ Notably, some styles include hardcoded colors, requiring usage with a `ThemedTex
 
 #### memory-bank/activeContext.md
 
-The file `activeContext.md` serves as a project update document for the memory-bank application, detailing the current status of development features and enhancements. It outlines completed milestones, like the implementation of a tab navigation system, the history tab with calendar integration, and the establishment of a new database schema. 
+The file `activeContext.md` serves as a project update document for the memory-bank application, detailing the current status of development features and enhancements. It outlines completed milestones, like the implementation of a tab navigation system, the history tab with calendar integration, and the establishment of a new database schema.
 
 Key components include the organization of navigation into three main tabs, a detailed implementation of the history tab, and essential architectural improvements that have simplified the user interface by merging tabs into a single streamlined main page. The file also discusses a celebration system for user achievements and outlines decisions made regarding navigation and database management.
 
@@ -882,7 +887,7 @@ Noteworthy imports might involve state management tools like Zustand and UI libr
 
 #### memory-bank/implementationStatus.md
 
-The file "implementationStatus.md" provides a comprehensive overview of the implementation status of the Slate App, detailing milestones and user stories. It highlights that the core functionalities (referred to as milestones M1-M5) are fully implemented, covering features such as task addition, morning planning, task completion with engaging feedback, habit tracking, and automatic task rollover. 
+The file "implementationStatus.md" provides a comprehensive overview of the implementation status of the Slate App, detailing milestones and user stories. It highlights that the core functionalities (referred to as milestones M1-M5) are fully implemented, covering features such as task addition, morning planning, task completion with engaging feedback, habit tracking, and automatic task rollover.
 
 Notable imports include Expo and React Native for the framework, Drizzle ORM for database interactions, and Zustand for state management. Key exports include user interface components and custom hooks for modal and habit streak management.
 
@@ -898,17 +903,17 @@ The application's scope is limited to iOS devices, supporting daily habits and s
 
 #### memory-bank/progress.md
 
-The file "progress.md" documents the current status and milestones of the memory bank project's development. It confirms the completion of version 0 (V0), which encompasses key functionalities such as tab navigation, history tracking, and the implementation of the plan outlined in "plan.md." 
+The file "progress.md" documents the current status and milestones of the memory bank project's development. It confirms the completion of version 0 (V0), which encompasses key functionalities such as tab navigation, history tracking, and the implementation of the plan outlined in "plan.md."
 
-This summary highlights critical features completed across multiple milestones (M1-M5), including the core UI, haptic feedback, streak tracking, and settings management. The integrated database schema V2 introduces enhancements like task dependencies and activity logging essential for user interaction tracking and data integrity. 
+This summary highlights critical features completed across multiple milestones (M1-M5), including the core UI, haptic feedback, streak tracking, and settings management. The integrated database schema V2 introduces enhancements like task dependencies and activity logging essential for user interaction tracking and data integrity.
 
-The document outlines future tasks, including optional polishing efforts and planned features for M6, emphasizing ongoing improvements in architecture, performance, and maintainability. There are no known issues, indicating robust functionality for daily use. 
+The document outlines future tasks, including optional polishing efforts and planned features for M6, emphasizing ongoing improvements in architecture, performance, and maintainability. There are no known issues, indicating robust functionality for daily use.
 
 Key aspects of the file are its comprehensive progress tracking and the well-organized structure that integrates seamlessly with the broader project efforts, showcasing a deliberate approach to development and user experience enhancement.
 
 #### memory-bank/projectBrief.md
 
-The `projectBrief.md` file outlines the specifications and vision for "Slate," a local-first productivity app developed for iOS using Expo and React Native. Slate facilitates task management and habit tracking without backend dependency, leveraging SQLite for data storage. It emphasizes a playful, minimal design, with features like daily planning, task capture, habit tracking, and streak celebration. 
+The `projectBrief.md` file outlines the specifications and vision for "Slate," a local-first productivity app developed for iOS using Expo and React Native. Slate facilitates task management and habit tracking without backend dependency, leveraging SQLite for data storage. It emphasizes a playful, minimal design, with features like daily planning, task capture, habit tracking, and streak celebration.
 
 Key exports include functions related to tasks and habits management, notifications, and data export/import as JSON. Notably, it introduces concepts such as "Perfect Day" and "auto-carryover" for unfinished tasks. The file serves as a blueprint for developers, detailing user stories, functional requirements, a data model, and the tech stack.
 
@@ -916,9 +921,9 @@ Its significance lies in providing a structured approach to personal productivit
 
 #### memory-bank/systemPatterns.md
 
-The `systemPatterns.md` document outlines the architectural design and data models of a local-first task and habit management application built with Expo and React Native. It emphasizes the use of SQLite for data storage and MMKV for preferences. The file details the high-level data model, including tasks, habits, and activity logs, with V2 enhancements for task dependencies and audit trails.
+The `systemPatterns.md` document outlines the architectural design and data models of a local-first task and habit management application built with Expo and React Native. It emphasizes the use of SQLite for data storage and expo-sqlite/kv-store for preferences. The file details the high-level data model, including tasks, habits, and activity logs, with V2 enhancements for task dependencies and audit trails.
 
-Key functionalities include daily planning, task and habit completion tracking, and a history tab for data visualization. The document describes how user interactions are logged and suggests strategies for idempotency and performance, such as virtualized lists and minimal re-renders. 
+Key functionalities include daily planning, task and habit completion tracking, and a history tab for data visualization. The document describes how user interactions are logged and suggests strategies for idempotency and performance, such as virtualized lists and minimal re-renders.
 
 Navigation is structured through a tabbed interface, promoting user-friendly access to different functionalities. Key imports include Zustand for state management and custom components for UI consistency. Notable exports include the application's navigation and history functionalities.
 
@@ -957,4 +962,3 @@ The `reset-project.js` script facilitates resetting a project to a blank state b
 This script is significant because it allows developers to easily reset their project structures without manually managing files, thus promoting efficient development practices. It integrates with the project's existing setup by being callable directly via the command line, as indicated by its shebang (`#!/usr/bin/env node`).
 
 Key imports include `fs`, `path`, and `readline`, used for file system manipulation and user interaction. The main functions focus on directory management and file creation. Notable side effects involve modifying the project structure and file system, either by moving or deleting existing directories.
-

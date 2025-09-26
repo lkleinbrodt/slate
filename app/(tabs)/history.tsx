@@ -1,19 +1,24 @@
-import { ActivityIndicator, ScrollView, StyleSheet } from "react-native";
 import React, { useEffect } from "react";
+import { ActivityIndicator, ScrollView, StyleSheet } from "react-native";
 
-import { DayDetailsModal } from "@/components/history/DayDetailsModal";
 import { HabitStreaksSection } from "@/components/history/HabitStreaksSection";
 import { HistoryCalendar } from "@/components/history/HistoryCalendar";
 import { HistoryHeader } from "@/components/history/HistoryHeader";
 import { SafeAreaThemedView } from "@/components/safe-area-themed-view";
 import { useHistoryStore } from "@/lib/stores/historyStore";
+import { router } from "expo-router";
 
 export default function HistoryScreen() {
-  const { loading, selectedDay, actions } = useHistoryStore();
+  const { loading, selectedDay, loadInitialData } = useHistoryStore();
 
   useEffect(() => {
-    actions.loadInitialData();
-  }, [actions]);
+    loadInitialData();
+  }, [loadInitialData]);
+
+  // Handle day selection by navigating to detail screen
+  const handleDayPress = (date: string) => {
+    router.push(`/history/${date}`);
+  };
 
   if (loading && !selectedDay) {
     return (
@@ -27,14 +32,9 @@ export default function HistoryScreen() {
     <SafeAreaThemedView style={styles.container}>
       <ScrollView>
         <HistoryHeader />
-        <HistoryCalendar />
+        <HistoryCalendar onDayPress={handleDayPress} />
         <HabitStreaksSection />
       </ScrollView>
-      <DayDetailsModal
-        visible={!!selectedDay}
-        snapshot={selectedDay}
-        onClose={actions.clearSelectedDay}
-      />
     </SafeAreaThemedView>
   );
 }

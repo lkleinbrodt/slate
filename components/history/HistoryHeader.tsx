@@ -1,23 +1,23 @@
 import { StyleSheet, View } from "react-native";
 
-import React from "react";
 import { TabHeader } from "@/components/shared/TabHeader";
 import { ThemedText } from "@/components/themed-text";
 import { useHistoryStore } from "@/lib/stores/historyStore";
+import React from "react";
 
 export const HistoryHeader = () => {
-  const stats = useHistoryStore((s) => s.stats);
+  const overallStats = useHistoryStore((s) => s.overallStats);
   return (
     <TabHeader title="History">
       <View style={styles.statsContainer}>
         <View style={styles.statBox}>
           <ThemedText type="subtitle">
-            {stats.tasksCompletedLast7Days}
+            {overallStats.tasksCompleted7d}
           </ThemedText>
           <ThemedText>Tasks Done (7d)</ThemedText>
         </View>
         <View style={styles.statBox}>
-          <ThemedText type="subtitle">{stats.perfectDayCount}</ThemedText>
+          <ThemedText type="subtitle">{overallStats.perfectDays}</ThemedText>
           <ThemedText>Perfect Days</ThemedText>
         </View>
       </View>

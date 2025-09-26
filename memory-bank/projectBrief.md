@@ -2,7 +2,7 @@ Slate – Local‑First iOS App (Expo + React Native)
 
 Owner: Landon
 Platform: iOS (single device)
-Approach: Local‑first (no backend) using SQLite + MMKV
+Approach: Local‑first (no backend) using SQLite + expo-sqlite/kv-store
 Design vibe: Playful minimal — approachable, warm, clean layout with gentle color, micro‑animations, and delightful haptics
 
 ⸻
@@ -352,8 +352,8 @@ Import behavior:
 
 14. Tech Stack & Libraries
     • Framework: Expo (SDK 54)
-    • Navigation: expo-router (single-page design)
-    • DB: expo-sqlite with Drizzle ORM; react-native-mmkv for prefs
+    • Navigation: expo-router (four-tab navigation: Today, Slate, History, Settings)
+    • DB: expo-sqlite with Drizzle ORM; expo-sqlite/kv-store for prefs (unified storage)
     • Dates: dayjs
     • State: zustand with granular selectors
     • Animations: react-native-reanimated, react-native-gesture-handler, lottie-react-native

@@ -15,9 +15,8 @@ export interface BaseEntity {
 export interface Task extends BaseEntity {
   dueDate: string | null;
   scheduledFor: string | null;
-  isDone: boolean;
-  doneAt: string | null;
-  archived: boolean;
+  completedAt: string | null;
+  status: "open" | "done" | "archived";
   dependsOnTaskId: string | null;
 }
 
@@ -34,8 +33,7 @@ export interface NewTask {
 
 // Habit-specific types
 export interface Habit extends BaseEntity {
-  active: boolean;
-  reminderTime: string | null;
+  isActive: boolean;
 }
 
 export interface NewHabit {

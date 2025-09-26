@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Platform } from "react-native";
 import { Tabs } from "expo-router";
+import { Platform } from "react-native";
 
 export default function TabLayout() {
   return (
@@ -24,11 +24,20 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
+        name="today"
+        options={{
+          title: "Today",
+          tabBarIcon: ({ color, size }) => (
+            <TabBarIcon name="today" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="index"
         options={{
-          title: "Your Slate",
+          title: "Slate",
           tabBarIcon: ({ color, size }) => (
-            <TabBarIcon name="list" color={color} size={size} />
+            <TabBarIcon name="slate" color={color} size={size} />
           ),
         }}
       />
@@ -65,7 +74,8 @@ function TabBarIcon({
   size: number;
 }) {
   const iconMap: Record<string, keyof typeof Ionicons.glyphMap> = {
-    list: "list-outline",
+    today: "checkmark-circle-outline",
+    slate: "list-outline",
     calendar: "calendar-outline",
     settings: "settings-outline",
   };
