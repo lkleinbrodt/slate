@@ -1,35 +1,80 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Ionicons } from "@expo/vector-icons";
+import { Platform } from "react-native";
+import { Tabs } from "expo-router";
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        tabBarStyle: {
+          backgroundColor: "#ffffff",
+          borderTopWidth: 1,
+          borderTopColor: "#e5e7eb",
+          paddingBottom: Platform.OS === "ios" ? 20 : 10,
+          paddingTop: 10,
+          height: Platform.OS === "ios" ? 90 : 70,
+        },
+        tabBarActiveTintColor: "#007AFF",
+        tabBarInactiveTintColor: "#6b7280",
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "500",
+        },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: "Your Slate",
+          tabBarIcon: ({ color, size }) => (
+            <TabBarIcon name="list" color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="history"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: "History",
+          tabBarIcon: ({ color, size }) => (
+            <TabBarIcon name="calendar" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Settings",
+          tabBarIcon: ({ color, size }) => (
+            <TabBarIcon name="settings" color={color} size={size} />
+          ),
         }}
       />
     </Tabs>
+  );
+}
+
+// Minimalist icon component using Ionicons
+function TabBarIcon({
+  name,
+  color,
+  size,
+}: {
+  name: string;
+  color: string;
+  size: number;
+}) {
+  const iconMap: Record<string, keyof typeof Ionicons.glyphMap> = {
+    list: "list-outline",
+    calendar: "calendar-outline",
+    settings: "settings-outline",
+  };
+
+  return (
+    <Ionicons
+      name={iconMap[name] || "help-outline"}
+      size={size}
+      color={color}
+    />
   );
 }

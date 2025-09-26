@@ -1,50 +1,42 @@
-# Welcome to your Expo app 👋
+# Slate
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A local-first iOS productivity app that combines task management with habit tracking in one simple interface.
 
-## Get started
+## What it is
 
-1. Install dependencies
+Slate helps you keep track of all your tasks and habits in one place, and makes it simple to decide which ones you should tackle today. It's like a lightweight daily slate you can trust—check things off, keep streaks alive, and roll forward what you don't finish.
 
-   ```bash
-   npm install
-   ```
+## How to use
 
-2. Start the app
+1. **Add tasks and habits** - Tap the + button to create new items
+2. **Plan your day** - Mark tasks for "Today" each morning
+3. **Check things off** - Tap to complete tasks and habits with satisfying animations
+4. **Track streaks** - See your habit streaks and celebrate "Perfect Days" when all habits are done
+5. **Auto-carryover** - Unfinished tasks automatically move to tomorrow
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Getting started
 
 ```bash
-npm run reset-project
+npm install
+npm start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Then scan the QR code with your iPhone camera or use the iOS Simulator.
 
-## Learn more
+## Key features
 
-To learn more about developing your project with Expo, look at the following resources:
+- **Tasks**: One-off items with optional due dates
+- **Habits**: Daily behaviors that track streaks
+- **Today view**: Your daily slate with progress tracking
+- **Celebrations**: Delightful animations and haptics when completing items
+- **Local storage**: All data stays on your device
+- **Settings**: Configure day start time, notifications, and preferences
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Project structure
 
-## Join the community
+- `app/` - Main screens (index.tsx, settings.tsx)
+- `components/` - UI components including celebration system
+- `lib/` - Database, stores, and utilities
+- `memory-bank/` - Project documentation
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Built with Expo, React Native, and SQLite.
