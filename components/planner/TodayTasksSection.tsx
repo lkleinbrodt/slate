@@ -1,3 +1,5 @@
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { SectionContainer } from "@/components/planner/SectionContainer";
@@ -40,22 +42,32 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
         <>
           {/* All Tasks - Pending first, then completed */}
           {pendingTasks.map((task) => (
-            <TaskItem
+            <Animated.View
               key={task.id}
-              task={task}
-              isCompleted={false}
-              onToggle={onToggle}
-              onSkipForToday={onSkipForToday}
-            />
+              entering={FadeIn.duration(300)}
+              exiting={FadeOut.duration(300)}
+            >
+              <TaskItem
+                task={task}
+                isCompleted={false}
+                onToggle={onToggle}
+                onSkipForToday={onSkipForToday}
+              />
+            </Animated.View>
           ))}
           {completedTasks.map((task) => (
-            <TaskItem
+            <Animated.View
               key={task.id}
-              task={task}
-              isCompleted={true}
-              onToggle={onToggle}
-              onSkipForToday={onSkipForToday}
-            />
+              entering={FadeIn.duration(300)}
+              exiting={FadeOut.duration(300)}
+            >
+              <TaskItem
+                task={task}
+                isCompleted={true}
+                onToggle={onToggle}
+                onSkipForToday={onSkipForToday}
+              />
+            </Animated.View>
           ))}
         </>
       ) : (

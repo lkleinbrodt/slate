@@ -17,17 +17,32 @@ export const CheckableListItem: React.FC<CheckableListItemProps> = ({
   children,
 }) => {
   const [triggerLevelUp, setTriggerLevelUp] = useState(false);
+  const [isVisuallyCompleted, setIsVisuallyCompleted] = useState(isCompleted);
   const primaryColor = useThemeColor({}, "primary");
   const borderColor = useThemeColor({}, "border");
 
   const handleLevelUp = () => setTriggerLevelUp(true);
   const handleLevelUpComplete = () => setTriggerLevelUp(false);
 
+  // Sync visual state when prop changes
+  React.useEffect(() => {
+    setIsVisuallyCompleted(isCompleted);
+  }, [isCompleted]);
+
   const handleToggle = () => {
     if (!isCompleted) {
+      // Immediately update visual state to show checked appearance
+      setIsVisuallyCompleted(true);
       handleLevelUp(); // Trigger level up only on completion
+      // Delay the state change to allow animation to complete
+      setTimeout(() => {
+        onToggle();
+      }, 1000); // Match the LevelUpAnimation duration
+    } else {
+      // For unchecking, no animation needed, so call immediately
+      setIsVisuallyCompleted(false);
+      onToggle();
     }
-    onToggle();
   };
 
   return (
@@ -37,7 +52,7 @@ export const CheckableListItem: React.FC<CheckableListItemProps> = ({
     >
       <View style={[styles.container, { borderBottomColor: borderColor }]}>
         <TapWin
-          checked={isCompleted}
+          checked={isVisuallyCompleted}
           onPress={handleToggle}
           size={32}
           color={primaryColor}
