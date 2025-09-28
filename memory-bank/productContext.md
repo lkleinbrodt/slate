@@ -32,7 +32,7 @@ Primary surfaces
 - **Slate Tab**: Unscheduled task management and planning for Today.
 - **History Tab**: Calendar view with day details and statistics using immutable history.
 - **Settings Tab**: Configuration for notifications, day start, auto‑carryover, haptics/sound, export/import.
-- **Unified Modal**: Single modal for adding/editing both tasks and habits (needs re-implementation).
+- **Unified Modal**: Single modal for adding/editing both tasks and habits (fully implemented and integrated).
 
 Scope boundaries (V0)
 

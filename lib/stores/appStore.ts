@@ -1,6 +1,7 @@
 import * as repo from "@/lib/logic/repo";
 
-import { getToday } from "@/lib/logic/dates";
+import { addDays, getToday } from "@/lib/logic/dates";
+
 import { create } from "zustand";
 import { useSettingsStore } from "./settings";
 
@@ -28,13 +29,38 @@ interface AppState {
     title: string;
     notes?: string;
     dueDate?: string;
+    scheduledFor?: string;
+    dependsOn?: string;
   }) => Promise<void>;
+  createHabit: (data: { title: string; notes?: string }) => Promise<void>;
+  updateTask: (
+    id: string,
+    data: {
+      title?: string;
+      notes?: string;
+      dueDate?: string;
+      scheduledFor?: string;
+      dependsOn?: string;
+    }
+  ) => Promise<void>;
+  updateHabit: (
+    id: string,
+    data: {
+      title?: string;
+      notes?: string;
+    }
+  ) => Promise<void>;
+  getTaskById: (id: string) => Task | undefined;
+  getHabitById: (id: string) => Habit | undefined;
   planTaskForToday: (taskId: string) => Promise<void>;
   sendTaskBackToSlate: (taskId: string) => Promise<void>;
+  skipTaskForToday: (taskId: string) => Promise<void>;
   completeTask: (taskId: string) => Promise<void>;
   undoCompleteTask: (taskId: string) => Promise<void>;
   completeHabit: (habitId: string) => Promise<void>;
   undoHabit: (habitId: string) => Promise<void>;
+  deleteTask: (taskId: string) => Promise<void>;
+  deleteHabit: (habitId: string) => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -78,6 +104,33 @@ export const useAppStore = create<AppState>((set, get) => ({
     await get().refreshData();
   },
 
+  createHabit: async (data) => {
+    await repo.createHabit(data);
+    await get().refreshData();
+  },
+
+  updateTask: async (id, data) => {
+    await repo.updateTask(id, data);
+    await get().refreshData();
+  },
+
+  updateHabit: async (id, data) => {
+    await repo.updateHabit(id, data);
+    await get().refreshData();
+  },
+
+  getTaskById: (id) => {
+    return (
+      get().todayTasks.find((t) => t.id === id) ||
+      get().slateTasks.find((t) => t.id === id) ||
+      get().overdueTasks.find((t) => t.id === id)
+    );
+  },
+
+  getHabitById: (id) => {
+    return get().activeHabits.find((h) => h.id === id);
+  },
+
   planTaskForToday: async (taskId) => {
     await repo.planTaskFor(taskId, get().todayDate);
     await get().refreshData();
@@ -85,6 +138,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   sendTaskBackToSlate: async (taskId) => {
     await repo.planTaskFor(taskId, null);
+    await get().refreshData();
+  },
+
+  skipTaskForToday: async (taskId) => {
+    const tomorrow = addDays(get().todayDate, 1);
+    await repo.skipTaskForToday(taskId, tomorrow);
     await get().refreshData();
   },
 
@@ -105,6 +164,16 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   undoHabit: async (habitId) => {
     await repo.undoHabitToday(habitId, get().todayDate);
+    await get().refreshData();
+  },
+
+  deleteTask: async (taskId) => {
+    await repo.deleteTask(taskId);
+    await get().refreshData();
+  },
+
+  deleteHabit: async (habitId) => {
+    await repo.deleteHabit(habitId);
     await get().refreshData();
   },
 }));

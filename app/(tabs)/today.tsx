@@ -1,10 +1,15 @@
-import { HabitsSection, TodayTasksSection } from "@/components/planner"; // These too
+import {
+  HabitsSection,
+  PlannerHeader,
+  TodayTasksSection,
+} from "@/components/planner";
 import { ScrollView, StyleSheet } from "react-native";
 
-import { PlannerHeader } from "@/components/planner"; // This component will be refactored
+import { FloatingActionButton } from "@/components/FloatingActionButton";
 import { SafeAreaThemedView } from "@/components/safe-area-themed-view";
 import { useAppStore } from "@/lib/stores/appStore";
 import React from "react";
+import { SheetManager } from "react-native-actions-sheet";
 
 export default function TodayScreen() {
   const {
@@ -15,6 +20,7 @@ export default function TodayScreen() {
     undoCompleteTask,
     completeHabit,
     undoHabit,
+    skipTaskForToday,
   } = useAppStore();
 
   const completedTodayTasks = todayTasks.filter((t) => t.status === "done");
@@ -38,6 +44,12 @@ export default function TodayScreen() {
     }
   };
 
+  const handleOpenAddModal = () => {
+    SheetManager.show("add-edit-modal", {
+      payload: { mode: "add" },
+    });
+  };
+
   return (
     <SafeAreaThemedView style={styles.container}>
       <ScrollView>
@@ -46,9 +58,6 @@ export default function TodayScreen() {
           totalTasksCount={todayTasks.length}
           completedHabitsCount={todaysHabitCompletions.length}
           totalHabitsCount={activeHabits.length}
-          onAddPress={() => {
-            /* Open modal */
-          }}
         />
 
         <HabitsSection
@@ -58,21 +67,18 @@ export default function TodayScreen() {
           }))}
           habitStreaks={{}} // Streaks will be calculated differently now, maybe in the component
           onToggle={handleHabitToggle}
-          onEdit={() => {}}
         />
 
         <TodayTasksSection
           tasks={todayTasks}
-          completedTasks={completedTodayTasks}
           onToggle={(taskId, currentStatus) =>
             handleTaskToggle(taskId, currentStatus)
           }
-          onEdit={() => {}}
-          onSkipForToday={() => {
-            /* This is now 'send back to slate' */
-          }}
+          onSkipForToday={skipTaskForToday}
         />
       </ScrollView>
+
+      <FloatingActionButton onPress={handleOpenAddModal} />
     </SafeAreaThemedView>
   );
 }

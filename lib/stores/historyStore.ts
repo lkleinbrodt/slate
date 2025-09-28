@@ -5,7 +5,9 @@ import { calculateStreak, isPerfectDay } from "@/lib/logic/streaks";
 import { and, count, eq, gte, lte } from "drizzle-orm";
 
 import { db } from "@/lib/db/connection";
+import { getToday } from "@/lib/logic/dates";
 import { create } from "zustand";
+import { useSettingsStore } from "./settings";
 
 interface HistoryState {
   loading: boolean;
@@ -46,7 +48,8 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     set({ loading: true });
     try {
       // Load overall stats
-      const today = new Date().toISOString().split("T")[0];
+      const dayStart = useSettingsStore.getState().dayStart;
+      const today = getToday(dayStart);
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
         .toISOString()
         .split("T")[0];

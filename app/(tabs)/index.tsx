@@ -1,37 +1,37 @@
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet } from "react-native";
 
-import { AddButton } from "@/components/AddButton";
+import { FloatingActionButton } from "@/components/FloatingActionButton";
 import { SlateSection } from "@/components/planner";
 import { SafeAreaThemedView } from "@/components/safe-area-themed-view";
 import { TabHeader } from "@/components/shared/TabHeader";
 import { useAppStore } from "@/lib/stores/appStore";
+import { useSettingsStore } from "@/lib/stores/settings";
 import React from "react";
+import { SheetManager } from "react-native-actions-sheet";
 
 export default function SlateScreen() {
-  const { slateTasks, planTaskForToday, createTask } = useAppStore();
+  const { slateTasks, planTaskForToday } = useAppStore();
+  const { dayStart } = useSettingsStore();
 
-  // Modal logic would be re-introduced here
   const handleOpenAddModal = () => {
-    // For now, let's just add a placeholder task
-    const title = `New Slate Task ${Date.now()}`;
-    createTask({ title });
+    SheetManager.show("add-edit-modal", {
+      payload: { mode: "add", type: "task" },
+    });
   };
 
   return (
     <SafeAreaThemedView style={styles.container}>
       <ScrollView>
-        <TabHeader title="Slate">
-          <View style={{ alignItems: "flex-end" }}>
-            <AddButton onPress={handleOpenAddModal} />
-          </View>
-        </TabHeader>
+        <TabHeader title="Slate" />
 
         <SlateSection
           tasks={slateTasks}
           onAddToToday={(type, id) => planTaskForToday(id)}
-          onEdit={() => {}}
+          dayStart={dayStart}
         />
       </ScrollView>
+
+      <FloatingActionButton onPress={handleOpenAddModal} />
     </SafeAreaThemedView>
   );
 }

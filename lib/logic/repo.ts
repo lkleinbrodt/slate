@@ -37,7 +37,10 @@ export const listUnscheduledTasks = () =>
     .from(tasks)
     .where(and(eq(tasks.status, "open"), isNull(tasks.scheduledFor)));
 export const listTodayTasks = (date: string) =>
-  db.select().from(tasks).where(eq(tasks.scheduledFor, date));
+  db
+    .select()
+    .from(tasks)
+    .where(and(sql`status IN ('open', 'done')`, eq(tasks.scheduledFor, date)));
 export const listOverdueTasks = (date: string) =>
   db
     .select()
@@ -50,6 +53,7 @@ export const createTask = async (data: {
   title: string;
   notes?: string;
   dueDate?: string;
+  scheduledFor?: string;
   dependsOn?: string;
 }) => {
   const now = nowISO();
@@ -58,11 +62,11 @@ export const createTask = async (data: {
     title: data.title,
     notes: data.notes ?? null,
     dueDate: data.dueDate ?? null,
+    scheduledFor: data.scheduledFor ?? null,
     dependsOnTaskId: data.dependsOn ?? null,
     createdAt: now,
     updatedAt: now,
     status: "open" as const,
-    scheduledFor: null,
     completedAt: null,
   };
   await db.insert(tasks).values(newTask);
@@ -82,10 +86,16 @@ export const updateTask = async (
 
 export const planTaskFor = (id: string, date: string | null) =>
   updateTask(id, { scheduledFor: date });
+export const skipTaskForToday = (id: string, tomorrowDate: string) =>
+  updateTask(id, { scheduledFor: tomorrowDate });
 export const completeTask = (id: string) =>
   updateTask(id, { status: "done", completedAt: nowISO() });
 export const undoCompleteTask = (id: string) =>
   updateTask(id, { status: "open", completedAt: null });
+
+// Soft delete/archival for tasks
+export const deleteTask = (id: string) =>
+  updateTask(id, { status: "archived" });
 
 // ====== Habits ======
 export const listActiveHabits = () =>
@@ -141,6 +151,9 @@ export const undoHabitToday = (habitId: string, date: string) =>
         eq(habitCompletions.date, date)
       )
     );
+
+// Soft delete/deactivate for habits
+export const deleteHabit = (id: string) => updateHabit(id, { isActive: false });
 
 // ====== History ======
 export const getDayHabitsHistory = (date: string) =>

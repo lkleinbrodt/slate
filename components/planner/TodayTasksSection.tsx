@@ -1,50 +1,63 @@
-import React from "react";
 import { TaskItem } from "@/components/TaskItem";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import React from "react";
 
 interface TodayTasksSectionProps {
   tasks: any[];
-  completedTasks: any[];
   onToggle: (taskId: string, completed: boolean) => void;
-  onEdit: (
-    type: "task" | "habit",
-    id: string,
-    title: string,
-    notes?: string,
-    dueDate?: string
-  ) => void;
   onSkipForToday?: (taskId: string) => void;
 }
 
 export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
   tasks,
-  completedTasks,
   onToggle,
-  onEdit,
   onSkipForToday,
 }) => {
+  const pendingTasks = tasks.filter((task) => task.status !== "done");
+  const completedTasks = tasks.filter((task) => task.status === "done");
+
   return (
     <ThemedView style={styles.section}>
       <ThemedText type="subtitle" style={styles.sectionTitle}>
-        Today
+        Tasks
       </ThemedText>
 
       {tasks.length > 0 ? (
         <>
-          {tasks.map((task) => {
-            const isCompleted = completedTasks.some((t) => t.id === task.id);
-            return (
-              <TaskItem
-                key={task.id}
-                task={task}
-                isCompleted={isCompleted}
-                onToggle={onToggle}
-                onEdit={onEdit}
-                onSkipForToday={onSkipForToday}
-              />
-            );
-          })}
+          {/* Pending Tasks */}
+          {pendingTasks.map((task) => (
+            <TaskItem
+              key={task.id}
+              task={task}
+              isCompleted={false}
+              onToggle={onToggle}
+              onSkipForToday={onSkipForToday}
+            />
+          ))}
+
+          {/* Completed Tasks */}
+          {completedTasks.length > 0 && (
+            <>
+              <ThemedView style={styles.completedSection}>
+                <ThemedText
+                  type="subtitle"
+                  style={styles.completedSectionTitle}
+                >
+                  Completed ({completedTasks.length})
+                </ThemedText>
+                {completedTasks.map((task) => (
+                  <TaskItem
+                    key={task.id}
+                    task={task}
+                    isCompleted={true}
+                    onToggle={onToggle}
+                    onSkipForToday={onSkipForToday}
+                  />
+                ))}
+              </ThemedView>
+            </>
+          )}
         </>
       ) : (
         <ThemedView style={styles.emptySubsection}>
@@ -65,6 +78,18 @@ const styles = {
   sectionTitle: {
     marginBottom: 15,
     fontWeight: "600" as const,
+  },
+  completedSection: {
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0, 0, 0, 0.1)",
+  },
+  completedSectionTitle: {
+    marginBottom: 15,
+    fontWeight: "600" as const,
+    opacity: 0.7,
+    fontSize: 16,
   },
   emptySubsection: {
     padding: 20,

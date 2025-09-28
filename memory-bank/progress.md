@@ -86,7 +86,6 @@ What works
 
 What's left to build (optional polish)
 
-- **Modal Integration**: Re-implement UnifiedAddModal with new stores (component exists)
 - **Task Dependency UI**: Dependency visualization and management
 - **Activity Log UI**: Admin view for activity log inspection
 - **M6**: JSON export/import functionality (placeholders exist)
@@ -94,6 +93,7 @@ What's left to build (optional polish)
 - **M6**: Empty states polish and error handling
 - **Testing**: Unit tests for core logic (rollover, streaks, repository)
 - **Performance**: List virtualization and large dataset optimization
+- **Dynamic Routes**: Implement `app/(tabs)/history/[date].tsx` for day details (currently uses ActionSheet)
 
 Architecture improvements completed
 
@@ -107,9 +107,9 @@ Architecture improvements completed
 
 Known issues
 
-- **Modal Integration**: UnifiedAddModal exists but needs re-implementation with new stores
 - **Data Migration**: New schema requires fresh database (existing data not migrated)
 - **Component Updates**: Some components may need updates for new data structures
+- **Dynamic Routes**: History day details use ActionSheet instead of dedicated route
 
 Recent decisions
 

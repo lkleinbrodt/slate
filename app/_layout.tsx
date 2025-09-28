@@ -1,4 +1,5 @@
 import "react-native-reanimated";
+import "../sheets";
 
 import {
   DarkTheme,
@@ -14,16 +15,16 @@ import { getToday } from "@/lib/logic/dates";
 import { processRollover } from "@/lib/logic/rollover";
 import { useAppStore } from "@/lib/stores/appStore";
 import { useSettingsStore } from "@/lib/stores/settings";
-import { ActionSheetProvider } from "@expo/react-native-action-sheet";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { SheetProvider } from "react-native-actions-sheet";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { dayStart, loadSettings } = useSettingsStore();
+  const { loadSettings } = useSettingsStore();
   const { init: initAppStore } = useAppStore();
 
   useEffect(() => {
@@ -84,7 +85,7 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <ActionSheetProvider>
+      <SheetProvider>
         <ThemeProvider
           value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
         >
@@ -97,7 +98,7 @@ export default function RootLayout() {
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>
-      </ActionSheetProvider>
+      </SheetProvider>
     </SafeAreaProvider>
   );
 }

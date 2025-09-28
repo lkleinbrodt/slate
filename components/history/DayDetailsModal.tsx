@@ -1,124 +1,135 @@
 import {
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import ActionSheet, {
+  SheetManager,
+  SheetProps,
+} from "react-native-actions-sheet";
 
-import { DayDetails } from "@/lib/stores/historyStore";
 import { HabitItem } from "@/components/HabitItem";
-import React from "react";
 import { TaskItem } from "@/components/TaskItem";
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
+import React from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-interface DayDetailsModalProps {
-  visible: boolean;
-  snapshot: DayDetails | null;
-  onClose: () => void;
-}
+type DayDetailsModalProps = SheetProps<"day-details-sheet">;
 
 export const DayDetailsModal: React.FC<DayDetailsModalProps> = ({
-  visible,
-  snapshot,
-  onClose,
+  sheetId,
+  payload,
 }) => {
+  const insets = useSafeAreaInsets();
+  const { snapshot, onClose } = payload || {};
+
   if (!snapshot) return null;
 
   // Dummy functions for read-only view
   const dummyOnToggle = () => {};
-  const dummyOnEdit = () => {};
+
+  const handleClose = () => {
+    onClose?.();
+    SheetManager.hide(sheetId);
+  };
 
   return (
-    <Modal
-      visible={visible}
-      onRequestClose={onClose}
-      transparent
-      animationType="slide"
-    >
-      <View style={styles.modalOverlay}>
-        <ThemedView style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <ThemedText type="title">Snapshot for {snapshot.date}</ThemedText>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>✕</Text>
-            </TouchableOpacity>
+    <ActionSheet id={sheetId} gestureEnabled={true} safeAreaInsets={insets}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <Text style={styles.title}>Details for {snapshot.date}</Text>
+            {snapshot.isPerfectDay && (
+              <Text style={styles.perfectDay}>🎉 Perfect Day!</Text>
+            )}
+          </View>
+          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+            <Text style={styles.closeButtonText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Habits */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Habits</Text>
+            {snapshot.habits.map((h: any) => (
+              <HabitItem
+                key={h.habit_history.id}
+                habit={h.habits}
+                isCompleted={h.habit_history.completed}
+                streak={0}
+                onToggle={dummyOnToggle}
+                isReadOnly={true}
+              />
+            ))}
           </View>
 
-          <ScrollView style={styles.modalBody}>
-            {/* Tasks */}
-            <View style={styles.section}>
-              <ThemedText type="subtitle">Tasks</ThemedText>
-              {snapshot.tasks.map((task: any) => (
-                <TaskItem
-                  key={task.id}
-                  task={task}
-                  isCompleted={snapshot.completedTasks.some(
-                    (t: any) => t.id === task.id
-                  )}
-                  onToggle={dummyOnToggle}
-                  onEdit={dummyOnEdit}
-                  isReadOnly={true}
-                />
-              ))}
-            </View>
-
-            {/* Habits */}
-            <View style={styles.section}>
-              <ThemedText type="subtitle">Habits</ThemedText>
-              {snapshot.habits.map((habit: any) => (
-                <HabitItem
-                  key={habit.id}
-                  habit={habit}
-                  isCompleted={snapshot.completedHabits.some(
-                    (h: any) => h.id === habit.id
-                  )}
-                  streak={0} // We don't have streak data in snapshots
-                  onToggle={dummyOnToggle}
-                  onEdit={dummyOnEdit}
-                  isReadOnly={true}
-                />
-              ))}
-            </View>
-          </ScrollView>
-        </ThemedView>
+          {/* Tasks */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Tasks</Text>
+            {snapshot.tasks.map((t: any) => (
+              <TaskItem
+                key={t.task_history.id}
+                task={t.tasks}
+                isCompleted={t.task_history.completed}
+                onToggle={dummyOnToggle}
+                isReadOnly={true}
+              />
+            ))}
+          </View>
+        </ScrollView>
       </View>
-    </Modal>
+    </ActionSheet>
   );
 };
 
 const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: "white",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+  container: {
+    backgroundColor: "#fff",
     maxHeight: "80%",
-    padding: 20,
   },
-  modalHeader: {
+  header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
   },
-  closeButton: {
-    padding: 8,
-  },
-  closeButtonText: {
-    fontSize: 20,
-    color: "#666",
-  },
-  modalBody: {
+  headerContent: {
     flex: 1,
   },
+  title: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  perfectDay: {
+    fontSize: 16,
+    color: "#10B981",
+    fontWeight: "600",
+    marginTop: 4,
+  },
+  closeButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  closeButtonText: {
+    fontSize: 16,
+    color: "#6B7280",
+  },
+  content: {
+    paddingHorizontal: 20,
+  },
   section: {
-    marginBottom: 20,
+    marginTop: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#374151",
+    marginBottom: 12,
   },
 });

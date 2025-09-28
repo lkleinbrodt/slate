@@ -8,13 +8,6 @@ interface HabitsSectionProps {
   completedHabits: any[];
   habitStreaks: Record<string, number>;
   onToggle: (habitId: string) => void;
-  onEdit: (
-    type: "task" | "habit",
-    id: string,
-    title: string,
-    notes?: string,
-    dueDate?: string
-  ) => void;
 }
 
 export const HabitsSection: React.FC<HabitsSectionProps> = ({
@@ -22,7 +15,6 @@ export const HabitsSection: React.FC<HabitsSectionProps> = ({
   completedHabits,
   habitStreaks,
   onToggle,
-  onEdit,
 }) => {
   return (
     <ThemedView style={styles.section}>
@@ -41,7 +33,6 @@ export const HabitsSection: React.FC<HabitsSectionProps> = ({
                 isCompleted={isCompleted}
                 streak={streak}
                 onToggle={onToggle}
-                onEdit={onEdit}
               />
             );
           })}

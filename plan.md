@@ -1,109 +1,23 @@
-We can now create the "Add Task/Habit" and "Edit Task" and "Edit Habit" UI.
-
-This should be a drawer/ action sheet that slides up
-
-So we should have a floating "+" add button in the bottom right of the (on both the today and the slate screens). when you click it it opens the menu.
-
-The sheet enables you to enter:
-
-1. The title (as a text field)
-2. A carousel with clickable options
-
-- a button to switch it to/from a habit from a task
-- (if a task) a button to set the due date
-- (if a task) a button to set the scheduled date
-
-Use the https://github.com/wix/react-native-calendars for the date picker (opens on button click). see history page for how we use it there.
-
-Below is the documentation for the action sheet.
-
-Usage with SheetManager
-SheetManager is great because it helps you save lots of development time. One great feature is that you can reuse the same ActionSheet in the app and don't have to create or define it in multiple places. Another is that you don't have to write boilerplate for every ActionSheet component. Everything just works.
-
-Import ActionSheet.
-
-import ActionSheet from 'react-native-actions-sheet';
-Create your ActionSheet component and export it.
-
-function ExampleSheet() {
-return (
-<ActionSheet>
-<View>
-<Text>Hello World</Text>
-</View>
-</ActionSheet>
-);
-}
-
-export default ExampleSheet;
-Create a sheets.tsx file and import your sheet then register it.
-
-import {registerSheet} from 'react-native-actions-sheet';
-import ExampleSheet from 'example-sheet.tsx';
-
-registerSheet('example-sheet', ExampleSheet);
-
-// We extend some of the types here to give us great intellisense
-// across the app for all registered sheets.
-declare module 'react-native-actions-sheet' {
-interface Sheets {
-'example-sheet': SheetDefinition;
-}
-}
-
-export {};
-In App.js import sheets.tsx and wrap your app in SheetProvider.
-
-import {SheetProvider} from 'react-native-actions-sheet';
-import 'sheets.tsx';
-
-function App() {
-return (
-<SheetProvider>
-{
-// your app components
-}
-</SheetProvider>
-);
-}
-Open the ActionSheet from anywhere in the app.
-
-SheetManager.show('example-sheet');
-Hide the ActionSheet
-
-SheetManager.hide('example-sheet');
-
-Passing data to ActionSheet
-When using SheetProvider & SheetManager to show ActionSheet it becomes difficult to dynamically change the data in the ActionSheet. For example you are scrolling in a list and each tapping on each item should show properties of that item. One way would be to use some kind of state or events which is fine but not scalable when you have many sheets in the app.
-
-ActionSheet for React Native provides a very easy way to do this by passing the data in your show function and getting it via prop in your ActionSheet component automatically.
-
-Define the Sheet payload data when registering your Sheet.
-
-import {SheetDefinition, registerSheet} from 'react-native-actions-sheet';
-
-registerSheet("example-sheet", ExampleSheet);
-
-declare module 'react-native-actions-sheet' {
-interface Sheets {
-'example-sheet': SheetDefinition<{
-payload: {
-value: string;
-};
-}>;
-}
-}
-SheetManager.show("example-sheet", {
-payload: { value: "Hello World" },
-});
-And then in your ExampleSheet component.
-
-function ExampleSheet(props: SheetProps<"example-sheet">) {
-return (
-<ActionSheet id={props.sheetId}>
-<View>
-<Text>{props.payload?.value}</Text>
-</View>
-</ActionSheet>
-);
-}
+Recommended Changes:
+Refine the Color Palette: The current palette in constants/theme.ts is basic.
+Introduce a richer palette with more shades for depth. Instead of just one tint color, define primary, secondary, and accent colors, along with a full grayscale ramp (e.g., 50, 100, ... 900) for subtle backgrounds, borders, and text variations.
+Consider a slightly more modern primary color than the default blue or green. For example, a sophisticated indigo or a warm slate gray.
+Establish a Typographic Hierarchy:
+Define a clear type scale (e.g., h1, h2, body, caption) with specific font sizes, weights, and line heights. This creates a better visual rhythm and makes the app easier to scan.
+The themed-text.tsx component is a good start. Expand its type prop to include more roles from your new hierarchy.
+Implement a Consistent Spacing System: Use a base unit (e.g., 4px or 8px) for all margins, paddings, and layout gaps. This will create a more harmonious and balanced layout. Update the UI.SPACING constants to follow this system.
+2.2. Screen-by-Screen Redesign Suggestions
+Today Screen (today.tsx):
+Header: Replace the two separate ProgressTracker bars with a single, more engaging visual. For instance, a large circular progress indicator that combines both tasks and habits, or a more graphical header that changes color as the day progresses towards completion.
+Task/Habit Sections: Add visual separation and hierarchy. Use sub-headers with icons. The "Completed" tasks section (TodayTasksSection.tsx) should be visually distinct—perhaps collapsed by default in an accordion or styled with lower opacity.
+Slate Screen (index.tsx):
+Section Headers: Make the date headers in SlateSection.tsx more prominent and visually appealing. Instead of plain text, use a styled component with a background color and a bold font.
+Empty State: The "You're all caught up!" message is good. Enhance it with a subtle, pleasing illustration or icon to make the empty state more delightful.
+Settings Screen (settings.tsx):
+Visual Grouping: Group related settings into cards with icons for each section (e.g., a bell icon for Notifications, a gear icon for General). This makes the screen much easier to scan.
+Interactive Elements: Replace the Alert.alert calls for time pickers with an inline time picker that appears when the row is tapped. This is a much smoother user experience.
+2.3. Component-Level Polish
+List Items (TaskItem.tsx, HabitItem.tsx, SlateItem.tsx): This is the most critical area for UI improvement.
+Layout: Increase the vertical padding and ensure a minimum touch target height of 44px as per the project brief. Use alignment to create clear visual columns for the checkbox, title, and action buttons.
+Streak Indicator: The 🔥 emoji is fun. Integrate it more cleanly. Consider a small "pill" or "chip" component with the fire emoji and the streak count, placed subtly below the habit title or to the right.
+Action Buttons: The "more-horiz" icon is generic. Consider using swipe gestures for common actions. A swipe-left could reveal "Edit" and "Delete" buttons. This declutters the main UI. For SlateItem, the "Add to Today" action could be a prominent button or a swipe-right gesture.

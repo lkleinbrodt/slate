@@ -47,16 +47,22 @@ Slate helps you keep track of all your tasks and habits in one place, and makes 
 ⸻
 
 4. Information Architecture & Navigation
-   • **Single Page Design**: Main screen combines Today, All, and Settings functionality
-   • **Main Screen**: Progress header, Today's Tasks (explicitly selected), Today's Habits (all active), Slate (remaining tasks)
-   • **Settings**: Accessible via gear icon in header - notifications, day start, auto‑carryover toggle, sounds/haptics, export/import
-   • **Unified Modal**: Single modal for adding/editing both tasks and habits
+   • **Four-Tab Design**: Separate screens for Today, Slate, History, and Settings
+   • **Today Screen**: Progress header, Today's Tasks (explicitly selected), Today's Habits (all active)
+   • **Slate Screen**: Unscheduled task management and planning for Today
+   • **History Screen**: Calendar view with day details and statistics
+   • **Settings Screen**: Notifications, day start, auto‑carryover toggle, sounds/haptics, export/import
+   • **Unified Modal**: Single modal for adding/editing both tasks and habits (fully implemented)
 
 Current Routing (expo‑router):
 
 /app
-├── index.tsx // Main screen (Today + All + Slate)
-├── settings.tsx // Settings screen
+├── (tabs)/
+│ ├── today.tsx // Today screen (daily task and habit management)
+│ ├── index.tsx // Slate screen (unscheduled task management)
+│ ├── history.tsx // History screen (calendar view)
+│ ├── settings.tsx // Settings screen
+│ └── \_layout.tsx // Tab layout with four-tab navigation
 ├── modal.tsx // Modal placeholder
 └── \_layout.tsx // Root layout with initialization
 
@@ -452,6 +458,10 @@ M5 – Notifications & Settings ✅ **UI COMPLETE, FUNCTIONALITY PLACEHOLDER**
 M6 – Export/Import & Polish ⚠️ **UI COMPLETE, FUNCTIONALITY PLACEHOLDER**
 • Settings UI for export/import ready; error handling; empty states.
 • Acceptance: UI ready for export/import implementation; VoiceOver labels needed.
+
+M7 – Modal Integration ✅ **COMPLETE**
+• AddEditModal fully implemented and integrated with new stores.
+• Acceptance: Add/edit functionality works with repository pattern.
 
 ⸻
 

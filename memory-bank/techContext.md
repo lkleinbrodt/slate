@@ -95,12 +95,14 @@ Dependencies (current)
 
 - **Core**: Expo SDK 54, React Native 0.81.4, React 19.1.0
 - **Navigation**: expo-router, @react-navigation/native, @react-navigation/bottom-tabs
-- **Database**: expo-sqlite, drizzle-orm, drizzle-kit
+- **Database**: expo-sqlite, drizzle-orm, drizzle-kit, better-sqlite3
 - **State**: zustand
 - **Dates**: dayjs
 - **Animations**: react-native-reanimated, react-native-gesture-handler, lottie-react-native
-- **UI**: @expo/vector-icons, react-native-calendars, react-native-modal
+- **UI**: @expo/vector-icons, react-native-calendars, react-native-modal, react-native-actions-sheet
 - **Haptics**: expo-haptics
 - **Notifications**: expo-notifications
 - **Files**: expo-file-system, expo-document-picker
 - **Celebrations**: react-native-confetti-cannon
+- **Audio**: expo-audio
+- **Additional**: @lottiefiles/dotlottie-react, react-native-worklets

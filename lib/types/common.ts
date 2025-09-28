@@ -102,13 +102,7 @@ export interface SettingsState extends BaseStoreState {
 
 // Component prop types
 export interface BaseItemProps {
-  onEdit: (
-    type: "task" | "habit",
-    id: string,
-    title: string,
-    notes?: string,
-    dueDate?: string
-  ) => void;
+  // onEdit prop removed - components now use SheetManager directly
 }
 
 export interface TaskItemProps extends BaseItemProps {

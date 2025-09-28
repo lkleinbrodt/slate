@@ -1,4 +1,3 @@
-import { AddButton } from "@/components/AddButton";
 import { ProgressTracker } from "@/components/ProgressTracker";
 import React from "react";
 import { TabHeader } from "@/components/shared/TabHeader";
@@ -9,7 +8,6 @@ interface PlannerHeaderProps {
   totalTasksCount: number;
   completedHabitsCount: number;
   totalHabitsCount: number;
-  onAddPress: () => void;
 }
 
 export const PlannerHeader: React.FC<PlannerHeaderProps> = ({
@@ -17,7 +15,6 @@ export const PlannerHeader: React.FC<PlannerHeaderProps> = ({
   totalTasksCount,
   completedHabitsCount,
   totalHabitsCount,
-  onAddPress,
 }) => {
   const taskProgress =
     totalTasksCount > 0 ? (completedTasksCount / totalTasksCount) * 100 : 0;
@@ -25,7 +22,7 @@ export const PlannerHeader: React.FC<PlannerHeaderProps> = ({
     totalHabitsCount > 0 ? (completedHabitsCount / totalHabitsCount) * 100 : 0;
 
   return (
-    <TabHeader title="Your Slate">
+    <TabHeader title="Today">
       <View style={styles.progressTrackers}>
         <ProgressTracker
           label="Tasks"
@@ -39,7 +36,6 @@ export const PlannerHeader: React.FC<PlannerHeaderProps> = ({
           total={totalHabitsCount}
           progress={habitProgress}
         />
-        <AddButton onPress={onAddPress} />
       </View>
     </TabHeader>
   );

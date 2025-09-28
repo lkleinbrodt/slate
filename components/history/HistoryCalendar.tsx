@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 
+import { getToday } from "@/lib/logic/dates";
 import { useHistoryStore } from "@/lib/stores/historyStore";
+import { useSettingsStore } from "@/lib/stores/settings";
 import { Calendar } from "react-native-calendars";
 
 interface HistoryCalendarProps {
@@ -10,6 +12,7 @@ interface HistoryCalendarProps {
 
 export const HistoryCalendar = ({ onDayPress }: HistoryCalendarProps) => {
   const { calendarData, loadCalendarData } = useHistoryStore();
+  const { dayStart } = useSettingsStore();
 
   const [currentDisplayedMonth, setCurrentDisplayedMonth] = useState(
     new Date().toISOString().substring(0, 7)
@@ -18,7 +21,7 @@ export const HistoryCalendar = ({ onDayPress }: HistoryCalendarProps) => {
   const [notificationOpacity] = useState(new Animated.Value(0));
   const [notificationText, setNotificationText] = useState("");
 
-  const currentDate = new Date().toISOString().split("T")[0];
+  const currentDate = getToday(dayStart);
 
   const getMarkedDates = () => {
     const marked = {};

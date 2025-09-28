@@ -1,18 +1,18 @@
+import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { listItemStyles } from "@/lib/utils/styles";
 import React from "react";
+import { SheetManager } from "react-native-actions-sheet";
 import { CheckableListItem } from "./CheckableListItem";
 import { ThemedText } from "./themed-text";
 import { TaskItemProps } from "./types";
-import { IconSymbol } from "./ui/icon-symbol";
 
 export const TaskItem: React.FC<TaskItemProps> = ({
   task,
   isCompleted,
   onToggle,
-  onEdit,
   onSkipForToday,
   isReadOnly = false,
 }) => {
@@ -26,13 +26,13 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 
   const handleEdit = () => {
     if (!isReadOnly) {
-      onEdit(
-        "task",
-        task.id,
-        task.title,
-        task.notes || undefined,
-        task.dueDate || undefined
-      );
+      SheetManager.show("add-edit-modal", {
+        payload: {
+          mode: "edit",
+          type: "task",
+          itemId: task.id,
+        },
+      });
     }
   };
 
@@ -70,11 +70,15 @@ export const TaskItem: React.FC<TaskItemProps> = ({
               style={styles.iconButton}
               onPress={handleSkipForToday}
             >
-              <IconSymbol name="forward.fill" size={18} color={iconColor} />
+              <MaterialCommunityIcons
+                name="sleep"
+                size={20}
+                color={iconColor}
+              />
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.iconButton} onPress={handleEdit}>
-              <IconSymbol name="pencil" size={18} color={iconColor} />
+              <MaterialIcons name="more-horiz" size={20} color={iconColor} />
             </TouchableOpacity>
           </View>
         )}

@@ -1,11 +1,13 @@
-import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { badgeStyles, listItemStyles } from "@/lib/utils/styles";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 
-import { CheckableListItem } from "./CheckableListItem";
-import { HabitItemProps } from "./types";
-import { IconSymbol } from "./ui/icon-symbol";
+import { MaterialIcons } from "@expo/vector-icons";
 import React from "react";
+import { SheetManager } from "react-native-actions-sheet";
+import { CheckableListItem } from "./CheckableListItem";
 import { ThemedText } from "./themed-text";
+import { HabitItemProps } from "./types";
+//import materialcommunityicons
 import { useThemeColor } from "@/hooks/use-theme-color";
 
 export const HabitItem: React.FC<HabitItemProps> = ({
@@ -13,7 +15,6 @@ export const HabitItem: React.FC<HabitItemProps> = ({
   isCompleted,
   streak,
   onToggle,
-  onEdit,
   isReadOnly = false,
 }) => {
   const iconColor = useThemeColor({}, "icon");
@@ -26,7 +27,13 @@ export const HabitItem: React.FC<HabitItemProps> = ({
 
   const handleEdit = () => {
     if (!isReadOnly) {
-      onEdit("habit", habit.id, habit.title, habit.notes || undefined);
+      SheetManager.show("add-edit-modal", {
+        payload: {
+          mode: "edit",
+          type: "habit",
+          itemId: habit.id,
+        },
+      });
     }
   };
 
@@ -42,18 +49,18 @@ export const HabitItem: React.FC<HabitItemProps> = ({
           >
             {habit.title}
           </ThemedText>
-          {streak > 0 && (
+          {
             <View style={badgeStyles.streak}>
               <ThemedText style={badgeStyles.streakText}>
                 🔥 {streak}
               </ThemedText>
             </View>
-          )}
+          }
         </View>
 
         {!isReadOnly && (
           <TouchableOpacity style={styles.iconButton} onPress={handleEdit}>
-            <IconSymbol name="pencil" size={18} color={iconColor} />
+            <MaterialIcons name="more-horiz" size={20} color={iconColor} />
           </TouchableOpacity>
         )}
       </View>

@@ -86,8 +86,9 @@ Navigation tree (expo‑router)
   - **Slate**: `app/(tabs)/index.tsx` (unscheduled task management)
   - **History**: `app/(tabs)/history.tsx` (calendar view and day details)
   - **Settings**: `app/(tabs)/settings.tsx` (configuration and preferences)
-- **Dynamic Routes**: `app/(tabs)/history/[date].tsx` (day details screen)
+- **Dynamic Routes**: `app/(tabs)/history/[date].tsx` (day details screen) - **NOT IMPLEMENTED** (uses ActionSheet instead)
 - **Modal**: `app/modal.tsx` (placeholder for future modals)
+- **ActionSheets**: `components/AddEditModal.tsx` (fully implemented add/edit modal)
 
 Error handling
 
