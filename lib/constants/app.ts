@@ -8,15 +8,15 @@ export const UI = {
   // Touch targets
   MIN_TOUCH_TARGET_SIZE: 44,
 
-  // Spacing
+  // Spacing (8px base unit system)
   SPACING: {
-    XS: 6,
-    SM: 10,
-    MD: 16,
-    LG: 20,
-    XL: 24,
-    XXL: 28,
-    XXXL: 36,
+    XS: 4, // 0.5 * 8
+    SM: 8, // 1 * 8
+    MD: 16, // 2 * 8
+    LG: 24, // 3 * 8
+    XL: 32, // 4 * 8
+    XXL: 40, // 5 * 8
+    XXXL: 48, // 6 * 8
   },
 
   // Border radius

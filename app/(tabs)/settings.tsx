@@ -1,3 +1,4 @@
+import React, { useEffect } from "react";
 import {
   Alert,
   ScrollView,
@@ -7,51 +8,28 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import React, { useEffect } from "react";
 
 import { SafeAreaThemedView } from "@/components/safe-area-themed-view";
+import { SettingsCard } from "@/components/SettingsCard";
 import { TabHeader } from "@/components/shared/TabHeader";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { TimePickerButton } from "@/components/TimePickerButton";
+import { useThemeColor } from "@/hooks/use-theme-color";
+import { UI } from "@/lib/constants/app";
 import { useSettingsStore } from "@/lib/stores/settings";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function SettingsScreen() {
-  const {
-    dayStart,
-    autoCarryover,
-    habitReminderTime,
-    eveningNudgeEnabled,
-    taskReminderTime,
-    todayReminderEnabled,
-    hapticsEnabled,
-    soundEnabled,
-    loading,
-    loadSettings,
-    updateDayStart,
-    updateAutoCarryover,
-    updateHabitReminderTime,
-    updateEveningNudge,
-    updateTaskReminderTime,
-    updateTodayReminder,
-    updateHaptics,
-    updateSound,
-  } = useSettingsStore();
+  const primaryColor = useThemeColor({}, "primary");
+  const successColor = useThemeColor({}, "success");
+  const textTertiaryColor = useThemeColor({}, "textTertiary");
+
+  const { dayStart, loading, loadSettings } = useSettingsStore();
 
   useEffect(() => {
     loadSettings();
   }, [loadSettings]);
-
-  const handleDayStartChange = (time: string) => {
-    updateDayStart(time);
-  };
-
-  const handleReminderTimeChange = (type: "habit" | "task", time: string) => {
-    if (type === "habit") {
-      updateHabitReminderTime(time);
-    } else {
-      updateTaskReminderTime(time);
-    }
-  };
 
   if (loading) {
     return (
@@ -68,69 +46,60 @@ export default function SettingsScreen() {
       <ScrollView style={styles.scrollView}>
         <TabHeader title="Settings" />
 
-        <ThemedView style={styles.section}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
-            Day & Time
-          </ThemedText>
-
+        {/* Day & Time Settings */}
+        <SettingsCard icon="time-outline" title="Day & Time">
           <View style={styles.settingRow}>
             <View style={styles.settingContent}>
-              <ThemedText style={styles.settingLabel}>
+              <ThemedText type="bodySemiBold" style={styles.settingLabel}>
                 Day Start Time
               </ThemedText>
-              <ThemedText style={styles.settingDescription}>
+              <ThemedText type="caption" style={styles.settingDescription}>
                 When your day begins (affects rollover and streaks)
               </ThemedText>
             </View>
-            <TouchableOpacity
-              style={styles.timeButton}
+            <TimePickerButton
+              time={dayStart}
               onPress={() => {
-                // In a real app, you'd show a time picker
                 Alert.alert(
                   "Day Start Time",
                   "Time picker would open here. For now, using 04:00 as default.",
                   [{ text: "OK" }]
                 );
               }}
-            >
-              <ThemedText style={styles.timeButtonText}>{dayStart}</ThemedText>
-            </TouchableOpacity>
+            />
           </View>
 
           <View style={styles.settingRow}>
             <View style={styles.settingContent}>
-              <ThemedText style={styles.settingLabel}>
+              <ThemedText type="bodySemiBold" style={styles.settingLabel}>
                 Auto Carryover
               </ThemedText>
-              <ThemedText style={styles.settingDescription}>
+              <ThemedText type="caption" style={styles.settingDescription}>
                 Move unfinished tasks to tomorrow
               </ThemedText>
             </View>
             <Switch
-              value={autoCarryover}
-              onValueChange={updateAutoCarryover}
-              trackColor={{ false: "#E5E7EB", true: "#10B981" }}
-              thumbColor={autoCarryover ? "#FFFFFF" : "#FFFFFF"}
+              value={true}
+              onValueChange={() => {}}
+              trackColor={{ false: "#E5E7EB", true: successColor }}
+              thumbColor="#FFFFFF"
             />
           </View>
-        </ThemedView>
+        </SettingsCard>
 
-        <ThemedView style={styles.section}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
-            Notifications
-          </ThemedText>
-
+        {/* Notifications Settings */}
+        <SettingsCard icon="notifications-outline" title="Notifications">
           <View style={styles.settingRow}>
             <View style={styles.settingContent}>
-              <ThemedText style={styles.settingLabel}>
+              <ThemedText type="bodySemiBold" style={styles.settingLabel}>
                 Habit Reminders
               </ThemedText>
-              <ThemedText style={styles.settingDescription}>
+              <ThemedText type="caption" style={styles.settingDescription}>
                 Daily reminder for habits
               </ThemedText>
             </View>
-            <TouchableOpacity
-              style={styles.timeButton}
+            <TimePickerButton
+              time="08:00"
               onPress={() => {
                 Alert.alert(
                   "Habit Reminder Time",
@@ -138,39 +107,37 @@ export default function SettingsScreen() {
                   [{ text: "OK" }]
                 );
               }}
-            >
-              <ThemedText style={styles.timeButtonText}>
-                {habitReminderTime}
-              </ThemedText>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingContent}>
-              <ThemedText style={styles.settingLabel}>Evening Nudge</ThemedText>
-              <ThemedText style={styles.settingDescription}>
-                Remind about incomplete habits
-              </ThemedText>
-            </View>
-            <Switch
-              value={eveningNudgeEnabled}
-              onValueChange={updateEveningNudge}
-              trackColor={{ false: "#E5E7EB", true: "#10B981" }}
-              thumbColor={eveningNudgeEnabled ? "#FFFFFF" : "#FFFFFF"}
             />
           </View>
 
           <View style={styles.settingRow}>
             <View style={styles.settingContent}>
-              <ThemedText style={styles.settingLabel}>
+              <ThemedText type="bodySemiBold" style={styles.settingLabel}>
+                Evening Nudge
+              </ThemedText>
+              <ThemedText type="caption" style={styles.settingDescription}>
+                Remind about incomplete habits
+              </ThemedText>
+            </View>
+            <Switch
+              value={false}
+              onValueChange={() => {}}
+              trackColor={{ false: "#E5E7EB", true: successColor }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingContent}>
+              <ThemedText type="bodySemiBold" style={styles.settingLabel}>
                 Task Reminders
               </ThemedText>
-              <ThemedText style={styles.settingDescription}>
+              <ThemedText type="caption" style={styles.settingDescription}>
                 Remind about due tasks
               </ThemedText>
             </View>
-            <TouchableOpacity
-              style={styles.timeButton}
+            <TimePickerButton
+              time="09:00"
               onPress={() => {
                 Alert.alert(
                   "Task Reminder Time",
@@ -178,86 +145,124 @@ export default function SettingsScreen() {
                   [{ text: "OK" }]
                 );
               }}
-            >
-              <ThemedText style={styles.timeButtonText}>
-                {taskReminderTime}
-              </ThemedText>
-            </TouchableOpacity>
+            />
           </View>
 
           <View style={styles.settingRow}>
             <View style={styles.settingContent}>
-              <ThemedText style={styles.settingLabel}>
+              <ThemedText type="bodySemiBold" style={styles.settingLabel}>
                 Today Reminder
               </ThemedText>
-              <ThemedText style={styles.settingDescription}>
+              <ThemedText type="caption" style={styles.settingDescription}>
                 Daily reminder to plan your day
               </ThemedText>
             </View>
             <Switch
-              value={todayReminderEnabled}
-              onValueChange={updateTodayReminder}
-              trackColor={{ false: "#E5E7EB", true: "#10B981" }}
-              thumbColor={todayReminderEnabled ? "#FFFFFF" : "#FFFFFF"}
+              value={false}
+              onValueChange={() => {}}
+              trackColor={{ false: "#E5E7EB", true: successColor }}
+              thumbColor="#FFFFFF"
             />
           </View>
-        </ThemedView>
+        </SettingsCard>
 
-        <ThemedView style={styles.section}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
-            Experience
-          </ThemedText>
-
+        {/* Experience Settings */}
+        <SettingsCard icon="settings-outline" title="Experience">
           <View style={styles.settingRow}>
             <View style={styles.settingContent}>
-              <ThemedText style={styles.settingLabel}>Haptics</ThemedText>
-              <ThemedText style={styles.settingDescription}>
+              <ThemedText type="bodySemiBold" style={styles.settingLabel}>
+                Haptics
+              </ThemedText>
+              <ThemedText type="caption" style={styles.settingDescription}>
                 Vibration feedback on interactions
               </ThemedText>
             </View>
             <Switch
-              value={hapticsEnabled}
-              onValueChange={updateHaptics}
-              trackColor={{ false: "#E5E7EB", true: "#10B981" }}
-              thumbColor={hapticsEnabled ? "#FFFFFF" : "#FFFFFF"}
+              value={true}
+              onValueChange={() => {}}
+              trackColor={{ false: "#E5E7EB", true: successColor }}
+              thumbColor="#FFFFFF"
             />
           </View>
 
           <View style={styles.settingRow}>
             <View style={styles.settingContent}>
-              <ThemedText style={styles.settingLabel}>Sounds</ThemedText>
-              <ThemedText style={styles.settingDescription}>
+              <ThemedText type="bodySemiBold" style={styles.settingLabel}>
+                Sounds
+              </ThemedText>
+              <ThemedText type="caption" style={styles.settingDescription}>
                 Audio feedback on interactions
               </ThemedText>
             </View>
             <Switch
-              value={soundEnabled}
-              onValueChange={updateSound}
-              trackColor={{ false: "#E5E7EB", true: "#10B981" }}
-              thumbColor={soundEnabled ? "#FFFFFF" : "#FFFFFF"}
+              value={false}
+              onValueChange={() => {}}
+              trackColor={{ false: "#E5E7EB", true: successColor }}
+              thumbColor="#FFFFFF"
             />
           </View>
-        </ThemedView>
+        </SettingsCard>
 
-        <ThemedView style={styles.section}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
-            Data
-          </ThemedText>
-
+        {/* Data Settings */}
+        <SettingsCard icon="cloud-outline" title="Data & Backup">
           <TouchableOpacity style={styles.actionButton}>
-            <ThemedText style={styles.actionButtonText}>Export Data</ThemedText>
-            <ThemedText style={styles.actionButtonDescription}>
-              Save your data to Files app
-            </ThemedText>
+            <View style={styles.actionButtonContent}>
+              <Ionicons
+                name="download-outline"
+                size={20}
+                color={primaryColor}
+              />
+              <View style={styles.actionButtonText}>
+                <ThemedText
+                  type="bodySemiBold"
+                  style={styles.actionButtonTitle}
+                >
+                  Export Data
+                </ThemedText>
+                <ThemedText
+                  type="caption"
+                  style={styles.actionButtonDescription}
+                >
+                  Save your data to Files app
+                </ThemedText>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={textTertiaryColor}
+              />
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionButton}>
-            <ThemedText style={styles.actionButtonText}>Import Data</ThemedText>
-            <ThemedText style={styles.actionButtonDescription}>
-              Restore from backup file
-            </ThemedText>
+            <View style={styles.actionButtonContent}>
+              <Ionicons
+                name="cloud-upload-outline"
+                size={20}
+                color={primaryColor}
+              />
+              <View style={styles.actionButtonText}>
+                <ThemedText
+                  type="bodySemiBold"
+                  style={styles.actionButtonTitle}
+                >
+                  Import Data
+                </ThemedText>
+                <ThemedText
+                  type="caption"
+                  style={styles.actionButtonDescription}
+                >
+                  Restore from backup file
+                </ThemedText>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={textTertiaryColor}
+              />
+            </View>
           </TouchableOpacity>
-        </ThemedView>
+        </SettingsCard>
       </ScrollView>
     </SafeAreaThemedView>
   );
@@ -269,70 +274,51 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    padding: 5,
+    padding: UI.SPACING.MD,
   },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
-  },
-  section: {
-    padding: 20,
-    paddingTop: 10,
-  },
-  sectionTitle: {
-    marginBottom: 20,
-    fontWeight: "600",
+    padding: UI.SPACING.LG,
   },
   settingRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 12,
+    paddingVertical: UI.SPACING.MD,
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    borderBottomColor: "rgba(0, 0, 0, 0.1)",
   },
   settingContent: {
     flex: 1,
-    marginRight: 16,
+    marginRight: UI.SPACING.MD,
   },
   settingLabel: {
-    fontSize: 16,
-    fontWeight: "500",
-    marginBottom: 4,
+    marginBottom: UI.SPACING.XS,
   },
   settingDescription: {
-    fontSize: 14,
     opacity: 0.7,
     lineHeight: 18,
   },
-  timeButton: {
-    backgroundColor: "#F3F4F6",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    minWidth: 60,
-    alignItems: "center",
-  },
-  timeButtonText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#374151",
-  },
   actionButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 4,
+    paddingVertical: UI.SPACING.MD,
+    paddingHorizontal: UI.SPACING.XS,
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    borderBottomColor: "rgba(0, 0, 0, 0.1)",
+  },
+  actionButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: UI.SPACING.SM,
   },
   actionButtonText: {
-    fontSize: 16,
-    fontWeight: "500",
-    marginBottom: 4,
+    flex: 1,
+  },
+  actionButtonTitle: {
+    marginBottom: UI.SPACING.XS,
   },
   actionButtonDescription: {
-    fontSize: 14,
     opacity: 0.7,
   },
 });

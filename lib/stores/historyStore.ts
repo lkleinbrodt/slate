@@ -1,12 +1,12 @@
 import * as repo from "@/lib/logic/repo";
 
-import { habitHistory, taskHistory } from "@/lib/db/schema";
-import { calculateStreak, isPerfectDay } from "@/lib/logic/streaks";
+import { addDays, getToday } from "@/lib/logic/dates";
 import { and, count, eq, gte, lte } from "drizzle-orm";
+import { calculateStreak, isPerfectDay } from "@/lib/logic/streaks";
+import { habitHistory, taskHistory } from "@/lib/db/schema";
 
-import { db } from "@/lib/db/connection";
-import { getToday } from "@/lib/logic/dates";
 import { create } from "zustand";
+import { db } from "@/lib/db/connection";
 import { useSettingsStore } from "./settings";
 
 interface HistoryState {
@@ -50,9 +50,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       // Load overall stats
       const dayStart = useSettingsStore.getState().dayStart;
       const today = getToday(dayStart);
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split("T")[0];
+      const sevenDaysAgo = addDays(today, -7);
 
       console.log(
         "Loading history data for date range:",

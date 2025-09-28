@@ -1,7 +1,8 @@
+import { StyleSheet, View } from "react-native";
+
 import { ProgressTracker } from "@/components/ProgressTracker";
-import React from "react";
 import { TabHeader } from "@/components/shared/TabHeader";
-import { View } from "react-native";
+import React from "react";
 
 interface PlannerHeaderProps {
   completedTasksCount: number;
@@ -41,9 +42,9 @@ export const PlannerHeader: React.FC<PlannerHeaderProps> = ({
   );
 };
 
-const styles = {
+const styles = StyleSheet.create({
   progressTrackers: {
-    flexDirection: "row" as const,
+    flexDirection: "row",
     gap: 20,
   },
-};
+});

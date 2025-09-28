@@ -1,8 +1,8 @@
 import { LevelUpAnimation, TapWin } from "./celebration";
 import React, { useState } from "react";
+import { StyleSheet, View } from "react-native";
 
-import { View } from "react-native";
-import { listItemStyles } from "@/lib/utils/styles";
+import { UI } from "@/lib/constants/app";
 import { useThemeColor } from "@/hooks/use-theme-color";
 
 interface CheckableListItemProps {
@@ -17,7 +17,8 @@ export const CheckableListItem: React.FC<CheckableListItemProps> = ({
   children,
 }) => {
   const [triggerLevelUp, setTriggerLevelUp] = useState(false);
-  const primaryColor = useThemeColor({}, "tint");
+  const primaryColor = useThemeColor({}, "primary");
+  const borderColor = useThemeColor({}, "border");
 
   const handleLevelUp = () => setTriggerLevelUp(true);
   const handleLevelUpComplete = () => setTriggerLevelUp(false);
@@ -34,15 +35,29 @@ export const CheckableListItem: React.FC<CheckableListItemProps> = ({
       trigger={triggerLevelUp}
       onComplete={handleLevelUpComplete}
     >
-      <View style={listItemStyles.container}>
+      <View style={[styles.container, { borderBottomColor: borderColor }]}>
         <TapWin
           checked={isCompleted}
           onPress={handleToggle}
-          size={28}
+          size={32}
           color={primaryColor}
         />
-        {children}
+        <View style={styles.content}>{children}</View>
       </View>
     </LevelUpAnimation>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: UI.SPACING.SM,
+    paddingHorizontal: UI.SPACING.SM,
+    minHeight: UI.MIN_TOUCH_TARGET_SIZE,
+    gap: UI.SPACING.SM,
+  },
+  content: {
+    flex: 1,
+  },
+});

@@ -1,14 +1,13 @@
-import { badgeStyles, listItemStyles } from "@/lib/utils/styles";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 
+import { useThemeColor } from "@/hooks/use-theme-color";
+import { UI } from "@/lib/constants/app";
 import { MaterialIcons } from "@expo/vector-icons";
 import React from "react";
 import { SheetManager } from "react-native-actions-sheet";
 import { CheckableListItem } from "./CheckableListItem";
 import { ThemedText } from "./themed-text";
 import { HabitItemProps } from "./types";
-//import materialcommunityicons
-import { useThemeColor } from "@/hooks/use-theme-color";
 
 export const HabitItem: React.FC<HabitItemProps> = ({
   habit,
@@ -17,7 +16,10 @@ export const HabitItem: React.FC<HabitItemProps> = ({
   onToggle,
   isReadOnly = false,
 }) => {
-  const iconColor = useThemeColor({}, "icon");
+  const iconColor = useThemeColor({}, "textTertiary");
+  const textColor = useThemeColor({}, "text");
+  const accentColor = useThemeColor({}, "accent");
+  const accentLightColor = useThemeColor({}, "accentLight");
 
   const handleToggle = () => {
     if (!isReadOnly) {
@@ -42,20 +44,30 @@ export const HabitItem: React.FC<HabitItemProps> = ({
       <View style={styles.content}>
         <View style={styles.habitInfo}>
           <ThemedText
+            type="body"
             style={[
-              listItemStyles.text,
-              isCompleted && listItemStyles.completedText,
+              styles.title,
+              { color: textColor },
+              isCompleted && styles.completedText,
             ]}
           >
             {habit.title}
           </ThemedText>
-          {
-            <View style={badgeStyles.streak}>
-              <ThemedText style={badgeStyles.streakText}>
+          {streak > 0 && (
+            <View
+              style={[
+                styles.streakBadge,
+                { backgroundColor: accentLightColor },
+              ]}
+            >
+              <ThemedText
+                type="captionSemiBold"
+                style={[styles.streakText, { color: accentColor }]}
+              >
                 🔥 {streak}
               </ThemedText>
             </View>
-          }
+          )}
         </View>
 
         {!isReadOnly && (
@@ -73,16 +85,35 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
+    gap: UI.SPACING.SM,
   },
   habitInfo: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    gap: UI.SPACING.SM,
+  },
+  title: {
+    fontWeight: "500",
     flex: 1,
   },
+  completedText: {
+    textDecorationLine: "line-through",
+    opacity: 0.6,
+  },
+  streakBadge: {
+    paddingHorizontal: UI.SPACING.SM,
+    paddingVertical: UI.SPACING.XS,
+    borderRadius: UI.BORDER_RADIUS.SM,
+    alignSelf: "flex-start",
+  },
+  streakText: {
+    fontWeight: "600",
+  },
   iconButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: UI.MIN_TOUCH_TARGET_SIZE,
+    height: UI.MIN_TOUCH_TARGET_SIZE,
+    borderRadius: UI.MIN_TOUCH_TARGET_SIZE / 2,
     justifyContent: "center",
     alignItems: "center",
   },

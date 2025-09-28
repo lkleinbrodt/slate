@@ -1,7 +1,12 @@
 import { HabitItem } from "@/components/HabitItem";
+import { Ionicons } from "@expo/vector-icons";
 import React from "react";
+import { SectionContainer } from "@/components/planner/SectionContainer";
+import { StyleSheet } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { UI } from "@/lib/constants/app";
+import { useThemeColor } from "@/hooks/use-theme-color";
 
 interface HabitsSectionProps {
   habits: any[];
@@ -16,11 +21,22 @@ export const HabitsSection: React.FC<HabitsSectionProps> = ({
   habitStreaks,
   onToggle,
 }) => {
+  const backgroundColor = useThemeColor({}, "backgroundSecondary");
+  const secondaryColor = useThemeColor({}, "secondary");
+  const secondaryColorDark = useThemeColor({}, "secondaryDark");
+  const secondaryColorLight = useThemeColor({}, "secondaryLight");
+  const textTertiaryColor = useThemeColor({}, "textTertiary");
+  const completedCount = completedHabits.length;
+  const totalCount = habits.length;
+
   return (
-    <ThemedView style={styles.section}>
-      <ThemedText type="subtitle" style={styles.sectionTitle}>
-        Habits
-      </ThemedText>
+    <SectionContainer
+      title="Habits"
+      subtitle={`${completedCount}/${totalCount}`}
+      backgroundColor={secondaryColorLight}
+      titleColor={secondaryColorDark}
+      borderColor={secondaryColor}
+    >
       {habits.length > 0 ? (
         <>
           {habits.map((habit) => {
@@ -38,35 +54,38 @@ export const HabitsSection: React.FC<HabitsSectionProps> = ({
           })}
         </>
       ) : (
-        <ThemedView style={styles.emptySubsection}>
-          <ThemedText style={styles.emptySubsectionText}>
+        <ThemedView style={[styles.emptySubsection, { backgroundColor }]}>
+          <Ionicons
+            name="refresh-outline"
+            size={32}
+            color={textTertiaryColor}
+          />
+          <ThemedText type="body" style={styles.emptySubsectionText}>
             No habits yet
+          </ThemedText>
+          <ThemedText type="caption" style={styles.emptySubsectionSubtext}>
+            Create your first habit to build consistency!
           </ThemedText>
         </ThemedView>
       )}
-    </ThemedView>
+    </SectionContainer>
   );
 };
 
-const styles = {
-  section: {
-    padding: 20,
-    paddingTop: 10,
-  },
-  sectionTitle: {
-    marginBottom: 15,
-    fontWeight: "600" as const,
-  },
+const styles = StyleSheet.create({
   emptySubsection: {
-    padding: 20,
-    alignItems: "center" as const,
-    backgroundColor: "rgba(0, 0, 0, 0.05)", // Light background that works in both themes
-    borderRadius: 8,
-    marginVertical: 5,
+    padding: UI.SPACING.XXL,
+    alignItems: "center",
+    borderRadius: UI.BORDER_RADIUS.MD,
+    marginVertical: UI.SPACING.SM,
+    gap: UI.SPACING.SM,
   },
   emptySubsectionText: {
-    fontSize: 14,
-    opacity: 0.6,
-    fontStyle: "italic" as const,
+    textAlign: "center",
+    opacity: 0.8,
   },
-};
+  emptySubsectionSubtext: {
+    textAlign: "center",
+    opacity: 0.6,
+  },
+});

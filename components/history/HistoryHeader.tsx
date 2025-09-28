@@ -11,13 +11,15 @@ export const HistoryHeader = () => {
     <TabHeader title="History">
       <View style={styles.statsContainer}>
         <View style={styles.statBox}>
-          <ThemedText type="subtitle">
+          <ThemedText type="bodySemiBold">
             {overallStats.tasksCompleted7d}
           </ThemedText>
           <ThemedText>Tasks Done (7d)</ThemedText>
         </View>
         <View style={styles.statBox}>
-          <ThemedText type="subtitle">{overallStats.perfectDays}</ThemedText>
+          <ThemedText type="bodySemiBold">
+            {overallStats.perfectDays}
+          </ThemedText>
           <ThemedText>Perfect Days</ThemedText>
         </View>
       </View>
@@ -28,6 +30,7 @@ export const HistoryHeader = () => {
 const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: "row",
+    marginTop: 20,
     gap: 20,
   },
   statBox: {

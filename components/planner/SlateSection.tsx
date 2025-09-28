@@ -1,10 +1,14 @@
 import { fromLocalDate, getToday } from "@/lib/logic/dates";
 import React, { useMemo } from "react";
+import { StyleSheet, View } from "react-native";
 
 import { SlateItem } from "@/components/SlateItem";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { useThemeColor } from "@/hooks/use-theme-color";
+import { UI } from "@/lib/constants/app";
 import { Task } from "@/lib/types/common";
+import { Ionicons } from "@expo/vector-icons";
 
 interface SlateSectionProps {
   tasks: Task[];
@@ -79,12 +83,26 @@ export const SlateSection: React.FC<SlateSectionProps> = ({
     return sections;
   }, [tasks, dayStart]);
 
+  const backgroundColor = useThemeColor({}, "backgroundSecondary");
+  const primaryColor = useThemeColor({}, "primary");
+  const accentColor = useThemeColor({}, "accent");
+  const borderColor = useThemeColor({}, "border");
+  const textTertiaryColor = useThemeColor({}, "textTertiary");
+
   if (tasks.length === 0) {
     return (
       <ThemedView style={styles.section}>
-        <ThemedView style={styles.emptySubsection}>
-          <ThemedText style={styles.emptySubsectionText}>
+        <ThemedView style={[styles.emptySubsection, { backgroundColor }]}>
+          <Ionicons
+            name="checkmark-done-circle"
+            size={48}
+            color={textTertiaryColor}
+          />
+          <ThemedText type="h3" style={styles.emptySubsectionTitle}>
             You&apos;re all caught up!
+          </ThemedText>
+          <ThemedText type="body" style={styles.emptySubsectionText}>
+            No tasks in your slate. Add some tasks to get organized.
           </ThemedText>
         </ThemedView>
       </ThemedView>
@@ -95,73 +113,125 @@ export const SlateSection: React.FC<SlateSectionProps> = ({
     <ThemedView style={styles.section}>
       {sections.map((section, sectionIndex) => (
         <ThemedView key={sectionIndex} style={styles.sectionGroup}>
-          <ThemedView style={styles.sectionHeader}>
-            <ThemedText
-              style={[
-                styles.sectionTitle,
-                section.isUnscheduled && styles.unscheduledTitle,
-              ]}
-            >
-              {section.title}
-            </ThemedText>
-            <ThemedText style={styles.sectionCount}>
-              {section.tasks.length}
-            </ThemedText>
-          </ThemedView>
+          <View style={[styles.sectionHeader, { backgroundColor }]}>
+            <View style={styles.sectionHeaderContent}>
+              <View
+                style={[
+                  styles.sectionIcon,
+                  {
+                    backgroundColor: section.isUnscheduled
+                      ? accentColor
+                      : primaryColor,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={
+                    section.isUnscheduled ? "list-outline" : "calendar-outline"
+                  }
+                  size={16}
+                  color="white"
+                />
+              </View>
+              <ThemedText
+                type="h4"
+                style={[
+                  styles.sectionTitle,
+                  section.isUnscheduled && styles.unscheduledTitle,
+                ]}
+              >
+                {section.title}
+              </ThemedText>
+            </View>
+            <View style={[styles.sectionCount, { borderColor }]}>
+              <ThemedText
+                type="captionSemiBold"
+                style={styles.sectionCountText}
+              >
+                {section.tasks.length}
+              </ThemedText>
+            </View>
+          </View>
 
-          {section.tasks.map((task) => (
-            <SlateItem key={task.id} task={task} onAddToToday={onAddToToday} />
-          ))}
+          <View style={styles.tasksContainer}>
+            {section.tasks.map((task) => (
+              <SlateItem
+                key={task.id}
+                task={task}
+                onAddToToday={onAddToToday}
+              />
+            ))}
+          </View>
         </ThemedView>
       ))}
     </ThemedView>
   );
 };
 
-const styles = {
+const styles = StyleSheet.create({
   section: {
-    padding: 20,
-    paddingTop: 10,
+    padding: UI.SPACING.LG,
+    paddingTop: UI.SPACING.MD,
   },
   sectionGroup: {
-    marginBottom: 24,
+    marginBottom: UI.SPACING.XL,
   },
   sectionHeader: {
-    flexDirection: "row" as const,
-    justifyContent: "space-between" as const,
-    alignItems: "center" as const,
-    marginBottom: 12,
-    paddingHorizontal: 4,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: UI.SPACING.MD,
+    paddingVertical: UI.SPACING.SM,
+    borderRadius: UI.BORDER_RADIUS.MD,
+    marginBottom: UI.SPACING.SM,
+  },
+  sectionHeaderContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: UI.SPACING.SM,
+  },
+  sectionIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600" as const,
-    opacity: 0.9,
+    flex: 1,
   },
   unscheduledTitle: {
     opacity: 0.7,
-    fontStyle: "italic" as const,
+    fontStyle: "italic",
   },
   sectionCount: {
-    fontSize: 14,
-    opacity: 0.6,
-    backgroundColor: "rgba(0, 0, 0, 0.1)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    minWidth: 24,
-    textAlign: "center" as const,
+    paddingHorizontal: UI.SPACING.SM,
+    paddingVertical: UI.SPACING.XS,
+    borderRadius: UI.BORDER_RADIUS.SM,
+    borderWidth: 1,
+    minWidth: 28,
+    alignItems: "center",
+  },
+  sectionCountText: {
+    opacity: 0.8,
+  },
+  tasksContainer: {
+    paddingLeft: UI.SPACING.SM,
   },
   emptySubsection: {
-    padding: 20,
-    alignItems: "center" as const,
-    backgroundColor: "rgba(0, 0, 0, 0.05)", // Light background that works in both themes
-    borderRadius: 8,
-    marginVertical: 5,
+    padding: UI.SPACING.XXXL,
+    alignItems: "center",
+    borderRadius: UI.BORDER_RADIUS.LG,
+    marginVertical: UI.SPACING.SM,
+    gap: UI.SPACING.MD,
+  },
+  emptySubsectionTitle: {
+    textAlign: "center",
+    opacity: 0.9,
   },
   emptySubsectionText: {
-    fontSize: 14,
-    opacity: 0.6,
-    fontStyle: "italic" as const,
+    textAlign: "center",
+    opacity: 0.7,
   },
-};
+});

@@ -3,13 +3,13 @@ import {
   PlannerHeader,
   TodayTasksSection,
 } from "@/components/planner";
-import { ScrollView, StyleSheet } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import { FloatingActionButton } from "@/components/FloatingActionButton";
-import { SafeAreaThemedView } from "@/components/safe-area-themed-view";
-import { useAppStore } from "@/lib/stores/appStore";
 import React from "react";
+import { SafeAreaThemedView } from "@/components/safe-area-themed-view";
 import { SheetManager } from "react-native-actions-sheet";
+import { useAppStore } from "@/lib/stores/appStore";
 
 export default function TodayScreen() {
   const {
@@ -52,7 +52,7 @@ export default function TodayScreen() {
 
   return (
     <SafeAreaThemedView style={styles.container}>
-      <ScrollView>
+      <ScrollView style={styles.scrollView}>
         <PlannerHeader
           completedTasksCount={completedTodayTasks.length}
           totalTasksCount={todayTasks.length}
@@ -60,22 +60,24 @@ export default function TodayScreen() {
           totalHabitsCount={activeHabits.length}
         />
 
-        <HabitsSection
-          habits={activeHabits}
-          completedHabits={todaysHabitCompletions.map((c) => ({
-            id: c.habitId,
-          }))}
-          habitStreaks={{}} // Streaks will be calculated differently now, maybe in the component
-          onToggle={handleHabitToggle}
-        />
+        <View style={styles.sectionsContainer}>
+          <HabitsSection
+            habits={activeHabits}
+            completedHabits={todaysHabitCompletions.map((c) => ({
+              id: c.habitId,
+            }))}
+            habitStreaks={{}} // Streaks will be calculated differently now, maybe in the component
+            onToggle={handleHabitToggle}
+          />
 
-        <TodayTasksSection
-          tasks={todayTasks}
-          onToggle={(taskId, currentStatus) =>
-            handleTaskToggle(taskId, currentStatus)
-          }
-          onSkipForToday={skipTaskForToday}
-        />
+          <TodayTasksSection
+            tasks={todayTasks}
+            onToggle={(taskId, currentStatus) =>
+              handleTaskToggle(taskId, currentStatus)
+            }
+            onSkipForToday={skipTaskForToday}
+          />
+        </View>
       </ScrollView>
 
       <FloatingActionButton onPress={handleOpenAddModal} />
@@ -85,4 +87,11 @@ export default function TodayScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  scrollView: {
+    flex: 1,
+  },
+  sectionsContainer: {
+    paddingHorizontal: 16,
+    gap: 24,
+  },
 });

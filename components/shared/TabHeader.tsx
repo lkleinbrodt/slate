@@ -1,8 +1,8 @@
 import { StyleSheet, View } from "react-native";
 
-import React from "react";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import React from "react";
 
 interface TabHeaderProps {
   title: string;
@@ -13,7 +13,7 @@ export const TabHeader: React.FC<TabHeaderProps> = ({ title, children }) => {
   return (
     <ThemedView style={styles.header}>
       <View style={styles.headerTop}>
-        <ThemedText type="title">{title}</ThemedText>
+        <ThemedText type="h1">{title}</ThemedText>
       </View>
       {children && <View style={styles.headerContent}>{children}</View>}
     </ThemedView>

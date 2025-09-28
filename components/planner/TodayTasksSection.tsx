@@ -1,7 +1,12 @@
+import { Ionicons } from "@expo/vector-icons";
+import React from "react";
+import { SectionContainer } from "@/components/planner/SectionContainer";
+import { StyleSheet } from "react-native";
 import { TaskItem } from "@/components/TaskItem";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import React from "react";
+import { UI } from "@/lib/constants/app";
+import { useThemeColor } from "@/hooks/use-theme-color";
 
 interface TodayTasksSectionProps {
   tasks: any[];
@@ -17,15 +22,23 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
   const pendingTasks = tasks.filter((task) => task.status !== "done");
   const completedTasks = tasks.filter((task) => task.status === "done");
 
-  return (
-    <ThemedView style={styles.section}>
-      <ThemedText type="subtitle" style={styles.sectionTitle}>
-        Tasks
-      </ThemedText>
+  const backgroundColor = useThemeColor({}, "backgroundSecondary");
+  const primaryColor = useThemeColor({}, "primary");
+  const primaryColorDark = useThemeColor({}, "primaryDark");
+  const primaryColorLight = useThemeColor({}, "primaryLight");
+  const textTertiaryColor = useThemeColor({}, "textTertiary");
 
+  return (
+    <SectionContainer
+      title="Tasks"
+      subtitle={`${completedTasks.length}/${tasks.length}`}
+      backgroundColor={primaryColorLight}
+      titleColor={primaryColorDark}
+      borderColor={primaryColor}
+    >
       {tasks.length > 0 ? (
         <>
-          {/* Pending Tasks */}
+          {/* All Tasks - Pending first, then completed */}
           {pendingTasks.map((task) => (
             <TaskItem
               key={task.id}
@@ -35,72 +48,49 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
               onSkipForToday={onSkipForToday}
             />
           ))}
-
-          {/* Completed Tasks */}
-          {completedTasks.length > 0 && (
-            <>
-              <ThemedView style={styles.completedSection}>
-                <ThemedText
-                  type="subtitle"
-                  style={styles.completedSectionTitle}
-                >
-                  Completed ({completedTasks.length})
-                </ThemedText>
-                {completedTasks.map((task) => (
-                  <TaskItem
-                    key={task.id}
-                    task={task}
-                    isCompleted={true}
-                    onToggle={onToggle}
-                    onSkipForToday={onSkipForToday}
-                  />
-                ))}
-              </ThemedView>
-            </>
-          )}
+          {completedTasks.map((task) => (
+            <TaskItem
+              key={task.id}
+              task={task}
+              isCompleted={true}
+              onToggle={onToggle}
+              onSkipForToday={onSkipForToday}
+            />
+          ))}
         </>
       ) : (
-        <ThemedView style={styles.emptySubsection}>
-          <ThemedText style={styles.emptySubsectionText}>
+        <ThemedView style={[styles.emptySubsection, { backgroundColor }]}>
+          <Ionicons
+            name="checkmark-circle-outline"
+            size={32}
+            color={textTertiaryColor}
+          />
+          <ThemedText type="body" style={styles.emptySubsectionText}>
             No tasks planned for today yet.
+          </ThemedText>
+          <ThemedText type="caption" style={styles.emptySubsectionSubtext}>
+            Add some tasks to get started!
           </ThemedText>
         </ThemedView>
       )}
-    </ThemedView>
+    </SectionContainer>
   );
 };
 
-const styles = {
-  section: {
-    padding: 20,
-    paddingTop: 10,
-  },
-  sectionTitle: {
-    marginBottom: 15,
-    fontWeight: "600" as const,
-  },
-  completedSection: {
-    marginTop: 20,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0, 0, 0, 0.1)",
-  },
-  completedSectionTitle: {
-    marginBottom: 15,
-    fontWeight: "600" as const,
-    opacity: 0.7,
-    fontSize: 16,
-  },
+const styles = StyleSheet.create({
   emptySubsection: {
-    padding: 20,
-    alignItems: "center" as const,
-    backgroundColor: "rgba(0, 0, 0, 0.05)", // Light background that works in both themes
-    borderRadius: 8,
-    marginVertical: 5,
+    padding: UI.SPACING.XXL,
+    alignItems: "center",
+    borderRadius: UI.BORDER_RADIUS.MD,
+    marginVertical: UI.SPACING.SM,
+    gap: UI.SPACING.SM,
   },
   emptySubsectionText: {
-    fontSize: 14,
-    opacity: 0.6,
-    fontStyle: "italic" as const,
+    textAlign: "center",
+    opacity: 0.8,
   },
-};
+  emptySubsectionSubtext: {
+    textAlign: "center",
+    opacity: 0.6,
+  },
+});

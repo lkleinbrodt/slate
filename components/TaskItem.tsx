@@ -2,7 +2,7 @@ import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 
 import { useThemeColor } from "@/hooks/use-theme-color";
-import { listItemStyles } from "@/lib/utils/styles";
+import { UI } from "@/lib/constants/app";
 import React from "react";
 import { SheetManager } from "react-native-actions-sheet";
 import { CheckableListItem } from "./CheckableListItem";
@@ -16,7 +16,9 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   onSkipForToday,
   isReadOnly = false,
 }) => {
-  const iconColor = useThemeColor({}, "icon");
+  const iconColor = useThemeColor({}, "textTertiary");
+  const textColor = useThemeColor({}, "text");
+  const textSecondaryColor = useThemeColor({}, "textSecondary");
 
   const handleToggle = () => {
     if (!isReadOnly) {
@@ -48,17 +50,22 @@ export const TaskItem: React.FC<TaskItemProps> = ({
       onToggle={handleToggle}
     >
       <View style={styles.content}>
-        <View style={{ flex: 1 }}>
+        <View style={styles.textContainer}>
           <ThemedText
+            type="body"
             style={[
-              listItemStyles.text,
-              isCompleted && listItemStyles.completedText,
+              styles.title,
+              { color: textColor },
+              isCompleted && styles.completedText,
             ]}
           >
             {task.title}
           </ThemedText>
           {task.dueDate && (
-            <ThemedText style={listItemStyles.secondaryText}>
+            <ThemedText
+              type="caption"
+              style={[styles.dueDate, { color: textSecondaryColor }]}
+            >
               Due: {task.dueDate}
             </ThemedText>
           )}
@@ -92,16 +99,31 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
+    gap: UI.SPACING.SM,
+  },
+  textContainer: {
+    flex: 1,
+  },
+  title: {
+    fontWeight: "500",
+    marginBottom: UI.SPACING.XS,
+  },
+  completedText: {
+    textDecorationLine: "line-through",
+    opacity: 0.6,
+  },
+  dueDate: {
+    opacity: 0.8,
   },
   buttonContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: UI.SPACING.XS,
   },
   iconButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: UI.MIN_TOUCH_TARGET_SIZE,
+    height: UI.MIN_TOUCH_TARGET_SIZE,
+    borderRadius: UI.MIN_TOUCH_TARGET_SIZE / 2,
     justifyContent: "center",
     alignItems: "center",
   },

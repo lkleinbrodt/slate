@@ -20,4 +20,3 @@ Interactive Elements: Replace the Alert.alert calls for time pickers with an inl
 List Items (TaskItem.tsx, HabitItem.tsx, SlateItem.tsx): This is the most critical area for UI improvement.
 Layout: Increase the vertical padding and ensure a minimum touch target height of 44px as per the project brief. Use alignment to create clear visual columns for the checkbox, title, and action buttons.
 Streak Indicator: The 🔥 emoji is fun. Integrate it more cleanly. Consider a small "pill" or "chip" component with the fire emoji and the streak count, placed subtly below the habit title or to the right.
-Action Buttons: The "more-horiz" icon is generic. Consider using swipe gestures for common actions. A swipe-left could reveal "Edit" and "Delete" buttons. This declutters the main UI. For SlateItem, the "Add to Today" action could be a prominent button or a swipe-right gesture.

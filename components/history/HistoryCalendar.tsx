@@ -1,10 +1,15 @@
-import React, { useState } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
+import React, { useState } from "react";
+import {
+  getCurrentMonth,
+  getSixMonthsAgo,
+  getToday,
+  isDateAfter,
+} from "@/lib/logic/dates";
 
-import { getToday } from "@/lib/logic/dates";
+import { Calendar } from "react-native-calendars";
 import { useHistoryStore } from "@/lib/stores/historyStore";
 import { useSettingsStore } from "@/lib/stores/settings";
-import { Calendar } from "react-native-calendars";
 
 interface HistoryCalendarProps {
   onDayPress: (date: string) => void;
@@ -15,13 +20,14 @@ export const HistoryCalendar = ({ onDayPress }: HistoryCalendarProps) => {
   const { dayStart } = useSettingsStore();
 
   const [currentDisplayedMonth, setCurrentDisplayedMonth] = useState(
-    new Date().toISOString().substring(0, 7)
+    getCurrentMonth()
   );
 
   const [notificationOpacity] = useState(new Animated.Value(0));
   const [notificationText, setNotificationText] = useState("");
 
   const currentDate = getToday(dayStart);
+  const sixMonthsAgo = getSixMonthsAgo();
 
   const getMarkedDates = () => {
     const marked = {};
@@ -46,9 +52,7 @@ export const HistoryCalendar = ({ onDayPress }: HistoryCalendarProps) => {
 
   const getMinDate = () => {
     // Allow going back 6 months
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-    return sixMonthsAgo.toISOString().split("T")[0];
+    return sixMonthsAgo;
   };
 
   const getMaxDate = () => {
@@ -56,14 +60,12 @@ export const HistoryCalendar = ({ onDayPress }: HistoryCalendarProps) => {
   };
 
   const isDateDisabled = (date: string) => {
-    // Disable future dates
-    return date > currentDate;
+    // Disable future dates using proper date comparison
+    return isDateAfter(date, currentDate);
   };
 
   const canNavigateLeft = () => {
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-    const earliestMonth = sixMonthsAgo.toISOString().substring(0, 7);
+    const earliestMonth = sixMonthsAgo.substring(0, 7);
     return currentDisplayedMonth > earliestMonth;
   };
 
@@ -94,13 +96,24 @@ export const HistoryCalendar = ({ onDayPress }: HistoryCalendarProps) => {
       <Calendar
         markingType={"custom"}
         markedDates={getMarkedDates()}
+        disableArrowLeft={!canNavigateLeft()}
+        disableArrowRight={!canNavigateRight()}
         minDate={getMinDate()}
         maxDate={getMaxDate()}
         onMonthChange={(month) => {
           const monthDate = month.dateString;
-          if (isDateDisabled(monthDate)) return;
-          setCurrentDisplayedMonth(monthDate.substring(0, 7));
-          loadCalendarData(monthDate.substring(0, 7));
+          const monthStr = monthDate.substring(0, 7);
+
+          // Check if the month is within our allowed range
+          const earliestMonth = sixMonthsAgo.substring(0, 7);
+          const currentMonthStr = currentDate.substring(0, 7);
+
+          if (monthStr < earliestMonth || monthStr > currentMonthStr) {
+            return;
+          }
+
+          setCurrentDisplayedMonth(monthStr);
+          loadCalendarData(monthStr);
         }}
         onDayPress={(day) => {
           if (isDateDisabled(day.dateString)) return;
