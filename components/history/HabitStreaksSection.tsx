@@ -1,26 +1,36 @@
 import { StyleSheet, View } from "react-native";
 
+import React from "react";
 import { ThemedText } from "@/components/themed-text";
 import { useHistoryStore } from "@/lib/stores/historyStore";
-import React from "react";
+import { useThemeColor } from "@/hooks/use-theme-color";
 
 export const HabitStreaksSection = () => {
   const { overallStats } = useHistoryStore();
+  const primaryColorLight = useThemeColor({}, "primaryLight");
 
   return (
     <View style={styles.container}>
-      <ThemedText type="subtitle" style={styles.title}>
+      <ThemedText type="h3" style={styles.title}>
         Current Streaks
       </ThemedText>
       {Object.entries(overallStats.currentStreaks).map(
         ([habitId, habitData]) => (
-          <View key={habitId} style={styles.habitRow}>
+          <View
+            key={habitId}
+            style={[styles.habitRow, { backgroundColor: primaryColorLight }]}
+          >
             <ThemedText style={styles.habitTitle}>{habitData.title}</ThemedText>
             <ThemedText style={styles.streakText}>
               🔥 {habitData.streak}
             </ThemedText>
           </View>
         )
+      )}
+      {Object.entries(overallStats.currentStreaks).length === 0 && (
+        <View style={styles.habitRow}>
+          <ThemedText style={styles.habitTitle}>No current streaks</ThemedText>
+        </View>
       )}
     </View>
   );
@@ -40,7 +50,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: "rgba(0, 122, 255, 0.05)",
     borderRadius: 8,
     marginBottom: 8,
   },

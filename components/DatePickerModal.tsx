@@ -11,6 +11,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Calendar } from "react-native-calendars";
 import React from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useThemeColor } from "@/hooks/use-theme-color";
 
 type DatePickerActionSheetProps = SheetProps<"date-picker-sheet">;
 
@@ -25,10 +26,27 @@ export default function DatePickerActionSheet({
     title = "Select Date",
   } = payload || {};
 
+  // Theme colors
+  const backgroundColor = useThemeColor({}, "background");
+  const textColor = useThemeColor({}, "text");
+  const textTertiaryColor = useThemeColor({}, "textTertiary");
+  const successColor = useThemeColor({}, "success");
+  const errorColor = useThemeColor({}, "error");
+  const borderColor = useThemeColor({}, "border");
+
   const handleDateSelect = (day: any) => {
     onDateSelect?.(day.dateString);
     SheetManager.hide(sheetId);
   };
+
+  // Create styles with theme colors
+  const styles = createStyles({
+    backgroundColor,
+    textColor,
+    textTertiaryColor,
+    errorColor,
+    borderColor,
+  });
 
   const handleCancel = () => {
     SheetManager.hide(sheetId);
@@ -40,7 +58,13 @@ export default function DatePickerActionSheet({
   };
 
   return (
-    <ActionSheet id={sheetId} gestureEnabled={true} safeAreaInsets={insets}>
+    <ActionSheet
+      id={sheetId}
+      gestureEnabled={true}
+      safeAreaInsets={insets}
+      containerStyle={{ backgroundColor: backgroundColor }}
+      indicatorStyle={{ backgroundColor: backgroundColor }}
+    >
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>{title}</Text>
@@ -61,12 +85,20 @@ export default function DatePickerActionSheet({
           markedDates={{
             [selectedDate || ""]: {
               selected: true,
-              selectedColor: "#10B981",
+              selectedColor: successColor,
             },
           }}
           theme={{
-            selectedDayBackgroundColor: "#10B981",
-            todayTextColor: "#10B981",
+            backgroundColor: backgroundColor,
+            calendarBackground: backgroundColor,
+            selectedDayBackgroundColor: successColor,
+            selectedDayTextColor: "#ffffff",
+            todayTextColor: successColor,
+            dayTextColor: textColor,
+            textDisabledColor: textTertiaryColor,
+            arrowColor: successColor,
+            monthTextColor: textColor,
+            indicatorColor: successColor,
           }}
         />
       </View>
@@ -74,44 +106,45 @@ export default function DatePickerActionSheet({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: "#fff",
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#111827",
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  clearButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
-  },
-  clearText: {
-    fontSize: 16,
-    color: "#EF4444",
-    fontWeight: "500",
-  },
-  cancelButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  cancelText: {
-    fontSize: 16,
-    color: "#6B7280",
-  },
-});
+const createStyles = (colors: any) =>
+  StyleSheet.create({
+    container: {
+      backgroundColor: colors.backgroundColor,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderColor,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: colors.textColor,
+    },
+    buttonContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    clearButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      marginRight: 8,
+    },
+    clearText: {
+      fontSize: 16,
+      color: colors.errorColor,
+      fontWeight: "500",
+    },
+    cancelButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+    },
+    cancelText: {
+      fontSize: 16,
+      color: colors.textTertiaryColor,
+    },
+  });

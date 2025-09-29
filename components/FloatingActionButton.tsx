@@ -5,7 +5,7 @@ import React from "react";
 import { useThemeColor } from "@/hooks/use-theme-color";
 
 export const FloatingActionButton: React.FC<AddButtonProps> = ({ onPress }) => {
-  const backgroundColor = useThemeColor({}, "tint");
+  const backgroundColor = useThemeColor({}, "primary");
 
   return (
     <TouchableOpacity

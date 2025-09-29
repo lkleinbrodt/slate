@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { useAppStore } from "@/lib/stores/appStore";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useThemeColor } from "@/hooks/use-theme-color";
 
 type DependencyPickerModalProps = SheetProps<"dependency-picker-sheet">;
 
@@ -26,6 +27,16 @@ export default function DependencyPickerModal({
     payload || {};
 
   const { slateTasks } = useAppStore();
+
+  // Theme colors
+  const backgroundColor = useThemeColor({}, "background");
+  const textColor = useThemeColor({}, "text");
+  const textSecondaryColor = useThemeColor({}, "textSecondary");
+  const textTertiaryColor = useThemeColor({}, "textTertiary");
+  const successColor = useThemeColor({}, "success");
+  const errorColor = useThemeColor({}, "error");
+  const borderColor = useThemeColor({}, "border");
+  const backgroundSecondary = useThemeColor({}, "backgroundSecondary");
 
   // Get all tasks except the current one being edited
   const availableTasks = slateTasks.filter(
@@ -40,6 +51,17 @@ export default function DependencyPickerModal({
   const handleCancel = () => {
     SheetManager.hide(sheetId);
   };
+
+  // Create styles with theme colors
+  const styles = createStyles({
+    backgroundColor,
+    textColor,
+    textTertiaryColor,
+    successColor,
+    errorColor,
+    borderColor,
+    backgroundSecondary,
+  });
 
   const renderTaskItem = ({ item: task }: { item: any }) => (
     <TouchableOpacity
@@ -65,13 +87,19 @@ export default function DependencyPickerModal({
         )}
       </View>
       {selectedDependencyId === task.id && (
-        <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+        <Ionicons name="checkmark-circle" size={20} color={successColor} />
       )}
     </TouchableOpacity>
   );
 
   return (
-    <ActionSheet id={sheetId} gestureEnabled={true} safeAreaInsets={insets}>
+    <ActionSheet
+      id={sheetId}
+      gestureEnabled={true}
+      safeAreaInsets={insets}
+      containerStyle={{ backgroundColor: backgroundColor }}
+      indicatorStyle={{ backgroundColor: backgroundColor }}
+    >
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Depends On</Text>
@@ -93,7 +121,7 @@ export default function DependencyPickerModal({
 
         {availableTasks.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="list-outline" size={48} color="#9CA3AF" />
+            <Ionicons name="list-outline" size={48} color={textTertiaryColor} />
             <Text style={styles.emptyText}>No available tasks</Text>
             <Text style={styles.emptySubtext}>
               All tasks are either completed or this is the only task
@@ -113,94 +141,95 @@ export default function DependencyPickerModal({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: "#fff",
-    maxHeight: "80%",
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#111827",
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  clearButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
-  },
-  clearText: {
-    fontSize: 16,
-    color: "#EF4444",
-    fontWeight: "500",
-  },
-  cancelButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  cancelText: {
-    fontSize: 16,
-    color: "#6B7280",
-  },
-  taskList: {
-    maxHeight: 400,
-  },
-  taskItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-  },
-  selectedTaskItem: {
-    backgroundColor: "#F0FDF4",
-  },
-  taskContent: {
-    flex: 1,
-  },
-  taskTitle: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#111827",
-    marginBottom: 4,
-  },
-  selectedTaskTitle: {
-    color: "#10B981",
-  },
-  taskScheduled: {
-    fontSize: 14,
-    color: "#6B7280",
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 40,
-    paddingHorizontal: 20,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: "500",
-    color: "#6B7280",
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: "#9CA3AF",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-});
+const createStyles = (colors: any) =>
+  StyleSheet.create({
+    container: {
+      backgroundColor: colors.backgroundColor,
+      maxHeight: "80%",
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderColor,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: colors.textColor,
+    },
+    buttonContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    clearButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      marginRight: 8,
+    },
+    clearText: {
+      fontSize: 16,
+      color: colors.errorColor,
+      fontWeight: "500",
+    },
+    cancelButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+    },
+    cancelText: {
+      fontSize: 16,
+      color: colors.textTertiaryColor,
+    },
+    taskList: {
+      maxHeight: 400,
+    },
+    taskItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderColor,
+    },
+    selectedTaskItem: {
+      backgroundColor: colors.backgroundSecondary,
+    },
+    taskContent: {
+      flex: 1,
+    },
+    taskTitle: {
+      fontSize: 16,
+      fontWeight: "500",
+      color: colors.textColor,
+      marginBottom: 4,
+    },
+    selectedTaskTitle: {
+      color: colors.successColor,
+    },
+    taskScheduled: {
+      fontSize: 14,
+      color: colors.textTertiaryColor,
+    },
+    emptyState: {
+      alignItems: "center",
+      paddingVertical: 40,
+      paddingHorizontal: 20,
+    },
+    emptyText: {
+      fontSize: 18,
+      fontWeight: "500",
+      color: colors.textTertiaryColor,
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    emptySubtext: {
+      fontSize: 14,
+      color: colors.textTertiaryColor,
+      textAlign: "center",
+      lineHeight: 20,
+    },
+  });

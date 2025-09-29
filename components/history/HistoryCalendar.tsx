@@ -10,6 +10,7 @@ import {
 import { Calendar } from "react-native-calendars";
 import { useHistoryStore } from "@/lib/stores/historyStore";
 import { useSettingsStore } from "@/lib/stores/settings";
+import { useThemeColor } from "@/hooks/use-theme-color";
 
 interface HistoryCalendarProps {
   onDayPress: (date: string) => void;
@@ -18,6 +19,14 @@ interface HistoryCalendarProps {
 export const HistoryCalendar = ({ onDayPress }: HistoryCalendarProps) => {
   const { calendarData, loadCalendarData } = useHistoryStore();
   const { dayStart } = useSettingsStore();
+
+  // Theme colors
+  const backgroundColor = useThemeColor({}, "background");
+  const calendarBackground = useThemeColor({}, "backgroundSecondary");
+  const textColor = useThemeColor({}, "text");
+  const textSecondaryColor = useThemeColor({}, "textSecondary");
+  const textTertiaryColor = useThemeColor({}, "textTertiary");
+  const primaryColor = useThemeColor({}, "primary");
 
   const [currentDisplayedMonth, setCurrentDisplayedMonth] = useState(
     getCurrentMonth()
@@ -136,19 +145,19 @@ export const HistoryCalendar = ({ onDayPress }: HistoryCalendarProps) => {
         disableAllTouchEventsForDisabledDays={true}
         disableAllTouchEventsForInactiveDays={true}
         theme={{
-          backgroundColor: "transparent",
-          calendarBackground: "transparent",
-          textSectionTitleColor: "#007AFF",
-          selectedDayBackgroundColor: "#007AFF",
+          backgroundColor: backgroundColor,
+          calendarBackground: calendarBackground,
+          textSectionTitleColor: textSecondaryColor,
+          selectedDayBackgroundColor: primaryColor,
           selectedDayTextColor: "#ffffff",
-          todayTextColor: "#007AFF",
-          dayTextColor: "#000000",
-          textDisabledColor: "#d9e1e8",
-          dotColor: "#00adf5",
+          todayTextColor: primaryColor,
+          dayTextColor: textColor,
+          textDisabledColor: textTertiaryColor,
+          dotColor: primaryColor,
           selectedDotColor: "#ffffff",
-          arrowColor: "#007AFF",
-          monthTextColor: "#000000",
-          indicatorColor: "#007AFF",
+          arrowColor: primaryColor,
+          monthTextColor: textColor,
+          indicatorColor: primaryColor,
           textDayFontWeight: "300",
           textMonthFontWeight: "bold",
           textDayHeaderFontWeight: "300",
@@ -160,9 +169,20 @@ export const HistoryCalendar = ({ onDayPress }: HistoryCalendarProps) => {
 
       {/* Notification Toast */}
       <Animated.View
-        style={[styles.notification, { opacity: notificationOpacity }]}
+        style={[
+          styles.notification,
+          {
+            opacity: notificationOpacity,
+            backgroundColor:
+              textColor === "#0F172A"
+                ? "rgba(0, 0, 0, 0.8)"
+                : "rgba(255, 255, 255, 0.9)",
+          },
+        ]}
       >
-        <Text style={styles.notificationText}>{notificationText}</Text>
+        <Text style={[styles.notificationText, { color: backgroundColor }]}>
+          {notificationText}
+        </Text>
       </Animated.View>
     </View>
   );
@@ -178,7 +198,6 @@ const styles = StyleSheet.create({
     top: 10,
     left: 20,
     right: 20,
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -186,7 +205,6 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   notificationText: {
-    color: "white",
     fontSize: 14,
     fontWeight: "500",
   },

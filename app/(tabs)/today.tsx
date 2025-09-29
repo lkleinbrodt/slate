@@ -52,7 +52,7 @@ export default function TodayScreen() {
 
   return (
     <SafeAreaThemedView style={styles.container}>
-      <ScrollView style={styles.scrollView}>
+      <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled">
         <PlannerHeader
           completedTasksCount={completedTodayTasks.length}
           totalTasksCount={todayTasks.length}

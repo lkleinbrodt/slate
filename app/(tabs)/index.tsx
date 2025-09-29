@@ -1,13 +1,13 @@
 import { ScrollView, StyleSheet } from "react-native";
 
 import { FloatingActionButton } from "@/components/FloatingActionButton";
-import { SlateSection } from "@/components/planner";
+import React from "react";
 import { SafeAreaThemedView } from "@/components/safe-area-themed-view";
+import { SheetManager } from "react-native-actions-sheet";
+import { SlateSection } from "@/components/planner";
 import { TabHeader } from "@/components/shared/TabHeader";
 import { useAppStore } from "@/lib/stores/appStore";
 import { useSettingsStore } from "@/lib/stores/settings";
-import React from "react";
-import { SheetManager } from "react-native-actions-sheet";
 
 export default function SlateScreen() {
   const { slateTasks, planTaskForToday } = useAppStore();
@@ -21,7 +21,7 @@ export default function SlateScreen() {
 
   return (
     <SafeAreaThemedView style={styles.container}>
-      <ScrollView>
+      <ScrollView keyboardShouldPersistTaps="handled">
         <TabHeader title="Slate" />
 
         <SlateSection

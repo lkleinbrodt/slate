@@ -27,14 +27,13 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
   const backgroundColor = useThemeColor({}, "backgroundSecondary");
   const primaryColor = useThemeColor({}, "primary");
   const primaryColorDark = useThemeColor({}, "primaryDark");
-  const primaryColorLight = useThemeColor({}, "primaryLight");
   const textTertiaryColor = useThemeColor({}, "textTertiary");
 
   return (
     <SectionContainer
       title="Tasks"
       subtitle={`${completedTasks.length}/${tasks.length}`}
-      backgroundColor={primaryColorLight}
+      backgroundColor={backgroundColor}
       titleColor={primaryColorDark}
       borderColor={primaryColor}
     >

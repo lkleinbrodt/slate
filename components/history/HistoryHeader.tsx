@@ -1,22 +1,25 @@
 import { StyleSheet, View } from "react-native";
 
+import React from "react";
 import { TabHeader } from "@/components/shared/TabHeader";
 import { ThemedText } from "@/components/themed-text";
 import { useHistoryStore } from "@/lib/stores/historyStore";
-import React from "react";
+import { useThemeColor } from "@/hooks/use-theme-color";
 
 export const HistoryHeader = () => {
   const overallStats = useHistoryStore((s) => s.overallStats);
+  const primaryColorLight = useThemeColor({}, "primaryLight");
+
   return (
     <TabHeader title="History">
       <View style={styles.statsContainer}>
-        <View style={styles.statBox}>
+        <View style={[styles.statBox, { backgroundColor: primaryColorLight }]}>
           <ThemedText type="bodySemiBold">
             {overallStats.tasksCompleted7d}
           </ThemedText>
           <ThemedText>Tasks Done (7d)</ThemedText>
         </View>
-        <View style={styles.statBox}>
+        <View style={[styles.statBox, { backgroundColor: primaryColorLight }]}>
           <ThemedText type="bodySemiBold">
             {overallStats.perfectDays}
           </ThemedText>
@@ -35,7 +38,6 @@ const styles = StyleSheet.create({
   },
   statBox: {
     flex: 1,
-    backgroundColor: "rgba(0, 122, 255, 0.1)",
     padding: 15,
     borderRadius: 12,
     alignItems: "center",

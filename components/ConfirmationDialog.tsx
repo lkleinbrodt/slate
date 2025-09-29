@@ -35,6 +35,7 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
 }) => {
   const backgroundColor = useThemeColor({}, "background");
   const textColor = useThemeColor({}, "text");
+  const errorColor = useThemeColor({}, "error");
 
   return (
     <Modal
@@ -66,7 +67,12 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
 
               <TouchableOpacity
                 style={[
-                  destructive ? styles.destructiveButton : buttonStyles.primary,
+                  destructive
+                    ? [
+                        styles.destructiveButton,
+                        { backgroundColor: errorColor },
+                      ]
+                    : buttonStyles.primary,
                   styles.button,
                 ]}
                 onPress={onConfirm}
@@ -131,7 +137,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   destructiveButton: {
-    backgroundColor: "#EF4444",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 8,

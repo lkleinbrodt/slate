@@ -24,7 +24,6 @@ export const HabitsSection: React.FC<HabitsSectionProps> = ({
   const backgroundColor = useThemeColor({}, "backgroundSecondary");
   const secondaryColor = useThemeColor({}, "secondary");
   const secondaryColorDark = useThemeColor({}, "secondaryDark");
-  const secondaryColorLight = useThemeColor({}, "secondaryLight");
   const textTertiaryColor = useThemeColor({}, "textTertiary");
   const completedCount = completedHabits.length;
   const totalCount = habits.length;
@@ -33,7 +32,7 @@ export const HabitsSection: React.FC<HabitsSectionProps> = ({
     <SectionContainer
       title="Habits"
       subtitle={`${completedCount}/${totalCount}`}
-      backgroundColor={secondaryColorLight}
+      backgroundColor={backgroundColor}
       titleColor={secondaryColorDark}
       borderColor={secondaryColor}
     >
