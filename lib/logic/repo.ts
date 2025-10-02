@@ -6,7 +6,7 @@ import {
   taskHistory,
   tasks,
 } from "@/lib/db/schema";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/connection";
 import { nowISO } from "@/lib/logic/dates";
@@ -40,7 +40,17 @@ export const listTodayTasks = (date: string) =>
   db
     .select()
     .from(tasks)
-    .where(and(sql`status IN ('open', 'done')`, eq(tasks.scheduledFor, date)));
+    .where(
+      and(
+        eq(tasks.scheduledFor, date),
+        sql`status IN ('open', 'done')`,
+        // Only show tasks that are open OR completed today
+        or(
+          eq(tasks.status, "open"),
+          sql`status = 'done' AND date(completed_at) = ${date}`
+        )
+      )
+    );
 export const listOverdueTasks = (date: string) =>
   db
     .select()

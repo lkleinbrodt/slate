@@ -6,10 +6,9 @@ import {
 import { ScrollView, StyleSheet, View } from "react-native";
 
 import { FloatingActionButton } from "@/components/FloatingActionButton";
-import React from "react";
 import { SafeAreaThemedView } from "@/components/safe-area-themed-view";
-import { SheetManager } from "react-native-actions-sheet";
 import { useAppStore } from "@/lib/stores/appStore";
+import { SheetManager } from "react-native-actions-sheet";
 
 export default function TodayScreen() {
   const {
