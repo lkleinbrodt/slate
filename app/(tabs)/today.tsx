@@ -7,7 +7,6 @@ import { ScrollView, StyleSheet, View } from "react-native";
 
 import { FloatingActionButton } from "@/components/FloatingActionButton";
 import { SafeAreaThemedView } from "@/components/safe-area-themed-view";
-import { useDayChangeDetection } from "@/hooks/useDayChangeDetection";
 import { useAppStore } from "@/lib/stores/appStore";
 import { SheetManager } from "react-native-actions-sheet";
 
@@ -22,9 +21,6 @@ export default function TodayScreen() {
     undoHabit,
     skipTaskForToday,
   } = useAppStore();
-
-  // Enable automatic day change detection
-  useDayChangeDetection();
 
   const completedTodayTasks = todayTasks.filter((t) => t.status === "done");
 

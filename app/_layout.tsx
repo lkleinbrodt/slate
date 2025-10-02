@@ -26,7 +26,7 @@ export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { loadSettings } = useSettingsStore();
-  const { init: initAppStore, checkAndHandleDayChange } = useAppStore();
+  const { init: initAppStore } = useAppStore();
 
   useEffect(() => {
     const initialize = async () => {
@@ -54,8 +54,8 @@ export default function RootLayout() {
         );
         const today = getToday(useSettingsStore.getState().dayStart);
         processRollover(today).then(() => {
-          // Use the new day change detection method
-          useAppStore.getState().checkAndHandleDayChange();
+          // Simply refresh data - the query filtering will handle the rest
+          useAppStore.getState().refreshData();
         });
       }
     });

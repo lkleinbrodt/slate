@@ -44,7 +44,7 @@ export const listTodayTasks = (date: string) =>
       and(
         eq(tasks.scheduledFor, date),
         sql`status IN ('open', 'done')`,
-        // Only include tasks that were completed today or are still open
+        // Only show tasks that are open OR completed today
         or(
           eq(tasks.status, "open"),
           sql`status = 'done' AND date(completed_at) = ${date}`

@@ -117,19 +117,8 @@ export async function processRollover(nowLocalDate: string) {
         .where(eq(tasks.id, task.id));
     }
 
-    // Reset completed tasks that were scheduled for the previous day
-    // This ensures they don't show as completed on the new day
-    // Only reset tasks that were actually completed on that day
-    await db
-      .update(tasks)
-      .set({ status: "open", completedAt: null })
-      .where(
-        and(
-          eq(tasks.scheduledFor, dayToFinalize),
-          eq(tasks.status, "done"),
-          sql`date(completed_at) = ${dayToFinalize}`
-        )
-      );
+    // Note: We don't reset completed tasks anymore - the query filtering handles this
+    // This keeps the data integrity intact while solving the display problem
 
     // Update last processed date and move to the next day
     lastProcessedDate = nextDay;
