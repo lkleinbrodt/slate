@@ -1,32 +1,32 @@
 import "react-native-reanimated";
 import "../sheets";
 
-import { ActivityIndicator, AppState, Text, View } from "react-native";
 import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
 import { useEffect, useState } from "react";
+import { ActivityIndicator, AppState, Text, View } from "react-native";
 
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import { SheetProvider } from "react-native-actions-sheet";
-import { Stack } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { ToastProvider } from "@/components/ToastProvider";
-import { getToday } from "@/lib/logic/dates";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { initializeDatabase } from "@/lib/db/connection";
+import { getToday } from "@/lib/logic/dates";
 import { processRollover } from "@/lib/logic/rollover";
 import { useAppStore } from "@/lib/stores/appStore";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useSettingsStore } from "@/lib/stores/settings";
+import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { SheetProvider } from "react-native-actions-sheet";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { loadSettings } = useSettingsStore();
-  const { init: initAppStore } = useAppStore();
+  const { init: initAppStore, checkAndHandleDayChange } = useAppStore();
 
   useEffect(() => {
     const initialize = async () => {
@@ -53,7 +53,10 @@ export default function RootLayout() {
           "App became active, re-checking rollover and refreshing data."
         );
         const today = getToday(useSettingsStore.getState().dayStart);
-        processRollover(today).then(() => useAppStore.getState().refreshData());
+        processRollover(today).then(() => {
+          // Use the new day change detection method
+          useAppStore.getState().checkAndHandleDayChange();
+        });
       }
     });
     return () => sub.remove();

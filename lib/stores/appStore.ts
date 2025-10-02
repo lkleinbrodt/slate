@@ -25,6 +25,7 @@ interface AppState {
   // Actions
   init: () => Promise<void>;
   refreshData: () => Promise<void>;
+  checkAndHandleDayChange: () => Promise<void>;
   createTask: (data: {
     title: string;
     notes?: string;
@@ -75,7 +76,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   init: async () => {
     const dayStart = useSettingsStore.getState().dayStart;
     const today = getToday(dayStart);
+    const currentTodayDate = get().todayDate;
+    
+    // Check if we're on a new day
+    const isNewDay = currentTodayDate !== today;
+    
     set({ todayDate: today, isInitialized: true });
+    
+    // If it's a new day, we need to refresh data to get the updated state
+    if (isNewDay) {
+      console.log(`New day detected: ${currentTodayDate} -> ${today}`);
+    }
+    
     await get().refreshData();
   },
 
@@ -97,6 +109,18 @@ export const useAppStore = create<AppState>((set, get) => ({
       slateTasks,
       overdueTasks,
     });
+  },
+
+  checkAndHandleDayChange: async () => {
+    const dayStart = useSettingsStore.getState().dayStart;
+    const currentToday = getToday(dayStart);
+    const storedToday = get().todayDate;
+    
+    if (currentToday !== storedToday) {
+      console.log(`Day change detected: ${storedToday} -> ${currentToday}`);
+      set({ todayDate: currentToday });
+      await get().refreshData();
+    }
   },
 
   createTask: async (data) => {
