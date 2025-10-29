@@ -25,6 +25,7 @@ interface AppState {
   // Actions
   init: () => Promise<void>;
   refreshData: () => Promise<void>;
+  setToday: (date: string) => Promise<void>;
   createTask: (data: {
     title: string;
     notes?: string;
@@ -97,6 +98,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       slateTasks,
       overdueTasks,
     });
+  },
+
+  setToday: async (date: string) => {
+    set({ todayDate: date });
+    await get().refreshData();
   },
 
 
