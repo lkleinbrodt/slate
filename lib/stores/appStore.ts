@@ -12,6 +12,7 @@ type HabitCompletion = repo.HabitCompletion;
 interface AppState {
   isInitialized: boolean;
   todayDate: string;
+  syncTodayDate: () => string;
 
   // Data for "Today" screen
   todayTasks: Task[];
@@ -66,6 +67,14 @@ interface AppState {
 export const useAppStore = create<AppState>((set, get) => ({
   isInitialized: false,
   todayDate: getToday(useSettingsStore.getState().dayStart),
+  syncTodayDate: () => {
+    const computedToday = getToday(useSettingsStore.getState().dayStart);
+    const currentToday = get().todayDate;
+    if (currentToday !== computedToday) {
+      set({ todayDate: computedToday });
+    }
+    return computedToday;
+  },
   todayTasks: [],
   activeHabits: [],
   todaysHabitCompletions: [],
@@ -73,14 +82,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   overdueTasks: [],
 
   init: async () => {
-    const dayStart = useSettingsStore.getState().dayStart;
-    const today = getToday(dayStart);
+    const today = get().syncTodayDate();
     set({ todayDate: today, isInitialized: true });
     await get().refreshData();
   },
 
   refreshData: async () => {
-    const today = get().todayDate;
+    const today = get().syncTodayDate();
     const [todayTasks, activeHabits, completions, slateTasks, overdueTasks] =
       await Promise.all([
         repo.listTodayTasks(today),
@@ -133,7 +141,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   planTaskForToday: async (taskId) => {
-    await repo.planTaskFor(taskId, get().todayDate);
+    const today = get().syncTodayDate();
+    await repo.planTaskFor(taskId, today);
     await get().refreshData();
   },
 
@@ -143,7 +152,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   skipTaskForToday: async (taskId) => {
-    const tomorrow = addDays(get().todayDate, 1);
+    const tomorrow = addDays(get().syncTodayDate(), 1);
     await repo.skipTaskForToday(taskId, tomorrow);
     await get().refreshData();
   },
@@ -159,12 +168,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   completeHabit: async (habitId) => {
-    await repo.completeHabitToday(habitId, get().todayDate);
+    const today = get().syncTodayDate();
+    await repo.completeHabitToday(habitId, today);
     await get().refreshData();
   },
 
   undoHabit: async (habitId) => {
-    await repo.undoHabitToday(habitId, get().todayDate);
+    const today = get().syncTodayDate();
+    await repo.undoHabitToday(habitId, today);
     await get().refreshData();
   },
 
@@ -178,3 +189,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     await get().refreshData();
   },
 }));
+
+useSettingsStore.subscribe(
+  (state) => state.dayStart,
+  () => {
+    const appState = useAppStore.getState();
+    appState.syncTodayDate();
+    if (appState.isInitialized) {
+      appState.refreshData();
+    }
+  }
+);
