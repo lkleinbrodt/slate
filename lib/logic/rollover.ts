@@ -93,6 +93,10 @@ export async function processRollover(nowLocalDate: string) {
     ? lastProcessedDateStr
     : nowLocalDate;
 
+  if (!lastProcessedDateStr) {
+    await storage.setItem("last_processed_date", lastProcessedDate);
+  }
+
   console.log(`Processing rollover from ${lastProcessedDate} to ${nowLocalDate}`);
 
   while (
@@ -125,8 +129,5 @@ export async function processRollover(nowLocalDate: string) {
     await storage.setItem("last_processed_date", lastProcessedDate);
   }
 
-  // If we're on a new day, ensure we have a clean slate
-  if (fromLocalDate(lastProcessedDate).isBefore(fromLocalDate(nowLocalDate))) {
-    await storage.setItem("last_processed_date", nowLocalDate);
-  }
+  await storage.setItem("last_processed_date", lastProcessedDate);
 }
