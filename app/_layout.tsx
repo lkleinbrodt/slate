@@ -55,7 +55,9 @@ export default function RootLayout() {
         const today = getToday(useSettingsStore.getState().dayStart);
         processRollover(today).then(() => {
           // Simply refresh data - the query filtering will handle the rest
-          useAppStore.getState().refreshData();
+          const appState = useAppStore.getState();
+          appState.syncTodayDate();
+          appState.refreshData();
         });
       }
     });
