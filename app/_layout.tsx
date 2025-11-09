@@ -59,7 +59,24 @@ export default function RootLayout() {
         });
       }
     });
-    return () => sub.remove();
+    // Also handle day change while app remains active
+    const intervalId = setInterval(() => {
+      const currentToday = getToday(useSettingsStore.getState().dayStart);
+      const storeToday = useAppStore.getState().todayDate;
+      if (currentToday !== storeToday) {
+        console.log(
+          `Detected local day change from ${storeToday} to ${currentToday}. Processing rollover.`
+        );
+        processRollover(currentToday).then(() => {
+          useAppStore.getState().setToday(currentToday);
+        });
+      }
+    }, 60 * 1000);
+
+    return () => {
+      sub.remove();
+      clearInterval(intervalId);
+    };
   }, [loadSettings, initAppStore]);
 
   if (error) {
