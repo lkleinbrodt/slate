@@ -1,14 +1,15 @@
 import * as repo from "@/lib/logic/repo";
 
-import React, { useEffect } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet } from "react-native";
+import React, { useEffect } from "react";
 
 import { HabitStreaksSection } from "@/components/history/HabitStreaksSection";
 import { HistoryCalendar } from "@/components/history/HistoryCalendar";
 import { HistoryHeader } from "@/components/history/HistoryHeader";
 import { SafeAreaThemedView } from "@/components/safe-area-themed-view";
-import { useHistoryStore } from "@/lib/stores/historyStore";
 import { SheetManager } from "react-native-actions-sheet";
+import { useHistoryStore } from "@/lib/stores/historyStore";
+import { useTimeStore } from "@/lib/stores/timeStore";
 
 export default function HistoryScreen() {
   const { loading, selectedDay, loadInitialData } = useHistoryStore();
@@ -20,20 +21,32 @@ export default function HistoryScreen() {
   // Handle day selection by showing ActionSheet with day details
   const handleDayPress = async (date: string) => {
     try {
-      const [tasks, habits] = await Promise.all([
-        repo.getDayTasksHistory(date),
-        repo.getDayHabitsHistory(date),
-      ]);
+      const today = useTimeStore.getState().getCurrentDate();
+      const snapshot = await repo.getDaySnapshot(date, today);
 
-      // Check if it's a perfect day
-      const perfectDay =
-        habits.length > 0 && habits.every((h) => h.habit_history.completed);
-
+      // Transform to the format expected by DayDetailsModal
       const dayData = {
-        date,
-        tasks,
-        habits,
-        isPerfectDay: perfectDay,
+        date: snapshot.date,
+        tasks: snapshot.tasks.map((item) => ({
+          task_history: {
+            id: `th-${item.task.id}-${date}`,
+            date,
+            taskId: item.task.id,
+            planned: item.isPlanned ? 1 : 0,
+            completed: item.isCompleted ? 1 : 0,
+          },
+          tasks: item.task,
+        })),
+        habits: snapshot.habits.map((item) => ({
+          habit_history: {
+            id: `hh-${item.habit.id}-${date}`,
+            date,
+            habitId: item.habit.id,
+            completed: item.isCompleted ? 1 : 0,
+          },
+          habits: item.habit,
+        })),
+        isPerfectDay: snapshot.isPerfectDay,
       };
 
       SheetManager.show("day-details-sheet", {

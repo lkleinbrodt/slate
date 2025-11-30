@@ -89,6 +89,11 @@ async function finalizeDay(day: string) {
 
 export async function processRollover(nowLocalDate: string) {
   const lastProcessedDateStr = await storage.getItem("last_processed_date");
+  // Note: If lastProcessedDateStr is null (fresh install or cleared KV store),
+  // we default to today. This means if a user installs, uses the app, deletes it,
+  // and reinstalls the next day, the previous day's rollover will be skipped.
+  // This is an acceptable edge case for V1. Future improvement: track app
+  // installation date and default to that instead.
   let lastProcessedDate = lastProcessedDateStr
     ? lastProcessedDateStr
     : nowLocalDate;

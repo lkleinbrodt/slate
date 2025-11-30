@@ -105,12 +105,6 @@ Architecture improvements completed
 - ✅ **ROBUST ROLLOVER**: Reliable day boundary handling with automatic carryover
 - ✅ **NAVIGATION OVERHAUL**: Four-tab structure with improved user experience
 
-Known issues
-
-- **Data Migration**: New schema requires fresh database (existing data not migrated)
-- **Component Updates**: Some components may need updates for new data structures
-- **Dynamic Routes**: History day details use ActionSheet instead of dedicated route
-
 Recent decisions
 
 - **ARCHITECTURE**: Repository pattern provides clean separation of concerns

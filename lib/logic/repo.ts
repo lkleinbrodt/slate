@@ -40,7 +40,15 @@ export const listTodayTasks = (date: string) =>
   db
     .select()
     .from(tasks)
-    .where(and(sql`status IN ('open', 'done')`, eq(tasks.scheduledFor, date)));
+    .where(
+      and(
+        sql`status IN ('open', 'done')`,
+        sql`(
+          scheduled_for = ${date} 
+          OR (status = 'done' AND date(completed_at) = ${date})
+        )`
+      )
+    );
 export const listOverdueTasks = (date: string) =>
   db
     .select()
@@ -168,6 +176,118 @@ export const getDayTasksHistory = (date: string) =>
     .from(taskHistory)
     .leftJoin(tasks, eq(taskHistory.taskId, tasks.id))
     .where(eq(taskHistory.date, date));
+
+// ====== Unified Day Snapshot ======
+/**
+ * Unified interface for a day's snapshot - works for both today (live data) and history (immutable data)
+ */
+export interface DaySnapshotTask {
+  task: Task;
+  isCompleted: boolean;
+  isPlanned: boolean;
+}
+
+export interface DaySnapshotHabit {
+  habit: Habit;
+  isCompleted: boolean;
+}
+
+export interface DaySnapshot {
+  date: string;
+  tasks: DaySnapshotTask[];
+  habits: DaySnapshotHabit[];
+  isPerfectDay: boolean;
+}
+
+/**
+ * Get a unified snapshot of a day's state.
+ * - If date === today: Queries live tables (tasks, habit_completions)
+ * - If date < today: Queries history tables (task_history, habit_history)
+ * Returns the same interface for both, making the UI agnostic to data source.
+ * 
+ * @param date - The date to get snapshot for (YYYY-MM-DD)
+ * @param today - The current date (YYYY-MM-DD) - pass this to determine if querying live vs history
+ */
+export async function getDaySnapshot(
+  date: string,
+  today: string
+): Promise<DaySnapshot> {
+  const isToday = date === today;
+
+  if (isToday) {
+    // Query live data for today
+    const [todayTasks, activeHabits, habitCompletions] = await Promise.all([
+      listTodayTasks(date),
+      listActiveHabits(),
+      getHabitCompletionsForDate(date),
+    ]);
+
+    // Build completion lookup for habits
+    const completionSet = new Set(
+      habitCompletions.map((c) => c.habitId)
+    );
+
+    // Transform tasks to unified format
+    const snapshotTasks: DaySnapshotTask[] = todayTasks.map((task) => ({
+      task,
+      isCompleted: task.status === "done",
+      isPlanned: true, // All tasks in listTodayTasks are planned
+    }));
+
+    // Transform habits to unified format
+    const snapshotHabits: DaySnapshotHabit[] = activeHabits.map((habit) => ({
+      habit,
+      isCompleted: completionSet.has(habit.id),
+    }));
+
+    // Calculate perfect day: all active habits must be completed
+    const isPerfectDay =
+      activeHabits.length > 0 &&
+      activeHabits.every((h) => completionSet.has(h.id));
+
+    return {
+      date,
+      tasks: snapshotTasks,
+      habits: snapshotHabits,
+      isPerfectDay,
+    };
+  } else {
+    // Query history data for past dates
+    const [historyTasks, historyHabits] = await Promise.all([
+      getDayTasksHistory(date),
+      getDayHabitsHistory(date),
+    ]);
+
+    // Transform history tasks to unified format
+    const snapshotTasks: DaySnapshotTask[] = historyTasks
+      .filter((row) => row.tasks !== null) // Filter out deleted tasks
+      .map((row) => ({
+        task: row.tasks!,
+        isCompleted: row.task_history.completed === 1,
+        isPlanned: row.task_history.planned === 1,
+      }));
+
+    // Transform history habits to unified format
+    const snapshotHabits: DaySnapshotHabit[] = historyHabits
+      .filter((row) => row.habits !== null) // Filter out deleted habits
+      .map((row) => ({
+        habit: row.habits!,
+        isCompleted: row.habit_history.completed === 1,
+      }));
+
+    // Calculate perfect day from history
+    const isPerfectDay =
+      historyHabits.length > 0 &&
+      historyHabits.every((h) => h.habit_history.completed === 1);
+
+    return {
+      date,
+      tasks: snapshotTasks,
+      habits: snapshotHabits,
+      isPerfectDay,
+    };
+  }
+}
 
 // ====== Types ======
 export type Task = import("@/lib/db/schema").Task;

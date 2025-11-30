@@ -16,32 +16,21 @@ export default function TodayScreen() {
     todayTasks,
     activeHabits,
     todaysHabitCompletions,
-    completeTask,
-    undoCompleteTask,
-    completeHabit,
-    undoHabit,
+    toggleTask,
+    toggleHabit,
     skipTaskForToday,
   } = useAppStore();
 
   const completedTodayTasks = todayTasks.filter((t) => t.status === "done");
 
-  const handleTaskToggle = (taskId: string, isCompleted: boolean) => {
-    if (isCompleted) {
-      undoCompleteTask(taskId);
-    } else {
-      completeTask(taskId);
-    }
+  const handleTaskToggle = (taskId: string, _isCompleted: boolean) => {
+    // Use the new optimistic toggleTask - it handles the state flip internally
+    toggleTask(taskId);
   };
 
   const handleHabitToggle = (habitId: string) => {
-    const isCompleted = todaysHabitCompletions.some(
-      (c) => c.habitId === habitId
-    );
-    if (isCompleted) {
-      undoHabit(habitId);
-    } else {
-      completeHabit(habitId);
-    }
+    // Use the new optimistic toggleHabit - it handles the state flip internally
+    toggleHabit(habitId);
   };
 
   const handleOpenAddModal = () => {

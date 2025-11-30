@@ -1,13 +1,18 @@
 import * as repo from "@/lib/logic/repo";
 
-import { addDays, getToday } from "@/lib/logic/dates";
+import {
+  habitHistory,
+  HabitHistory,
+  taskHistory,
+  TaskHistory,
+} from "@/lib/db/schema";
 import { and, count, eq, gte, lte } from "drizzle-orm";
-import { calculateStreak, isPerfectDay } from "@/lib/logic/streaks";
-import { habitHistory, taskHistory } from "@/lib/db/schema";
 
-import { create } from "zustand";
 import { db } from "@/lib/db/connection";
-import { useSettingsStore } from "./settings";
+import { addDays } from "@/lib/logic/dates";
+import { calculateStreak } from "@/lib/logic/streaks";
+import { create } from "zustand";
+import { useTimeStore } from "./timeStore";
 
 interface HistoryState {
   loading: boolean;
@@ -28,8 +33,25 @@ interface HistoryState {
   selectDay: (date: string) => void;
   clearSelectedDay: () => void;
   getDayDetails: (date: string) => Promise<{
-    tasks: any[];
-    habits: any[];
+    tasks: {
+      task_history: {
+        id: string;
+        date: string;
+        taskId: string;
+        planned: boolean;
+        completed: boolean;
+      };
+      tasks: repo.Task;
+    }[];
+    habits: {
+      habit_history: {
+        id: string;
+        date: string;
+        habitId: string;
+        completed: boolean;
+      };
+      habits: repo.Habit;
+    }[];
     isPerfectDay: boolean;
   }>;
 }
@@ -48,8 +70,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     set({ loading: true });
     try {
       // Load overall stats
-      const dayStart = useSettingsStore.getState().dayStart;
-      const today = getToday(dayStart);
+      const today = useTimeStore.getState().getCurrentDate();
       const sevenDaysAgo = addDays(today, -7);
 
       console.log(
@@ -69,7 +90,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
             eq(taskHistory.completed, true)
           )
         )
-        .then((result: any) => result[0]?.count || 0);
+        .then((result) => result[0]?.count || 0);
 
       // Get perfect days count - need to count unique dates where all habits were completed
       const perfectDaysResult = await db
@@ -82,7 +103,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 
       // Group by date and count perfect days
       const habitDataByDate: Record<string, boolean[]> = {};
-      perfectDaysResult.forEach((record: any) => {
+      perfectDaysResult.forEach((record) => {
         if (!habitDataByDate[record.date]) habitDataByDate[record.date] = [];
         habitDataByDate[record.date].push(record.completed);
       });
@@ -134,7 +155,11 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       // Load calendar data for the month
       const startOfMonth = `${month}-01`;
       const endOfMonth = `${month}-31`;
+      const today = useTimeStore.getState().getCurrentDate();
+      const isTodayInMonth =
+        today >= startOfMonth && today <= endOfMonth;
 
+      // Load history data for the month
       const habitData = await db
         .select()
         .from(habitHistory)
@@ -169,18 +194,39 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       const habitByDate: Record<string, boolean[]> = {};
       const taskByDate: Record<string, boolean[]> = {};
 
-      habitData.forEach((record: any) => {
+      habitData.forEach((record: HabitHistory) => {
         if (!habitByDate[record.date]) habitByDate[record.date] = [];
         habitByDate[record.date].push(record.completed);
       });
 
-      taskData.forEach((record: any) => {
+      taskData.forEach((record: TaskHistory) => {
         if (!taskByDate[record.date]) taskByDate[record.date] = [];
         taskByDate[record.date].push(record.completed);
       });
 
-      // Calculate metrics for each date
+      // If today is in this month, merge today's live data
+      if (isTodayInMonth) {
+        const todaySnapshot = await repo.getDaySnapshot(today, today);
+        const todayHabitsCompleted = todaySnapshot.habits.filter(
+          (h) => h.isCompleted
+        ).length;
+        const todayTasksCompleted = todaySnapshot.tasks.filter(
+          (t) => t.isCompleted
+        ).length;
+
+        // Override today's data with live data (this ensures today shows current progress)
+        calendarData[today] = {
+          isPerfectDay: todaySnapshot.isPerfectDay,
+          tasksCompleted: todayTasksCompleted,
+          habitsCompleted: todayHabitsCompleted,
+        };
+      }
+
+      // Calculate metrics for each date (excluding today if it was already set)
       Object.keys(habitByDate).forEach((date) => {
+        // Skip today if we already set it from live data
+        if (date === today && isTodayInMonth) return;
+
         const habitsCompleted = habitByDate[date].filter(Boolean).length;
         const totalHabits = habitByDate[date].length;
         const isPerfectDay = habitsCompleted === totalHabits && totalHabits > 0;
@@ -208,17 +254,32 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 
   getDayDetails: async (date: string) => {
     try {
-      const [tasks, habits] = await Promise.all([
-        repo.getDayTasksHistory(date),
-        repo.getDayHabitsHistory(date),
-      ]);
+      const today = useTimeStore.getState().getCurrentDate();
+      const snapshot = await repo.getDaySnapshot(date, today);
 
-      const perfectDay = await isPerfectDay(date);
-
+      // Transform to the format expected by existing components
+      // (maintaining backward compatibility while using unified source)
       return {
-        tasks,
-        habits,
-        isPerfectDay: perfectDay,
+        tasks: snapshot.tasks.map((item) => ({
+          task_history: {
+            id: `th-${item.task.id}-${date}`,
+            date,
+            taskId: item.task.id,
+            planned: item.isPlanned,
+            completed: item.isCompleted,
+          },
+          tasks: item.task,
+        })),
+        habits: snapshot.habits.map((item) => ({
+          habit_history: {
+            id: `hh-${item.habit.id}-${date}`,
+            date,
+            habitId: item.habit.id,
+            completed: item.isCompleted,
+          },
+          habits: item.habit,
+        })),
+        isPerfectDay: snapshot.isPerfectDay,
       };
     } catch (error) {
       console.error("Failed to get day details:", error);
