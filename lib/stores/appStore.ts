@@ -4,6 +4,7 @@ import { addDays } from "@/lib/logic/dates";
 
 import { create } from "zustand";
 import { useTimeStore } from "./timeStore";
+import { useSettingsStore } from "./settings";
 import { updateHabitRemindersIfNeeded } from "@/lib/services/notifications";
 
 type Task = repo.Task;
@@ -262,3 +263,17 @@ export const useAppStore = create<AppState>((set, get) => ({
     await get().refreshData();
   },
 }));
+
+// Subscribe to dayStart changes - TimeStore will handle date updates,
+// but we need to refresh data when dayStart changes
+useSettingsStore.subscribe(
+  (state) => state.dayStart,
+  () => {
+    const appState = useAppStore.getState();
+    // TimeStore will automatically check and update date when dayStart changes
+    // via its checkAndUpdateIfNeeded method, but we refresh data here
+    if (appState.isInitialized) {
+      appState.refreshData();
+    }
+  }
+);

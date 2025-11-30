@@ -98,13 +98,19 @@ export async function processRollover(nowLocalDate: string) {
     ? lastProcessedDateStr
     : nowLocalDate;
 
+  if (!lastProcessedDateStr) {
+    await storage.setItem("last_processed_date", lastProcessedDate);
+  }
+
+  console.log(`Processing rollover from ${lastProcessedDate} to ${nowLocalDate}`);
+
   while (
     fromLocalDate(lastProcessedDate).isBefore(fromLocalDate(nowLocalDate))
   ) {
     const dayToFinalize = lastProcessedDate;
     await finalizeDay(dayToFinalize);
 
-    // Carry over unfinished tasks
+    // Carry over unfinished tasks to the next day
     const carryOverTasks = await db
       .select({ id: tasks.id })
       .from(tasks)
@@ -120,8 +126,13 @@ export async function processRollover(nowLocalDate: string) {
         .where(eq(tasks.id, task.id));
     }
 
+    // Note: We don't reset completed tasks anymore - the query filtering handles this
+    // This keeps the data integrity intact while solving the display problem
+
     // Update last processed date and move to the next day
     lastProcessedDate = nextDay;
     await storage.setItem("last_processed_date", lastProcessedDate);
   }
+
+  await storage.setItem("last_processed_date", lastProcessedDate);
 }

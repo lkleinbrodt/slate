@@ -1,25 +1,25 @@
 import "react-native-reanimated";
 import "../sheets";
 
+import { ActivityIndicator, Text, View } from "react-native";
 import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
-
-import { ToastProvider } from "@/components/ToastProvider";
-import { useColorScheme } from "@/hooks/use-color-scheme";
-import { initializeDatabase } from "@/lib/db/connection";
 import { getNotificationPermissionStatus, rescheduleAllNotifications } from "@/lib/services/notifications";
-import { useAppStore } from "@/lib/stores/appStore";
-import { useSettingsStore } from "@/lib/stores/settings";
-import { useTimeStore } from "@/lib/stores/timeStore";
+import { useEffect, useState } from "react";
+
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SheetProvider } from "react-native-actions-sheet";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { SheetProvider } from "react-native-actions-sheet";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { ToastProvider } from "@/components/ToastProvider";
+import { initializeDatabase } from "@/lib/db/connection";
+import { useAppStore } from "@/lib/stores/appStore";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useSettingsStore } from "@/lib/stores/settings";
+import { useTimeStore } from "@/lib/stores/timeStore";
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();

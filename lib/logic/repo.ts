@@ -6,7 +6,7 @@ import {
   taskHistory,
   tasks,
 } from "@/lib/db/schema";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/connection";
 import { nowISO } from "@/lib/logic/dates";
