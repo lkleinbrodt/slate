@@ -85,8 +85,14 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
           setTitle(habit.title);
         }
       }
+    } else if (mode === "add") {
+      // Clear state for new item
+      setTitle("");
+      setScheduledDate(null);
+      setDependsOnTaskId(null);
+      setItemType(initialType || "task");
     }
-  }, [mode, itemId, itemType, getTaskById, getHabitById]);
+  }, [mode, itemId, itemType, initialType, getTaskById, getHabitById]);
 
   const handleSave = async () => {
     if (!title.trim()) {

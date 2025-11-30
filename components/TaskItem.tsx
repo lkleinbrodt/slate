@@ -1,11 +1,16 @@
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
+import React, { useEffect } from "react";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+} from "react-native-reanimated";
 
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { UI } from "@/lib/constants/app";
-import React from "react";
 import { SheetManager } from "react-native-actions-sheet";
-import { CheckableListItem } from "./CheckableListItem";
+import { SatisfyingCheckbox } from "./SatisfyingCheckbox";
 import { ThemedText } from "./themed-text";
 import { TaskItemProps } from "./types";
 
@@ -19,6 +24,13 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   const iconColor = useThemeColor({}, "textTertiary");
   const textColor = useThemeColor({}, "text");
   const textSecondaryColor = useThemeColor({}, "textSecondary");
+  const isDone = task.status === "done";
+  const strikeWidth = useSharedValue(isDone ? 100 : 0);
+
+  useEffect(() => {
+    // Animate strikethrough: 0% to 100% width
+    strikeWidth.value = withTiming(isDone ? 100 : 0, { duration: 250 });
+  }, [isDone]);
 
   const handleToggle = () => {
     if (!isReadOnly) {
@@ -44,76 +56,93 @@ export const TaskItem: React.FC<TaskItemProps> = ({
     }
   };
 
+  const rStrikeLine = useAnimatedStyle(() => ({
+    width: `${strikeWidth.value}%`,
+  }));
+
+  const rTextOpacity = useAnimatedStyle(() => ({
+    opacity: withTiming(isDone ? 0.5 : 1, { duration: 300 }),
+  }));
+
   return (
-    <CheckableListItem
-      isCompleted={task.status === "done"}
-      onToggle={handleToggle}
-    >
-      <View style={styles.content}>
-        <View style={styles.textContainer}>
-          <ThemedText
-            type="body"
-            style={[
-              styles.title,
-              { color: textColor },
-              isCompleted && styles.completedText,
-            ]}
-          >
+    <View style={styles.container}>
+      {/* Checkbox */}
+      {!isReadOnly && (
+        <SatisfyingCheckbox checked={isDone} onPress={handleToggle} />
+      )}
+
+      {/* Text Container */}
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={handleToggle}
+        style={styles.textWrapper}
+        disabled={isReadOnly}
+      >
+        <Animated.View style={rTextOpacity}>
+          <ThemedText type="body" style={[styles.text, { color: textColor }]}>
             {task.title}
           </ThemedText>
-          {task.dueDate && (
-            <ThemedText
-              type="caption"
-              style={[styles.dueDate, { color: textSecondaryColor }]}
-            >
-              Due: {task.dueDate}
-            </ThemedText>
-          )}
-        </View>
 
-        {!isReadOnly && !isCompleted && (
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={handleSkipForToday}
-            >
-              <MaterialCommunityIcons
-                name="sleep"
-                size={20}
-                color={iconColor}
-              />
-            </TouchableOpacity>
+          {/* The Strikethrough Line */}
+          <Animated.View style={[styles.strikeLine, rStrikeLine]} />
+        </Animated.View>
 
-            <TouchableOpacity style={styles.iconButton} onPress={handleEdit}>
-              <MaterialIcons name="more-horiz" size={20} color={iconColor} />
-            </TouchableOpacity>
-          </View>
+        {task.dueDate && (
+          <ThemedText
+            type="caption"
+            style={[styles.subtext, { color: textSecondaryColor }]}
+          >
+            Due: {task.dueDate}
+          </ThemedText>
         )}
-      </View>
-    </CheckableListItem>
+      </TouchableOpacity>
+
+      {!isReadOnly && !isDone && (
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={handleSkipForToday}
+          >
+            <MaterialCommunityIcons name="sleep" size={20} color={iconColor} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.iconButton} onPress={handleEdit}>
+            <MaterialIcons name="more-horiz" size={20} color={iconColor} />
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  content: {
+  container: {
     flexDirection: "row",
     alignItems: "center",
-    flex: 1,
-    gap: UI.SPACING.SM,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    minHeight: UI.MIN_TOUCH_TARGET_SIZE,
   },
-  textContainer: {
+  textWrapper: {
     flex: 1,
+    marginLeft: 12,
+    justifyContent: "center",
   },
-  title: {
+  text: {
+    fontSize: 17, // 16-17px is good for readability
     fontWeight: "500",
-    marginBottom: UI.SPACING.XS,
   },
-  completedText: {
-    textDecorationLine: "line-through",
-    opacity: 0.6,
-  },
-  dueDate: {
+  subtext: {
+    marginTop: 2,
     opacity: 0.8,
+  },
+  strikeLine: {
+    position: "absolute",
+    height: 2,
+    backgroundColor: "#94A3B8", // Slate-400
+    top: "50%", // Centered vertically over text
+    left: 0,
+    marginTop: -1, // Adjust for height
   },
   buttonContainer: {
     flexDirection: "row",

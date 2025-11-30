@@ -3,14 +3,13 @@ import React, { useState } from "react";
 import {
   getCurrentMonth,
   getSixMonthsAgo,
-  getToday,
   isDateAfter,
 } from "@/lib/logic/dates";
 
 import { Calendar } from "react-native-calendars";
 import { useHistoryStore } from "@/lib/stores/historyStore";
-import { useSettingsStore } from "@/lib/stores/settings";
 import { useThemeColor } from "@/hooks/use-theme-color";
+import { useTimeStore } from "@/lib/stores/timeStore";
 
 interface HistoryCalendarProps {
   onDayPress: (date: string) => void;
@@ -18,7 +17,7 @@ interface HistoryCalendarProps {
 
 export const HistoryCalendar = ({ onDayPress }: HistoryCalendarProps) => {
   const { calendarData, loadCalendarData } = useHistoryStore();
-  const { dayStart } = useSettingsStore();
+  const { getCurrentDate } = useTimeStore();
 
   // Theme colors
   const backgroundColor = useThemeColor({}, "background");
@@ -35,7 +34,7 @@ export const HistoryCalendar = ({ onDayPress }: HistoryCalendarProps) => {
   const [notificationOpacity] = useState(new Animated.Value(0));
   const [notificationText, setNotificationText] = useState("");
 
-  const currentDate = getToday(dayStart);
+  const currentDate = getCurrentDate();
   const sixMonthsAgo = getSixMonthsAgo();
 
   const getMarkedDates = () => {

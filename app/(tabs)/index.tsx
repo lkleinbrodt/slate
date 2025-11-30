@@ -7,11 +7,9 @@ import { SheetManager } from "react-native-actions-sheet";
 import { SlateSection } from "@/components/planner";
 import { TabHeader } from "@/components/shared/TabHeader";
 import { useAppStore } from "@/lib/stores/appStore";
-import { useSettingsStore } from "@/lib/stores/settings";
 
 export default function SlateScreen() {
   const { slateTasks, planTaskForToday } = useAppStore();
-  const { dayStart } = useSettingsStore();
 
   const handleOpenAddModal = () => {
     SheetManager.show("add-edit-modal", {
@@ -27,7 +25,6 @@ export default function SlateScreen() {
         <SlateSection
           tasks={slateTasks}
           onAddToToday={(type, id) => planTaskForToday(id)}
-          dayStart={dayStart}
         />
       </ScrollView>
 

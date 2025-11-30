@@ -57,3 +57,5 @@ export type Habit = typeof habits.$inferSelect;
 export type NewHabit = typeof habits.$inferInsert;
 export type HabitCompletion = typeof habitCompletions.$inferSelect;
 export type NewHabitCompletion = typeof habitCompletions.$inferInsert;
+export type HabitHistory = typeof habitHistory.$inferSelect;
+export type TaskHistory = typeof taskHistory.$inferSelect;

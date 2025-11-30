@@ -8,15 +8,25 @@ import { ThemedText } from "./themed-text";
 
 interface TimePickerButtonProps {
   time: string;
-  onPress: () => void;
+  onTimeChange?: (time: string) => void;
+  onPress?: () => void;
   disabled?: boolean;
 }
 
 export const TimePickerButton: React.FC<TimePickerButtonProps> = ({
   time,
+  onTimeChange,
   onPress,
   disabled = false,
 }) => {
+  const handlePress = () => {
+    if (onPress) {
+      onPress();
+    } else if (onTimeChange) {
+      // Default behavior: open time picker if onTimeChange is provided
+      onTimeChange(time);
+    }
+  };
   const backgroundColor = useThemeColor({}, "backgroundSecondary");
   const borderColor = useThemeColor({}, "border");
   const textColor = useThemeColor({}, "text");
@@ -29,7 +39,7 @@ export const TimePickerButton: React.FC<TimePickerButtonProps> = ({
         { backgroundColor, borderColor },
         disabled && styles.disabled,
       ]}
-      onPress={onPress}
+      onPress={handlePress}
       disabled={disabled}
     >
       <Ionicons

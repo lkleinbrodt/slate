@@ -1,25 +1,25 @@
 import "react-native-reanimated";
 import "../sheets";
 
+import { ActivityIndicator, Text, View } from "react-native";
 import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
+import { getNotificationPermissionStatus, rescheduleAllNotifications } from "@/lib/services/notifications";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, AppState, Text, View } from "react-native";
 
-import { ToastProvider } from "@/components/ToastProvider";
-import { useColorScheme } from "@/hooks/use-color-scheme";
-import { initializeDatabase } from "@/lib/db/connection";
-import { getToday } from "@/lib/logic/dates";
-import { processRollover } from "@/lib/logic/rollover";
-import { useAppStore } from "@/lib/stores/appStore";
-import { useSettingsStore } from "@/lib/stores/settings";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SheetProvider } from "react-native-actions-sheet";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { SheetProvider } from "react-native-actions-sheet";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { ToastProvider } from "@/components/ToastProvider";
+import { initializeDatabase } from "@/lib/db/connection";
+import { useAppStore } from "@/lib/stores/appStore";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useSettingsStore } from "@/lib/stores/settings";
+import { useTimeStore } from "@/lib/stores/timeStore";
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -27,59 +27,45 @@ export default function RootLayout() {
   const [error, setError] = useState<string | null>(null);
   const { loadSettings } = useSettingsStore();
   const { init: initAppStore } = useAppStore();
+  const { initialize: initTimeStore } = useTimeStore();
 
   useEffect(() => {
+    let cleanupTimeStore: (() => void) | undefined;
+
     const initialize = async () => {
       try {
         await initializeDatabase();
         await loadSettings();
 
-        // This needs to be called after settings are loaded
-        const today = getToday(useSettingsStore.getState().dayStart);
-        await processRollover(today);
+        // Initialize TimeStore first - it will handle date tracking and rollover
+        cleanupTimeStore = initTimeStore();
 
+        // Initialize app store (which now uses TimeStore for current date)
         await initAppStore();
+
+        // Check notification permission status and reschedule notifications
+        const permissionStatus = await getNotificationPermissionStatus();
+        useSettingsStore.getState().setNotificationPermissionStatus(permissionStatus);
+        if (permissionStatus === "granted") {
+          await rescheduleAllNotifications();
+        }
+
         setIsReady(true);
       } catch (e) {
         console.error("Initialization failed:", e);
         setError(e instanceof Error ? e.message : "An unknown error occurred.");
       }
     };
+    
     initialize();
-
-    const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active") {
-        console.log(
-          "App became active, re-checking rollover and refreshing data."
-        );
-        const today = getToday(useSettingsStore.getState().dayStart);
-        processRollover(today).then(() => {
-          // Simply refresh data - the query filtering will handle the rest
-          const appState = useAppStore.getState();
-          appState.syncTodayDate();
-          appState.refreshData();
-        });
-      }
-    });
-    // Also handle day change while app remains active
-    const intervalId = setInterval(() => {
-      const currentToday = getToday(useSettingsStore.getState().dayStart);
-      const storeToday = useAppStore.getState().todayDate;
-      if (currentToday !== storeToday) {
-        console.log(
-          `Detected local day change from ${storeToday} to ${currentToday}. Processing rollover.`
-        );
-        processRollover(currentToday).then(() => {
-          useAppStore.getState().setToday(currentToday);
-        });
-      }
-    }, 60 * 1000);
-
+    
+    // Cleanup on unmount
     return () => {
-      sub.remove();
-      clearInterval(intervalId);
+      if (cleanupTimeStore) {
+        cleanupTimeStore();
+      }
     };
-  }, [loadSettings, initAppStore]);
+  }, [loadSettings, initAppStore, initTimeStore]);
 
   if (error) {
     return (

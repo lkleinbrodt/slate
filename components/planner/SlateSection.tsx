@@ -1,19 +1,19 @@
-import { fromLocalDate, getToday } from "@/lib/logic/dates";
 import React, { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
+import { Ionicons } from "@expo/vector-icons";
 import { SlateItem } from "@/components/SlateItem";
+import { Task } from "@/lib/types/common";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { useThemeColor } from "@/hooks/use-theme-color";
 import { UI } from "@/lib/constants/app";
-import { Task } from "@/lib/types/common";
-import { Ionicons } from "@expo/vector-icons";
+import { fromLocalDate } from "@/lib/logic/dates";
+import { useThemeColor } from "@/hooks/use-theme-color";
+import { useTimeStore } from "@/lib/stores/timeStore";
 
 interface SlateSectionProps {
   tasks: Task[];
   onAddToToday: (type: "task" | "habit", id: string) => void;
-  dayStart: string;
 }
 
 interface TaskSection {
@@ -22,9 +22,9 @@ interface TaskSection {
   isUnscheduled?: boolean;
 }
 
-const formatDateHeader = (dateStr: string, dayStart: string): string => {
+const formatDateHeader = (dateStr: string, todayDate: string): string => {
   const date = fromLocalDate(dateStr);
-  const today = fromLocalDate(getToday(dayStart));
+  const today = fromLocalDate(todayDate);
   const tomorrow = today.add(1, "day");
   const dayAfterTomorrow = today.add(2, "day");
 
@@ -42,8 +42,10 @@ const formatDateHeader = (dateStr: string, dayStart: string): string => {
 export const SlateSection: React.FC<SlateSectionProps> = ({
   tasks,
   onAddToToday,
-  dayStart,
 }) => {
+  const { getCurrentDate } = useTimeStore();
+  const todayDate = getCurrentDate();
+
   const sections = useMemo(() => {
     const scheduledTasks = tasks.filter((task) => task.scheduledFor);
     const unscheduledTasks = tasks.filter((task) => !task.scheduledFor);
@@ -64,7 +66,7 @@ export const SlateSection: React.FC<SlateSectionProps> = ({
 
     // Add scheduled sections (soonest first)
     sortedDates.forEach((date) => {
-      const formattedDate = formatDateHeader(date, dayStart);
+      const formattedDate = formatDateHeader(date, todayDate);
       sections.push({
         title: formattedDate,
         tasks: tasksByDate[date],
@@ -81,7 +83,7 @@ export const SlateSection: React.FC<SlateSectionProps> = ({
     }
 
     return sections;
-  }, [tasks, dayStart]);
+  }, [tasks, todayDate]);
 
   const backgroundColor = useThemeColor({}, "backgroundSecondary");
   const primaryColor = useThemeColor({}, "primary");

@@ -1,5 +1,5 @@
 import { LevelUpAnimation, TapWin } from "./celebration";
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { UI } from "@/lib/constants/app";
@@ -18,6 +18,7 @@ export const CheckableListItem: React.FC<CheckableListItemProps> = ({
 }) => {
   const [triggerLevelUp, setTriggerLevelUp] = useState(false);
   const [isVisuallyCompleted, setIsVisuallyCompleted] = useState(isCompleted);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const primaryColor = useThemeColor({}, "primary");
   const borderColor = useThemeColor({}, "border");
 
@@ -25,21 +26,32 @@ export const CheckableListItem: React.FC<CheckableListItemProps> = ({
   const handleLevelUpComplete = () => setTriggerLevelUp(false);
 
   // Sync visual state when prop changes
-  React.useEffect(() => {
+  useEffect(() => {
     setIsVisuallyCompleted(isCompleted);
   }, [isCompleted]);
+
+  // Clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleToggle = () => {
     if (!isCompleted) {
       // Immediately update visual state to show checked appearance
       setIsVisuallyCompleted(true);
       handleLevelUp(); // Trigger level up only on completion
-      // Delay the state change to allow animation to complete
-      setTimeout(() => {
-        onToggle();
-      }, 1000); // Match the LevelUpAnimation duration
+      // Call onToggle immediately - no delay to prevent race conditions
+      onToggle();
     } else {
-      // For unchecking, no animation needed, so call immediately
+      // Clear any pending timeout when unchecking
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
       setIsVisuallyCompleted(false);
       onToggle();
     }
