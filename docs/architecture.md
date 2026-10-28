@@ -11,8 +11,9 @@ EAS (`runtimeVersion` policy `appVersion`).
 ## Layout
 
 ```
-app/                 screens: (tabs)/today, index (Slate), history, settings; _layout boots the app
-components/          UI; planner/ (Today + Slate sections), history/, celebration/ (check animations)
+app/                 screens: (tabs)/today, slate, history, settings; index redirects to Today; _layout boots the app
+components/          UI; ui/ (design-system primitives), planner/ (Today + Slate sections), history/
+constants/theme.ts   design tokens: colors (light/dark), type, spacing, radii, shadows, motion
 sheets.tsx           action-sheet registry: add/edit, date picker, dependency picker, day details
 lib/db/              schema.ts (drizzle), migrations.ts, connection.ts
 lib/logic/           repo.ts (all queries), rollover.ts, streaks.ts, dates.ts
@@ -20,6 +21,22 @@ lib/stores/          appStore (tasks/habits), timeStore (current day), settings,
 lib/services/        notifications.ts
 tests/               logic tests; scripts/run-tests.js is a tiny TS runner with module mocks
 ```
+
+## Design
+
+The look comes from the app icon: a sandstone tile with a sunrise pressed into it.
+Light mode is warm sand, dark mode is slate at dusk. One bold accent (sunrise,
+`primary`) marks actions and tasks; sage (`habit`) marks habits; amber (`streak`)
+marks streaks. Headings are Fraunces, everything else DM Sans. Screens sit on a
+faint paper grain (`components/ui/Screen`).
+
+- Read colors with `useTheme()` and text styles via `<ThemedText type=... tone=...>`;
+  avoid hard-coded colors so both themes keep working.
+- Icons are Phosphor, registered one by one in `components/ui/Icon.tsx` (importing
+  the package index would bundle all ~1,500).
+- Empty-state art (`components/ui/Illustration.tsx`) is simple placeholder SVG.
+- In dev builds, Settings → Developer → "Load demo data" fills the database
+  (`lib/dev/seed.ts`), replacing all tasks, habits and history.
 
 ## Data model
 
