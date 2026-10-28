@@ -3,7 +3,10 @@ import {
   PlannerHeader,
   TodayTasksSection,
 } from "@/components/planner";
+import * as Haptics from "expo-haptics";
+
 import { ScrollView, StyleSheet, View } from "react-native";
+import { useEffect, useRef } from "react";
 
 import { Screen } from "@/components/ui/Screen";
 import { displayStreak } from "@/lib/logic/streaks";
@@ -39,6 +42,20 @@ export default function TodayScreen() {
       displayStreak(habitBaseStreaks[h.id] ?? 0, completedHabitIds.has(h.id)),
     ])
   );
+
+  // A little reward when the last habit or the last task of the day is done
+  const allHabitsDone =
+    activeHabits.length > 0 && completedActiveHabits.length === activeHabits.length;
+  const allTasksDone =
+    todayTasks.length > 0 && completedTodayTasks.length === todayTasks.length;
+  const previous = useRef({ allHabitsDone, allTasksDone });
+  useEffect(() => {
+    const before = previous.current;
+    if ((allHabitsDone && !before.allHabitsDone) || (allTasksDone && !before.allTasksDone)) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    previous.current = { allHabitsDone, allTasksDone };
+  }, [allHabitsDone, allTasksDone]);
 
   return (
     <Screen>

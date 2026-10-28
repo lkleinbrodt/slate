@@ -18,12 +18,15 @@ interface TimePickerButtonProps {
   time: string;
   onPress: () => void;
   disabled?: boolean;
+  /** Drop the clock icon where space is tight */
+  compact?: boolean;
 }
 
 export const TimePickerButton: React.FC<TimePickerButtonProps> = ({
   time,
   onPress,
   disabled = false,
+  compact = false,
 }) => {
   const { colors } = useTheme();
   return (
@@ -38,7 +41,7 @@ export const TimePickerButton: React.FC<TimePickerButtonProps> = ({
       accessibilityRole="button"
       accessibilityLabel={`Time, ${formatTime(time)}`}
     >
-      <Icon name="clock" size={15} color="textSecondary" weight="bold" />
+      {!compact && <Icon name="clock" size={15} color="textSecondary" weight="bold" />}
       <ThemedText type="calloutMedium" style={styles.text}>
         {formatTime(time)}
       </ThemedText>

@@ -4,11 +4,10 @@ import Svg, { Circle } from "react-native-svg";
 
 import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
-import { PressableScale } from "@/components/ui/PressableScale";
+import { PressableScale, haptic } from "@/components/ui/PressableScale";
 import { ThemedText } from "@/components/themed-text";
 import dayjs from "dayjs";
 import { getSixMonthsAgo } from "@/lib/logic/dates";
-import { haptic } from "@/components/ui/PressableScale";
 import { useFocusEffect } from "expo-router";
 import { useHistoryStore } from "@/lib/stores/historyStore";
 import { useTheme } from "@/hooks/use-theme";

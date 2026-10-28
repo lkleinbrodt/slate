@@ -23,14 +23,3 @@ export interface SlateItemProps {
   task: Task;
   onAddToToday: (type: "task", id: string) => void;
 }
-
-export interface ProgressTrackerProps {
-  label: string;
-  completed: number;
-  total: number;
-  progress: number;
-}
-
-export interface AddButtonProps {
-  onPress: () => void;
-}

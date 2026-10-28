@@ -8,11 +8,10 @@ import { Sheet, SheetHeader } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { Icon } from "@/components/ui/Icon";
-import { PressableScale } from "@/components/ui/PressableScale";
+import { PressableScale, haptic } from "@/components/ui/PressableScale";
 import { ThemedText } from "@/components/themed-text";
 import { formatRelativeDay } from "@/lib/utils/dateFormat";
 import { fromLocalDate } from "@/lib/logic/dates";
-import { haptic } from "@/components/ui/PressableScale";
 import { useAppStore } from "@/lib/stores/appStore";
 import { useTheme } from "@/hooks/use-theme";
 

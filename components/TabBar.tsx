@@ -8,11 +8,10 @@ import { Motion, Radius, shadow } from "@/constants/theme";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { PressableScale } from "@/components/ui/PressableScale";
+import { PressableScale, haptic } from "@/components/ui/PressableScale";
 import React from "react";
 import { SheetManager } from "react-native-actions-sheet";
 import { ThemedText } from "@/components/themed-text";
-import { haptic } from "@/components/ui/PressableScale";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/hooks/use-theme";
 

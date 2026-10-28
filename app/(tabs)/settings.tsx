@@ -246,14 +246,16 @@ export default function SettingsScreen() {
                           time={habitReminderStart}
                           onPress={() => setEditingTime("windowStart")}
                           disabled={!granted}
+                          compact
                         />
                         <ThemedText type="caption" tone="textTertiary">
-                          and
+                          to
                         </ThemedText>
                         <TimePickerButton
                           time={habitReminderEnd}
                           onPress={() => setEditingTime("windowEnd")}
                           disabled={!granted}
+                          compact
                         />
                       </View>
                     </SubRow>
