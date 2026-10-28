@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 // import { useSettingsStore } from '@/lib/stores/settings';
 import { formatDate, fromLocalDateString } from "@/lib/utils/dateFormat";
 
@@ -48,8 +48,10 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
   // Done tasks only get title/notes/delete: moving their dates would rewrite history
   const [isDoneTask, setIsDoneTask] = useState(false);
   // Confirmation for the last item added. Shown inline because the sheet is a
-  // native modal, which covers the app-level toast.
+  // native modal that would cover anything rendered by the app behind it.
   const [lastAdded, setLastAdded] = useState<string | null>(null);
+  // A ref, not state: a second Return/tap can land before a re-render
+  const isSavingRef = useRef(false);
 
   // Create styles with theme colors
   const styles = createStyles({
@@ -121,6 +123,9 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
       Alert.alert("Error", "Please enter a title");
       return;
     }
+    // Ignore repeat submits while a save is in flight (avoids duplicate tasks)
+    if (isSavingRef.current) return;
+    isSavingRef.current = true;
 
     try {
       if (mode === "add") {
@@ -169,6 +174,8 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
     } catch (error) {
       Alert.alert("Error", "Failed to save item");
       console.error("Save error:", error);
+    } finally {
+      isSavingRef.current = false;
     }
   };
 
@@ -271,7 +278,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
               placeholder="Enter title..."
               placeholderTextColor="#999"
               autoFocus
-              returnKeyType={mode === "add" ? "next" : "done"}
+              returnKeyType="done"
               // Return saves; in add mode the keyboard stays up for the next one
               submitBehavior={mode === "add" ? "submit" : "blurAndSubmit"}
               onSubmitEditing={handleSave}
