@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test": "node scripts/run-tests.js",
-    "update": "eas update --platform ios --branch main"
+    "update": "eas update --channel production --platform ios"
   },
   "dependencies": {
     "@expo-google-fonts/dm-sans": "^0.4.2",

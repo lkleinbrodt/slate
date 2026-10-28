@@ -61,7 +61,10 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/42a18f63-399c-4610-a82d-bf4e08dc83a3"
+      "url": "https://u.expo.dev/42a18f63-399c-4610-a82d-bf4e08dc83a3",
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
     }
   }
 }
