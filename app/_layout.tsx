@@ -14,7 +14,6 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { SheetProvider } from "react-native-actions-sheet";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { ToastProvider } from "@/components/ToastProvider";
 import { initializeDatabase } from "@/lib/db/connection";
 import { useAppStore } from "@/lib/stores/appStore";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -94,18 +93,16 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <ToastProvider>
-        <SheetProvider>
-          <ThemeProvider
-            value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-          >
-            <Stack>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            </Stack>
-            <StatusBar style="auto" />
-          </ThemeProvider>
-        </SheetProvider>
-      </ToastProvider>
+      <SheetProvider>
+        <ThemeProvider
+          value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+        >
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          </Stack>
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </SheetProvider>
     </SafeAreaProvider>
   );
 }

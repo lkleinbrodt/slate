@@ -27,6 +27,18 @@ const NOTIFICATION_IDS = {
 const HABIT_REMINDER_DAYS_AHEAD = 7;
 const MAX_HABIT_REMINDERS = 60;
 
+// Rescheduling cancels and re-adds notifications across many awaits. Two
+// overlapping runs (e.g. two habits checked off in quick succession) can
+// interleave so the older run re-adds today's reminders after the newer one
+// dropped them. Run them one at a time; each reads settings and habit state
+// when it starts, so the last run reflects the latest state.
+let queue: Promise<void> = Promise.resolve();
+function serialized(job: () => Promise<void>): Promise<void> {
+  const run = queue.then(job);
+  queue = run.catch(() => {});
+  return run;
+}
+
 const toMinutes = (hhmm: string) => {
   const [h, m] = hhmm.split(":").map(Number);
   return h * 60 + m;
@@ -82,13 +94,6 @@ async function cancelNotificationsByPrefix(prefix: string): Promise<void> {
 }
 
 /**
- * Cancel all app notifications
- */
-export async function cancelAllNotifications(): Promise<void> {
-  await Notifications.cancelAllScheduledNotificationsAsync();
-}
-
-/**
  * Get active habit count and how many are still incomplete today
  */
 async function getHabitCounts(): Promise<{ active: number; incomplete: number }> {
@@ -108,7 +113,7 @@ async function getHabitCounts(): Promise<{ active: number; incomplete: number }>
 /**
  * Schedule the "Plan your day" morning notification
  */
-export async function schedulePlanYourDayNotification(
+async function schedulePlanYourDayNotification(
   time: string
 ): Promise<void> {
   // Cancel existing notification
@@ -140,7 +145,7 @@ export async function schedulePlanYourDayNotification(
  * so today's remaining reminders can be dropped once all habits are done
  * without losing tomorrow's.
  */
-export async function scheduleHabitReminders(
+async function scheduleHabitReminders(
   intervalHours: number,
   start: string,
   end: string
@@ -195,7 +200,7 @@ export async function scheduleHabitReminders(
 /**
  * Schedule the night review notification
  */
-export async function scheduleNightReviewNotification(
+async function scheduleNightReviewNotification(
   time: string
 ): Promise<void> {
   // Cancel existing notification
@@ -225,27 +230,33 @@ export async function scheduleNightReviewNotification(
  * Update habit reminders based on current completion status
  * Call this after habit completion/undo operations
  */
-export async function updateHabitRemindersIfNeeded(): Promise<void> {
-  const settings = useSettingsStore.getState();
-  if (
-    !settings.habitRemindersEnabled ||
-    settings.notificationPermissionStatus !== "granted"
-  ) {
-    return;
-  }
+export function updateHabitRemindersIfNeeded(): Promise<void> {
+  return serialized(async () => {
+    const settings = useSettingsStore.getState();
+    if (
+      !settings.habitRemindersEnabled ||
+      settings.notificationPermissionStatus !== "granted"
+    ) {
+      return;
+    }
 
-  // Reschedules with the updated count (drops today's if all are done)
-  await scheduleHabitReminders(
-    settings.habitReminderInterval,
-    settings.habitReminderStart,
-    settings.habitReminderEnd
-  );
+    // Reschedules with the updated count (drops today's if all are done)
+    await scheduleHabitReminders(
+      settings.habitReminderInterval,
+      settings.habitReminderStart,
+      settings.habitReminderEnd
+    );
+  });
 }
 
 /**
  * Reschedule all notifications based on current settings
  */
-export async function rescheduleAllNotifications(): Promise<void> {
+export function rescheduleAllNotifications(): Promise<void> {
+  return serialized(rescheduleAll);
+}
+
+async function rescheduleAll(): Promise<void> {
   const settings = useSettingsStore.getState();
 
   // Check permissions first

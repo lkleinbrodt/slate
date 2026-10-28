@@ -9,6 +9,8 @@ import Animated, {
 
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { UI } from "@/lib/constants/app";
+import { fromLocalDate } from "@/lib/logic/dates";
+import { useTimeStore } from "@/lib/stores/timeStore";
 import { SheetManager } from "react-native-actions-sheet";
 import { SatisfyingCheckbox } from "./SatisfyingCheckbox";
 import { ThemedText } from "./themed-text";
@@ -25,8 +27,13 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   const iconColor = useThemeColor({}, "textTertiary");
   const textColor = useThemeColor({}, "text");
   const textSecondaryColor = useThemeColor({}, "textSecondary");
+  const errorColor = useThemeColor({}, "error");
+  const todayDate = useTimeStore((s) => s.currentDate);
   // Use the prop, not task.status: history passes whether it was done *that day*
   const isDone = isCompleted;
+  // Read-only rows are past days in History, where "overdue" vs today is meaningless
+  const isOverdue =
+    !isReadOnly && !isDone && !!task.dueDate && task.dueDate < todayDate;
   const strikeWidth = useSharedValue(isDone ? 100 : 0);
 
   useEffect(() => {
@@ -92,24 +99,30 @@ export const TaskItem: React.FC<TaskItemProps> = ({
         {task.dueDate && (
           <ThemedText
             type="caption"
-            style={[styles.subtext, { color: textSecondaryColor }]}
+            style={[
+              styles.subtext,
+              { color: isOverdue ? errorColor : textSecondaryColor },
+            ]}
           >
-            Due: {task.dueDate}
+            {isOverdue ? "Overdue · " : "Due "}
+            {fromLocalDate(task.dueDate).format("MMM D")}
           </ThemedText>
         )}
       </TouchableOpacity>
 
-      {!isReadOnly && !isDone && (
+      {!isReadOnly && (
         <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={handleSkipForToday}
-            accessibilityLabel="Snooze until tomorrow"
-          >
-            <MaterialCommunityIcons name="sleep" size={20} color={iconColor} />
-          </TouchableOpacity>
+          {!isDone && (
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={handleSkipForToday}
+              accessibilityLabel="Snooze until tomorrow"
+            >
+              <MaterialCommunityIcons name="sleep" size={20} color={iconColor} />
+            </TouchableOpacity>
+          )}
 
-          {onSendToSlate && (
+          {!isDone && onSendToSlate && (
             <TouchableOpacity
               style={styles.iconButton}
               onPress={() => onSendToSlate(task.id)}

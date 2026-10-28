@@ -6,6 +6,7 @@ import { resetDatabase } from "./mocks/db-connection";
 import { tasks } from "@/lib/db/schema";
 import { useAppStore } from "@/lib/stores/appStore";
 import { useTimeStore } from "@/lib/stores/timeStore";
+import { calls } from "./mocks/notifications";
 import { insertTask } from "./helpers";
 
 export async function run() {
@@ -14,6 +15,8 @@ export async function run() {
   await testPastDoDateClampedToToday();
   await testPlanTaskUsesCurrentDate();
   await testDueTasksGoToToday();
+  await testCreateTaskReturnsWhereItLanded();
+  await testHabitChangesRefreshReminders();
 }
 
 function setToday(date: string) {
@@ -127,4 +130,36 @@ async function testDueTasksGoToToday() {
   const later = await insertTask({ dueDate: "2024-10-09" });
   await store.updateTask(later.id, { dueDate: "2024-10-01" });
   assert.strictEqual((await getTask(later.id))?.scheduledFor, "2024-10-01");
+}
+
+async function testCreateTaskReturnsWhereItLanded() {
+  setToday("2024-11-05");
+  const store = useAppStore.getState();
+
+  const plain = await store.createTask({ title: "Plain" });
+  assert.strictEqual(plain.scheduledFor, null, "no dates -> Slate");
+
+  const due = await store.createTask({ title: "Due", dueDate: "2024-11-05" });
+  assert.strictEqual(due.scheduledFor, "2024-11-05", "due today -> Today");
+
+  const later = await store.createTask({
+    title: "Later",
+    scheduledFor: "2024-11-08",
+  });
+  assert.strictEqual(later.scheduledFor, "2024-11-08");
+  assert.strictEqual((await getTask(due.id))?.scheduledFor, "2024-11-05");
+}
+
+// Reminder counts depend on which habits exist, not just which are done
+async function testHabitChangesRefreshReminders() {
+  setToday("2024-11-05");
+  const store = useAppStore.getState();
+
+  const before = calls.updateHabitReminders;
+  await store.createHabit({ title: "Stretch" });
+  assert.strictEqual(calls.updateHabitReminders, before + 1, "on create");
+
+  const habit = useAppStore.getState().activeHabits[0];
+  await store.deleteHabit(habit.id);
+  assert.strictEqual(calls.updateHabitReminders, before + 2, "on delete");
 }

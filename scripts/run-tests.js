@@ -23,6 +23,7 @@ const mocks = new Map([
   ["expo-crypto", path.join(projectRoot, "tests/mocks/expo-crypto.ts")],
   ["@/lib/db/connection", path.join(projectRoot, "tests/mocks/db-connection.ts")],
   ["@/lib/services/notifications", path.join(projectRoot, "tests/mocks/notifications.ts")],
+  ["expo-notifications", path.join(projectRoot, "tests/mocks/expo-notifications.ts")],
   ["react-native", path.join(projectRoot, "tests/mocks/react-native.ts")],
 ]);
 

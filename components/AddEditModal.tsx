@@ -11,21 +11,20 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 // import { useSettingsStore } from '@/lib/stores/settings';
 import { formatDate, fromLocalDateString } from "@/lib/utils/dateFormat";
 
 import { Ionicons } from "@expo/vector-icons";
+import { fromLocalDate } from "@/lib/logic/dates";
 import { useAppStore } from "@/lib/stores/appStore";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useThemeColor } from "@/hooks/use-theme-color";
-import { useToast } from "@/components/ToastProvider";
 
 type AddEditModalProps = SheetProps<"add-edit-modal">;
 
 export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
   const insets = useSafeAreaInsets();
-  const { showToast } = useToast();
   const { mode, type: initialType, itemId } = payload || {};
 
   // Theme colors
@@ -46,6 +45,13 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
   const [scheduledDate, setScheduledDate] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<string | null>(null);
   const [dependsOnTaskId, setDependsOnTaskId] = useState<string | null>(null);
+  // Done tasks only get title/notes/delete: moving their dates would rewrite history
+  const [isDoneTask, setIsDoneTask] = useState(false);
+  // Confirmation for the last item added. Shown inline because the sheet is a
+  // native modal that would cover anything rendered by the app behind it.
+  const [lastAdded, setLastAdded] = useState<string | null>(null);
+  // A ref, not state: a second Return/tap can land before a re-render
+  const isSavingRef = useRef(false);
 
   // Create styles with theme colors
   const styles = createStyles({
@@ -72,10 +78,12 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
     getTodayDate,
   } = useAppStore();
 
-  // Load existing item data when editing
+  // Load existing item data when editing. Keyed on the payload only: if it
+  // also depended on itemType, toggling Task/Habit in add mode would re-run the
+  // reset below and flip the toggle straight back.
   useEffect(() => {
     if (mode === "edit" && itemId) {
-      if (itemType === "task") {
+      if (initialType !== "habit") {
         const task = getTaskById(itemId);
         if (task) {
           setTitle(task.title);
@@ -83,6 +91,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
           setScheduledDate(task.scheduledFor || null);
           setDueDate(task.dueDate || null);
           setDependsOnTaskId(task.dependsOnTaskId || null);
+          setIsDoneTask(task.status === "done");
         }
       } else {
         const habit = getHabitById(itemId);
@@ -100,38 +109,41 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
       setDependsOnTaskId(null);
       setItemType(initialType || "task");
     }
-  }, [
-    mode,
-    itemId,
-    itemType,
-    initialType,
-    getTaskById,
-    getHabitById,
-  ]);
+  }, [mode, itemId, initialType, getTaskById, getHabitById]);
+
+  const describeNewTask = (task: { title: string; scheduledFor: string | null }) => {
+    const today = getTodayDate();
+    if (!task.scheduledFor) return `Added "${task.title}" to the Slate`;
+    if (task.scheduledFor <= today) return `Added "${task.title}" to Today`;
+    return `Added "${task.title}" for ${fromLocalDate(task.scheduledFor).format("ddd, MMM D")}`;
+  };
 
   const handleSave = async () => {
     if (!title.trim()) {
       Alert.alert("Error", "Please enter a title");
       return;
     }
+    // Ignore repeat submits while a save is in flight (avoids duplicate tasks)
+    if (isSavingRef.current) return;
+    isSavingRef.current = true;
 
     try {
       if (mode === "add") {
         if (itemType === "task") {
-          await createTask({
+          const task = await createTask({
             title: title.trim(),
             notes: notes.trim() || undefined,
             scheduledFor: scheduledDate || undefined,
             dueDate: dueDate || undefined,
             dependsOn: dependsOnTaskId || undefined,
           });
-          showToast(`Task "${title.trim()}" created successfully!`);
+          setLastAdded(describeNewTask(task));
         } else {
           await createHabit({
             title: title.trim(),
             notes: notes.trim() || undefined,
           });
-          showToast(`Habit "${title.trim()}" created successfully!`);
+          setLastAdded(`Added habit "${title.trim()}"`);
         }
         // Don't close the modal, just wipe the data (so it's easy to add another
         // of the same kind)
@@ -162,6 +174,8 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
     } catch (error) {
       Alert.alert("Error", "Failed to save item");
       console.error("Save error:", error);
+    } finally {
+      isSavingRef.current = false;
     }
   };
 
@@ -264,6 +278,10 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
               placeholder="Enter title..."
               placeholderTextColor="#999"
               autoFocus
+              returnKeyType="done"
+              // Return saves; in add mode the keyboard stays up for the next one
+              submitBehavior={mode === "add" ? "submit" : "blurAndSubmit"}
+              onSubmitEditing={handleSave}
             />
           </View>
 
@@ -314,7 +332,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
               </TouchableOpacity>
 
               {/* Task-specific Date Button */}
-              {itemType === "task" && (
+              {itemType === "task" && !isDoneTask && (
                 <TouchableOpacity
                   style={styles.buttonBarButton}
                   onPress={openDatePicker}
@@ -336,7 +354,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
               )}
 
               {/* Task-specific Due Date Button */}
-              {itemType === "task" && (
+              {itemType === "task" && !isDoneTask && (
                 <TouchableOpacity
                   style={styles.buttonBarButton}
                   onPress={openDueDatePicker}
@@ -358,7 +376,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
               )}
 
               {/* Task-specific Dependency Button */}
-              {itemType === "task" && (
+              {itemType === "task" && !isDoneTask && (
                 <TouchableOpacity
                   style={[
                     styles.buttonBarButton,
@@ -387,6 +405,15 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
             </View>
             <View style={styles.buttonBarDivider} />
           </View>
+
+          {lastAdded && (
+            <View style={styles.lastAdded}>
+              <Ionicons name="checkmark-circle" size={16} color={successColor} />
+              <Text style={styles.lastAddedText} numberOfLines={2}>
+                {lastAdded}
+              </Text>
+            </View>
+          )}
 
           {/* Save Button */}
           <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
@@ -533,6 +560,17 @@ const createStyles = (colors: any) =>
     dependencyLabelSelected: {
       color: colors.successColor,
       fontWeight: "600",
+    },
+    lastAdded: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginTop: 20,
+    },
+    lastAddedText: {
+      flex: 1,
+      fontSize: 14,
+      color: colors.textSecondaryColor,
     },
     saveButton: {
       backgroundColor: colors.successColor,

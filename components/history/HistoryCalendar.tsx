@@ -1,10 +1,6 @@
 import { Animated, StyleSheet, Text, View } from "react-native";
 import React, { useCallback, useState } from "react";
-import {
-  getCurrentMonth,
-  getSixMonthsAgo,
-  isDateAfter,
-} from "@/lib/logic/dates";
+import { getSixMonthsAgo, isDateAfter } from "@/lib/logic/dates";
 
 import { Calendar } from "react-native-calendars";
 import { useFocusEffect } from "expo-router";
@@ -28,8 +24,10 @@ export const HistoryCalendar = ({ onDayPress }: HistoryCalendarProps) => {
   const textTertiaryColor = useThemeColor({}, "textTertiary");
   const primaryColor = useThemeColor({}, "primary");
 
-  const [currentDisplayedMonth, setCurrentDisplayedMonth] = useState(
-    getCurrentMonth()
+  // From the app's day, not the calendar: between midnight and the day start
+  // on the 1st, "today" is still last month
+  const [currentDisplayedMonth, setCurrentDisplayedMonth] = useState(() =>
+    getCurrentDate().substring(0, 7)
   );
 
   const [notificationOpacity] = useState(new Animated.Value(0));
