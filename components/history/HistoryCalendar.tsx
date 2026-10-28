@@ -1,5 +1,5 @@
 import { Animated, StyleSheet, Text, View } from "react-native";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   getCurrentMonth,
   getSixMonthsAgo,
@@ -7,6 +7,7 @@ import {
 } from "@/lib/logic/dates";
 
 import { Calendar } from "react-native-calendars";
+import { useFocusEffect } from "expo-router";
 import { useHistoryStore } from "@/lib/stores/historyStore";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { useTimeStore } from "@/lib/stores/timeStore";
@@ -36,6 +37,14 @@ export const HistoryCalendar = ({ onDayPress }: HistoryCalendarProps) => {
 
   const currentDate = getCurrentDate();
   const sixMonthsAgo = getSixMonthsAgo();
+
+  // onMonthChange doesn't fire for the initial month, so load it here
+  // (and refresh on every focus, since tabs stay mounted)
+  useFocusEffect(
+    useCallback(() => {
+      loadCalendarData(currentDisplayedMonth);
+    }, [loadCalendarData, currentDisplayedMonth])
+  );
 
   const getMarkedDates = () => {
     const marked = {};
@@ -120,8 +129,8 @@ export const HistoryCalendar = ({ onDayPress }: HistoryCalendarProps) => {
             return;
           }
 
+          // Data loads via the focus effect, which re-runs on month change
           setCurrentDisplayedMonth(monthStr);
-          loadCalendarData(monthStr);
         }}
         onDayPress={(day) => {
           if (isDateDisabled(day.dateString)) return;

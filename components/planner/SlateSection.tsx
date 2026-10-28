@@ -3,7 +3,7 @@ import { StyleSheet, View } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
 import { SlateItem } from "@/components/SlateItem";
-import { Task } from "@/lib/types/common";
+import { Task } from "@/components/types";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { UI } from "@/lib/constants/app";
@@ -43,16 +43,21 @@ export const SlateSection: React.FC<SlateSectionProps> = ({
   tasks,
   onAddToToday,
 }) => {
-  const { getCurrentDate } = useTimeStore();
-  const todayDate = getCurrentDate();
+  const todayDate = useTimeStore((s) => s.currentDate);
 
   const sections = useMemo(() => {
-    const scheduledTasks = tasks.filter((task) => task.scheduledFor);
-    const unscheduledTasks = tasks.filter((task) => !task.scheduledFor);
+    // Within a section: earliest due date first (undated last), then oldest
+    const byDueThenCreated = (a: Task, b: Task) =>
+      (a.dueDate ?? "9999-12-31").localeCompare(b.dueDate ?? "9999-12-31") ||
+      a.createdAt.localeCompare(b.createdAt);
+    const sortedTasks = [...tasks].sort(byDueThenCreated);
+    const scheduledTasks = sortedTasks.filter((task) => task.scheduledFor);
+    const unscheduledTasks = sortedTasks.filter((task) => !task.scheduledFor);
 
-    // Group scheduled tasks by date
+    // Group scheduled tasks by date (anything before today shows under Today)
     const tasksByDate = scheduledTasks.reduce((acc, task) => {
-      const date = task.scheduledFor!;
+      const date =
+        task.scheduledFor! < todayDate ? todayDate : task.scheduledFor!;
       if (!acc[date]) {
         acc[date] = [];
       }

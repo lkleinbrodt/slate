@@ -1,42 +1,35 @@
 # Slate
 
-A local-first iOS productivity app that combines task management with habit tracking in one simple interface.
+A personal, local-first iOS to-do + habit app (Expo / React Native, SQLite on device).
 
-## What it is
+## Concepts
 
-Slate helps you keep track of all your tasks and habits in one place, and makes it simple to decide which ones you should tackle today. It's like a lightweight daily slate you can trust—check things off, keep streaks alive, and roll forward what you don't finish.
+- **Slate** – every pending task. Tasks can have a **do date** (the day you plan to
+  work on it) and/or a **due date** (the deadline). Both are optional.
+- **Today** – tasks whose do date is today, plus anything completed today. Each morning
+  you pick tasks from the Slate, which sets their do date to today.
+- **Rollover** – when a new day starts (default 4:00 AM, so late nights count as the
+  previous day):
+  - unfinished Today tasks carry over to the new day
+  - open tasks that are due or overdue are pulled into Today
+  - yesterday is written to history
+- From Today you can **snooze** a task to tomorrow or **send it back to the Slate**.
+- **Habits** – things to do every day. They always appear in Today and track streaks.
+  A **Perfect Day** is one where every habit was completed.
+- **History** – calendar of past days (habits/tasks completed, perfect days) and streaks.
+- **Notifications** – morning "plan your day", habit reminders during a configurable
+  window (only while habits are incomplete), and an evening review.
 
-## How to use
-
-1. **Add tasks and habits** - Tap the + button to create new items
-2. **Plan your day** - Mark tasks for "Today" each morning
-3. **Check things off** - Tap to complete tasks and habits with satisfying animations
-4. **Track streaks** - See your habit streaks and celebrate "Perfect Days" when all habits are done
-5. **Auto-carryover** - Unfinished tasks automatically move to tomorrow
-
-## Getting started
+## Development
 
 ```bash
 npm install
-npm start
+npm start          # Expo dev server
+npm test           # logic tests against an in-memory SQLite DB
+npm run lint
+npx tsc --noEmit
+npm run update     # publish an OTA update (EAS, iOS)
 ```
 
-Then scan the QR code with your iPhone camera or use the iOS Simulator.
-
-## Key features
-
-- **Tasks**: One-off items with optional due dates
-- **Habits**: Daily behaviors that track streaks
-- **Today view**: Your daily slate with progress tracking
-- **Celebrations**: Delightful animations and haptics when completing items
-- **Local storage**: All data stays on your device
-- **Settings**: Configure day start time, notifications, and preferences
-
-## Project structure
-
-- `app/` - Main screens (index.tsx, settings.tsx)
-- `components/` - UI components including celebration system
-- `lib/` - Database, stores, and utilities
-- `memory-bank/` - Project documentation
-
-Built with Expo, React Native, and SQLite.
+See [docs/architecture.md](docs/architecture.md) for how the code is organized and how
+the day logic works.

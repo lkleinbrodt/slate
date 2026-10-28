@@ -51,35 +51,6 @@ export const getCurrentMonth = (): string => {
   return dayjs().format("YYYY-MM");
 };
 
-export const isDateInRange = (
-  date: string,
-  minDate: string,
-  maxDate: string
-): boolean => {
-  const dateObj = dayjs(date);
-  const minObj = dayjs(minDate);
-  const maxObj = dayjs(maxDate);
-  return dateObj.isAfter(minObj) || dateObj.isSame(minObj, "day");
-};
-
-export const isDateBefore = (date1: string, date2: string): boolean => {
-  return dayjs(date1).isBefore(dayjs(date2), "day");
-};
-
 export const isDateAfter = (date1: string, date2: string): boolean => {
   return dayjs(date1).isAfter(dayjs(date2), "day");
-};
-
-export const isDateSameOrBefore = (date1: string, date2: string): boolean => {
-  return (
-    dayjs(date1).isSame(dayjs(date2), "day") ||
-    dayjs(date1).isBefore(dayjs(date2), "day")
-  );
-};
-
-export const isDateSameOrAfter = (date1: string, date2: string): boolean => {
-  return (
-    dayjs(date1).isSame(dayjs(date2), "day") ||
-    dayjs(date1).isAfter(dayjs(date2), "day")
-  );
 };

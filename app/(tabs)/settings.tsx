@@ -33,11 +33,14 @@ export default function SettingsScreen() {
     planYourDayTime,
     habitRemindersEnabled,
     habitReminderInterval,
+    habitReminderStart,
+    habitReminderEnd,
     nightReviewEnabled,
     nightReviewTime,
     notificationPermissionStatus,
     updatePlanYourDaySettings,
     updateHabitReminderSettings,
+    updateHabitReminderWindow,
     updateNightReviewSettings,
     setNotificationPermissionStatus,
   } = useSettingsStore();
@@ -45,6 +48,9 @@ export default function SettingsScreen() {
   const [planDayTimePickerVisible, setPlanDayTimePickerVisible] = useState(false);
   const [nightReviewTimePickerVisible, setNightReviewTimePickerVisible] = useState(false);
   const [intervalPickerVisible, setIntervalPickerVisible] = useState(false);
+  const [reminderWindowPicker, setReminderWindowPicker] = useState<
+    "start" | "end" | null
+  >(null);
 
   useEffect(() => {
     loadSettings();
@@ -81,6 +87,18 @@ export default function SettingsScreen() {
 
   const handleHabitReminderIntervalChange = async (interval: number) => {
     await updateHabitReminderSettings(habitRemindersEnabled, interval);
+    await rescheduleAllNotifications();
+  };
+
+  const handleReminderWindowChange = async (time: string) => {
+    let start = reminderWindowPicker === "start" ? time : habitReminderStart;
+    let end = reminderWindowPicker === "end" ? time : habitReminderEnd;
+    // Keep the window valid by moving the other end if they cross
+    if (start > end) {
+      if (reminderWindowPicker === "start") end = start;
+      else start = end;
+    }
+    await updateHabitReminderWindow(start, end);
     await rescheduleAllNotifications();
   };
 
@@ -223,6 +241,30 @@ export default function SettingsScreen() {
                   </ThemedText>
                 </TouchableOpacity>
               </View>
+              <View style={styles.settingRow}>
+                <View style={styles.settingContent}>
+                  <ThemedText type="caption" style={styles.settingDescription}>
+                    From
+                  </ThemedText>
+                </View>
+                <TimePickerButton
+                  time={habitReminderStart}
+                  onPress={() => setReminderWindowPicker("start")}
+                  disabled={notificationPermissionStatus !== "granted"}
+                />
+              </View>
+              <View style={styles.settingRow}>
+                <View style={styles.settingContent}>
+                  <ThemedText type="caption" style={styles.settingDescription}>
+                    Until
+                  </ThemedText>
+                </View>
+                <TimePickerButton
+                  time={habitReminderEnd}
+                  onPress={() => setReminderWindowPicker("end")}
+                  disabled={notificationPermissionStatus !== "granted"}
+                />
+              </View>
             </>
           )}
 
@@ -262,6 +304,20 @@ export default function SettingsScreen() {
       </ScrollView>
 
       {/* Time Picker Modals */}
+      {reminderWindowPicker && (
+        // Mounted per open so it starts from the current value
+        <TimePickerModal
+          visible
+          selectedTime={
+            reminderWindowPicker === "start"
+              ? habitReminderStart
+              : habitReminderEnd
+          }
+          onTimeSelect={handleReminderWindowChange}
+          onClose={() => setReminderWindowPicker(null)}
+        />
+      )}
+
       <TimePickerModal
         visible={planDayTimePickerVisible}
         selectedTime={planYourDayTime}

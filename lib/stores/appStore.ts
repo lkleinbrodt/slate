@@ -1,10 +1,10 @@
 import * as repo from "@/lib/logic/repo";
 
 import { addDays } from "@/lib/logic/dates";
+import { calculateBaseStreaks } from "@/lib/logic/streaks";
 
 import { create } from "zustand";
 import { useTimeStore } from "./timeStore";
-import { useSettingsStore } from "./settings";
 import { updateHabitRemindersIfNeeded } from "@/lib/services/notifications";
 
 type Task = repo.Task;
@@ -19,10 +19,11 @@ interface AppState {
   todayTasks: Task[];
   activeHabits: Habit[];
   todaysHabitCompletions: HabitCompletion[];
+  // Consecutive completed days ending yesterday; add 1 if completed today
+  habitBaseStreaks: Record<string, number>;
 
   // Data for "Slate" screen
   slateTasks: Task[];
-  overdueTasks: Task[];
 
   // Actions
   init: () => Promise<void>;
@@ -36,21 +37,22 @@ interface AppState {
     dependsOn?: string;
   }) => Promise<void>;
   createHabit: (data: { title: string; notes?: string }) => Promise<void>;
+  // null clears a field; undefined leaves it unchanged
   updateTask: (
     id: string,
     data: {
       title?: string;
-      notes?: string;
-      dueDate?: string;
-      scheduledFor?: string;
-      dependsOn?: string;
+      notes?: string | null;
+      dueDate?: string | null;
+      scheduledFor?: string | null;
+      dependsOnTaskId?: string | null;
     }
   ) => Promise<void>;
   updateHabit: (
     id: string,
     data: {
       title?: string;
-      notes?: string;
+      notes?: string | null;
     }
   ) => Promise<void>;
   getTaskById: (id: string) => Task | undefined;
@@ -68,13 +70,37 @@ interface AppState {
   deleteHabit: (habitId: string) => Promise<void>;
 }
 
+// Incremented per refresh so out-of-order results can be discarded
+let latestRefreshId = 0;
+
+// A do-date in the past would never be picked up by rollover; treat it as today.
+// Keeps undefined (= "leave unchanged") and null (= "clear") as-is.
+function clampToToday<T extends string | null | undefined>(
+  date: T,
+  today: string
+): T | string {
+  return date && date < today ? today : date;
+}
+
+// Tasks due today or earlier belong in Today (mirrors the morning pull-in in
+// rollover), unless they're already planned for today or earlier.
+function planIfDue(
+  scheduledFor: string | null | undefined,
+  dueDate: string | null | undefined,
+  today: string
+): string | null | undefined {
+  const isDue = !!dueDate && dueDate <= today;
+  const plannedByToday = !!scheduledFor && scheduledFor <= today;
+  return isDue && !plannedByToday ? today : scheduledFor;
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   isInitialized: false,
   todayTasks: [],
   activeHabits: [],
   todaysHabitCompletions: [],
+  habitBaseStreaks: {},
   slateTasks: [],
-  overdueTasks: [],
 
   init: async () => {
     set({ isInitialized: true });
@@ -82,27 +108,40 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   refreshData: async () => {
+    const requestId = ++latestRefreshId;
     const today = get().getTodayDate();
-    const [todayTasks, activeHabits, completions, slateTasks, overdueTasks] =
+    const [todayTasks, activeHabits, completions, slateTasks] =
       await Promise.all([
         repo.listTodayTasks(today),
         repo.listActiveHabits(),
         repo.getHabitCompletionsForDate(today),
         repo.listAllTasks(),
-        repo.listOverdueTasks(today),
       ]);
+    const habitBaseStreaks = await calculateBaseStreaks(
+      activeHabits.map((h) => h.id),
+      today
+    );
+
+    // A newer refresh started while this one was in flight; let it win
+    if (requestId !== latestRefreshId) return;
 
     set({
       todayTasks,
       activeHabits,
       todaysHabitCompletions: completions,
+      habitBaseStreaks,
       slateTasks,
-      overdueTasks,
     });
   },
 
   createTask: async (data) => {
-    await repo.createTask(data);
+    const today = get().getTodayDate();
+    const scheduledFor = planIfDue(
+      clampToToday(data.scheduledFor, today),
+      data.dueDate,
+      today
+    );
+    await repo.createTask({ ...data, scheduledFor: scheduledFor ?? undefined });
     await get().refreshData();
   },
 
@@ -112,7 +151,19 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   updateTask: async (id, data) => {
-    await repo.updateTask(id, data);
+    const today = get().getTodayDate();
+    let scheduledFor = clampToToday(data.scheduledFor, today);
+    // Only when the due date is being changed, so sending a due task back to
+    // the Slate (scheduledFor: null, same due date) still works
+    const existing = await repo.getTask(id);
+    if (data.dueDate !== undefined && data.dueDate !== existing?.dueDate) {
+      scheduledFor = planIfDue(
+        scheduledFor === undefined ? existing?.scheduledFor : scheduledFor,
+        data.dueDate,
+        today
+      );
+    }
+    await repo.updateTask(id, { ...data, scheduledFor });
     await get().refreshData();
   },
 
@@ -124,8 +175,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   getTaskById: (id) => {
     return (
       get().todayTasks.find((t) => t.id === id) ||
-      get().slateTasks.find((t) => t.id === id) ||
-      get().overdueTasks.find((t) => t.id === id)
+      get().slateTasks.find((t) => t.id === id)
     );
   },
 
@@ -154,7 +204,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   completeTask: async (taskId) => {
-    await repo.completeTask(taskId);
+    await repo.completeTask(taskId, get().getTodayDate());
     await get().refreshData();
   },
 
@@ -181,16 +231,18 @@ export const useAppStore = create<AppState>((set, get) => ({
       ),
     }));
 
-    // 3. PERSIST: Fire and forget DB update
+    // 3. PERSIST: Fire and forget DB update, then resync (Slate list, timestamps)
     const promise = willBeDone
-      ? repo.completeTask(taskId)
+      ? repo.completeTask(taskId, get().getTodayDate())
       : repo.undoCompleteTask(taskId);
 
-    promise.catch((err) => {
-      console.error("Task toggle failed", err);
-      // Revert on error
-      set({ todayTasks: previousTasks });
-    });
+    promise
+      .then(() => get().refreshData())
+      .catch((err) => {
+        console.error("Task toggle failed", err);
+        // Revert on error
+        set({ todayTasks: previousTasks });
+      });
   },
 
   toggleHabit: (habitId: string) => {
@@ -263,17 +315,3 @@ export const useAppStore = create<AppState>((set, get) => ({
     await get().refreshData();
   },
 }));
-
-// Subscribe to dayStart changes - TimeStore will handle date updates,
-// but we need to refresh data when dayStart changes
-useSettingsStore.subscribe(
-  (state) => state.dayStart,
-  () => {
-    const appState = useAppStore.getState();
-    // TimeStore will automatically check and update date when dayStart changes
-    // via its checkAndUpdateIfNeeded method, but we refresh data here
-    if (appState.isInitialized) {
-      appState.refreshData();
-    }
-  }
-);

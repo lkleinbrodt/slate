@@ -1,17 +1,36 @@
-// Re-export shared types from common types file
-export {
-  DayPlan,
-  Habit,
-  HabitItemProps,
-  PerfectDayModalProps,
-  ProgressTrackerProps,
-  SlateItemProps,
-  Task,
-  TaskItemProps,
-  AddModalProps as UnifiedAddModalProps,
-} from "@/lib/types/common";
+import type { Habit, Task } from "@/lib/logic/repo";
 
-// Component-specific types that don't exist in common types
+export type { Habit, Task };
+
+export interface TaskItemProps {
+  task: Task;
+  isCompleted: boolean;
+  onToggle: (taskId: string, completed: boolean) => void;
+  onSkipForToday?: (taskId: string) => void;
+  onSendToSlate?: (taskId: string) => void;
+  isReadOnly?: boolean;
+}
+
+export interface HabitItemProps {
+  habit: Habit;
+  isCompleted: boolean;
+  streak: number;
+  onToggle: (habitId: string) => void;
+  isReadOnly?: boolean;
+}
+
+export interface SlateItemProps {
+  task: Task;
+  onAddToToday: (type: "task", id: string) => void;
+}
+
+export interface ProgressTrackerProps {
+  label: string;
+  completed: number;
+  total: number;
+  progress: number;
+}
+
 export interface AddButtonProps {
   onPress: () => void;
 }

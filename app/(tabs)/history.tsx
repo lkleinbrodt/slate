@@ -1,22 +1,26 @@
 import * as repo from "@/lib/logic/repo";
 
 import { ActivityIndicator, ScrollView, StyleSheet } from "react-native";
-import React, { useEffect } from "react";
+import React, { useCallback } from "react";
 
 import { HabitStreaksSection } from "@/components/history/HabitStreaksSection";
 import { HistoryCalendar } from "@/components/history/HistoryCalendar";
 import { HistoryHeader } from "@/components/history/HistoryHeader";
 import { SafeAreaThemedView } from "@/components/safe-area-themed-view";
 import { SheetManager } from "react-native-actions-sheet";
+import { useFocusEffect } from "expo-router";
 import { useHistoryStore } from "@/lib/stores/historyStore";
 import { useTimeStore } from "@/lib/stores/timeStore";
 
 export default function HistoryScreen() {
-  const { loading, selectedDay, loadInitialData } = useHistoryStore();
+  const { hasLoaded, loadInitialData } = useHistoryStore();
 
-  useEffect(() => {
-    loadInitialData();
-  }, [loadInitialData]);
+  // Tabs stay mounted, so reload whenever the tab is shown to pick up changes
+  useFocusEffect(
+    useCallback(() => {
+      loadInitialData();
+    }, [loadInitialData])
+  );
 
   // Handle day selection by showing ActionSheet with day details
   const handleDayPress = async (date: string) => {
@@ -60,7 +64,7 @@ export default function HistoryScreen() {
     }
   };
 
-  if (loading && !selectedDay) {
+  if (!hasLoaded) {
     return (
       <SafeAreaThemedView style={styles.container}>
         <ActivityIndicator style={{ flex: 1 }} />

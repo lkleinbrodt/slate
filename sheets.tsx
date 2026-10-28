@@ -26,6 +26,7 @@ declare module "react-native-actions-sheet" {
         onDateSelect: (date: string | null) => void;
         selectedDate?: string | null;
         title?: string;
+        minDate?: string;
       };
     }>;
     "dependency-picker-sheet": SheetDefinition<{

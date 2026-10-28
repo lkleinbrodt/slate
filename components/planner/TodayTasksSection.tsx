@@ -14,12 +14,14 @@ interface TodayTasksSectionProps {
   tasks: any[];
   onToggle: (taskId: string, completed: boolean) => void;
   onSkipForToday?: (taskId: string) => void;
+  onSendToSlate?: (taskId: string) => void;
 }
 
 export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
   tasks,
   onToggle,
   onSkipForToday,
+  onSendToSlate,
 }) => {
   const completedTasks = tasks.filter((task) => task.status === "done");
 
@@ -56,6 +58,7 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
                 isCompleted={task.status === "done"}
                 onToggle={onToggle}
                 onSkipForToday={onSkipForToday}
+                onSendToSlate={onSendToSlate}
               />
             </Animated.View>
           ))}

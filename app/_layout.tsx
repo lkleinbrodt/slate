@@ -38,7 +38,7 @@ export default function RootLayout() {
         await loadSettings();
 
         // Initialize TimeStore first - it will handle date tracking and rollover
-        cleanupTimeStore = initTimeStore();
+        cleanupTimeStore = await initTimeStore();
 
         // Initialize app store (which now uses TimeStore for current date)
         await initAppStore();
@@ -101,10 +101,6 @@ export default function RootLayout() {
           >
             <Stack>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="modal"
-                options={{ presentation: "modal", title: "Modal" }}
-              />
             </Stack>
             <StatusBar style="auto" />
           </ThemeProvider>

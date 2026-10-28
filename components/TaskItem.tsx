@@ -19,12 +19,14 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   isCompleted,
   onToggle,
   onSkipForToday,
+  onSendToSlate,
   isReadOnly = false,
 }) => {
   const iconColor = useThemeColor({}, "textTertiary");
   const textColor = useThemeColor({}, "text");
   const textSecondaryColor = useThemeColor({}, "textSecondary");
-  const isDone = task.status === "done";
+  // Use the prop, not task.status: history passes whether it was done *that day*
+  const isDone = isCompleted;
   const strikeWidth = useSharedValue(isDone ? 100 : 0);
 
   useEffect(() => {
@@ -34,7 +36,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 
   const handleToggle = () => {
     if (!isReadOnly) {
-      onToggle(task.id, task.status === "done"); // Pass current completed status
+      onToggle(task.id, isDone); // Pass current completed status
     }
   };
 
@@ -102,9 +104,24 @@ export const TaskItem: React.FC<TaskItemProps> = ({
           <TouchableOpacity
             style={styles.iconButton}
             onPress={handleSkipForToday}
+            accessibilityLabel="Snooze until tomorrow"
           >
             <MaterialCommunityIcons name="sleep" size={20} color={iconColor} />
           </TouchableOpacity>
+
+          {onSendToSlate && (
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => onSendToSlate(task.id)}
+              accessibilityLabel="Send back to Slate"
+            >
+              <MaterialCommunityIcons
+                name="tray-arrow-down"
+                size={20}
+                color={iconColor}
+              />
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity style={styles.iconButton} onPress={handleEdit}>
             <MaterialIcons name="more-horiz" size={20} color={iconColor} />

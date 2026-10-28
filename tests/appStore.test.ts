@@ -1,101 +1,130 @@
 import assert from "assert";
+import { eq } from "drizzle-orm";
 
+import { db } from "@/lib/db/connection";
+import { resetDatabase } from "./mocks/db-connection";
+import { tasks } from "@/lib/db/schema";
 import { useAppStore } from "@/lib/stores/appStore";
-import { useSettingsStore } from "@/lib/stores/settings";
-import { state as repoState } from "@/lib/logic/repo";
-import { addDays, getToday, setMockToday } from "@/lib/logic/dates";
-
-function resetRepoState() {
-  repoState.todayTasks = [];
-  repoState.activeHabits = [];
-  repoState.completions = [];
-  repoState.slateTasks = [];
-  repoState.overdueTasks = [];
-  repoState.planTaskForCalls.length = 0;
-  repoState.skipTaskForTodayCalls.length = 0;
-  repoState.completeHabitTodayCalls.length = 0;
-  repoState.undoHabitTodayCalls.length = 0;
-  delete repoState.lastListTodayDate;
-  delete repoState.lastCompletionsDate;
-  delete repoState.lastOverdueDate;
-}
-
-function resetStores(initialDay: string) {
-  resetRepoState();
-  setMockToday(initialDay);
-  useSettingsStore.setState({ dayStart: "04:00", loading: false });
-  useAppStore.setState({
-    isInitialized: false,
-    todayDate: getToday("04:00"),
-    todayTasks: [],
-    activeHabits: [],
-    todaysHabitCompletions: [],
-    slateTasks: [],
-    overdueTasks: [],
-  });
-}
+import { useTimeStore } from "@/lib/stores/timeStore";
+import { insertTask } from "./helpers";
 
 export async function run() {
-  await testRefreshDataRecomputesToday();
-  await testPlanTaskUsesUpdatedToday();
-  await testSkipTaskUsesTomorrow();
-  await testHabitActionsUseUpdatedToday();
+  await testCompleteTaskRecordsAppDay();
+  await testUpdateTaskClearsAndSavesFields();
+  await testPastDoDateClampedToToday();
+  await testPlanTaskUsesCurrentDate();
+  await testDueTasksGoToToday();
 }
 
-async function testRefreshDataRecomputesToday() {
-  resetStores("2024-06-01");
+function setToday(date: string) {
+  resetDatabase();
+  useTimeStore.setState({ currentDate: date, isInitialized: true });
+  useAppStore.setState({ isInitialized: true });
+}
+
+async function getTask(id: string) {
+  return db.select().from(tasks).where(eq(tasks.id, id)).get();
+}
+
+async function testCompleteTaskRecordsAppDay() {
+  setToday("2024-08-10");
+  const task = await insertTask({ scheduledFor: "2024-08-10" });
   await useAppStore.getState().refreshData();
-  assert.strictEqual(repoState.lastListTodayDate, "2024-06-01");
-  assert.strictEqual(repoState.lastCompletionsDate, "2024-06-01");
-  assert.strictEqual(repoState.lastOverdueDate, "2024-06-01");
-  assert.strictEqual(useAppStore.getState().todayDate, "2024-06-01");
 
-  setMockToday("2024-06-02");
-  await useAppStore.getState().refreshData();
-  assert.strictEqual(repoState.lastListTodayDate, "2024-06-02");
-  assert.strictEqual(repoState.lastCompletionsDate, "2024-06-02");
-  assert.strictEqual(repoState.lastOverdueDate, "2024-06-02");
-  assert.strictEqual(useAppStore.getState().todayDate, "2024-06-02");
+  useAppStore.getState().toggleTask(task.id);
+  // toggleTask persists in the background; let it settle
+  await new Promise((resolve) => setTimeout(resolve, 20));
+
+  const saved = await getTask(task.id);
+  assert.strictEqual(saved?.status, "done");
+  assert.strictEqual(saved?.completedDate, "2024-08-10");
+
+  await useAppStore.getState().undoCompleteTask(task.id);
+  const undone = await getTask(task.id);
+  assert.strictEqual(undone?.status, "open");
+  assert.strictEqual(undone?.completedDate, null);
 }
 
-async function testPlanTaskUsesUpdatedToday() {
-  resetStores("2024-07-01");
-  await useAppStore.getState().planTaskForToday("task-1");
-  assert.deepStrictEqual(repoState.planTaskForCalls, [
-    { id: "task-1", date: "2024-07-01" },
-  ]);
+async function testUpdateTaskClearsAndSavesFields() {
+  setToday("2024-08-10");
+  const blocker = await insertTask({ title: "Blocker" });
+  const task = await insertTask({
+    scheduledFor: "2024-08-12",
+    dueDate: "2024-08-20",
+  });
 
-  setMockToday("2024-07-02");
-  await useAppStore.getState().planTaskForToday("task-2");
-  assert.deepStrictEqual(repoState.planTaskForCalls, [
-    { id: "task-1", date: "2024-07-01" },
-    { id: "task-2", date: "2024-07-02" },
-  ]);
+  await useAppStore.getState().updateTask(task.id, {
+    title: "Renamed",
+    scheduledFor: null,
+    dueDate: null,
+    dependsOnTaskId: blocker.id,
+  });
+
+  const saved = await getTask(task.id);
+  assert.strictEqual(saved?.title, "Renamed");
+  assert.strictEqual(saved?.scheduledFor, null, "do-date can be cleared");
+  assert.strictEqual(saved?.dueDate, null, "due date can be cleared");
+  assert.strictEqual(saved?.dependsOnTaskId, blocker.id, "dependency is saved");
 }
 
-async function testSkipTaskUsesTomorrow() {
-  resetStores("2024-08-10");
-  await useAppStore.getState().skipTaskForToday("task-3");
-  assert.deepStrictEqual(repoState.skipTaskForTodayCalls, [
-    { id: "task-3", date: addDays("2024-08-10", 1) },
-  ]);
+async function testPastDoDateClampedToToday() {
+  setToday("2024-08-10");
+  await useAppStore
+    .getState()
+    .createTask({ title: "Backdated", scheduledFor: "2024-08-01" });
+
+  const [created] = await db
+    .select()
+    .from(tasks)
+    .where(eq(tasks.title, "Backdated"));
+  assert.strictEqual(created.scheduledFor, "2024-08-10");
 }
 
-async function testHabitActionsUseUpdatedToday() {
-  resetStores("2024-09-15");
-  await useAppStore.getState().completeHabit("habit-1");
-  await useAppStore.getState().undoHabit("habit-1");
-  assert.deepStrictEqual(repoState.completeHabitTodayCalls, [
-    { id: "habit-1", date: "2024-09-15" },
-  ]);
-  assert.deepStrictEqual(repoState.undoHabitTodayCalls, [
-    { id: "habit-1", date: "2024-09-15" },
-  ]);
+async function testPlanTaskUsesCurrentDate() {
+  setToday("2024-09-15");
+  const task = await insertTask();
+  await useAppStore.getState().planTaskForToday(task.id);
+  assert.strictEqual((await getTask(task.id))?.scheduledFor, "2024-09-15");
+  assert.deepStrictEqual(
+    useAppStore.getState().todayTasks.map((t) => t.id),
+    [task.id]
+  );
 
-  setMockToday("2024-09-16");
-  await useAppStore.getState().completeHabit("habit-2");
-  assert.deepStrictEqual(repoState.completeHabitTodayCalls, [
-    { id: "habit-1", date: "2024-09-15" },
-    { id: "habit-2", date: "2024-09-16" },
-  ]);
+  // The date moving on is picked up without recreating the store
+  useTimeStore.setState({ currentDate: "2024-09-16" });
+  const other = await insertTask();
+  await useAppStore.getState().planTaskForToday(other.id);
+  assert.strictEqual((await getTask(other.id))?.scheduledFor, "2024-09-16");
+}
+
+async function testDueTasksGoToToday() {
+  setToday("2024-10-01");
+  const store = useAppStore.getState();
+
+  await store.createTask({ title: "Due now", dueDate: "2024-09-30" });
+  const [created] = await db
+    .select()
+    .from(tasks)
+    .where(eq(tasks.title, "Due now"));
+  assert.strictEqual(created.scheduledFor, "2024-10-01", "new due task -> Today");
+
+  await store.sendTaskBackToSlate(created.id);
+  assert.strictEqual(
+    (await getTask(created.id))?.scheduledFor,
+    null,
+    "sending a due task back to the Slate sticks"
+  );
+
+  // Editing other fields (same due date) leaves it in the Slate
+  await store.updateTask(created.id, {
+    title: "Due now!",
+    dueDate: "2024-09-30",
+    scheduledFor: null,
+  });
+  assert.strictEqual((await getTask(created.id))?.scheduledFor, null);
+
+  // Changing the due date to today pulls an unplanned task in
+  const later = await insertTask({ dueDate: "2024-10-09" });
+  await store.updateTask(later.id, { dueDate: "2024-10-01" });
+  assert.strictEqual((await getTask(later.id))?.scheduledFor, "2024-10-01");
 }
