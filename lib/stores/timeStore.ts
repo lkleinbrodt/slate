@@ -11,7 +11,7 @@ interface TimeState {
   isInitialized: boolean;
 
   // Actions
-  initialize: () => () => void; // Returns cleanup function
+  initialize: () => Promise<() => void>; // Resolves to a cleanup function
   checkAndUpdateIfNeeded: () => Promise<void>;
   getCurrentDate: () => string;
 }
@@ -56,7 +56,7 @@ export const useTimeStore = create<TimeState>((set, get) => {
     currentDate: getToday(useSettingsStore.getState().dayStart),
     isInitialized: false,
 
-    initialize: () => {
+    initialize: async () => {
       const dayStart = useSettingsStore.getState().dayStart;
       const today = getToday(dayStart);
       
@@ -64,6 +64,10 @@ export const useTimeStore = create<TimeState>((set, get) => {
         currentDate: today,
         isInitialized: true,
       });
+
+      // Catch up on any days that passed while the app was closed. Must run on
+      // every cold start: the date-change checks below only fire while running.
+      await processRollover(today);
 
       // Set up AppState listener to check date when app comes to foreground
       const appStateSubscription = AppState.addEventListener(
@@ -104,3 +108,13 @@ export const useTimeStore = create<TimeState>((set, get) => {
   };
 });
 
+// Changing the day start can move "today"; re-check when it changes.
+// (Plain zustand `subscribe` takes a single listener, so compare manually.)
+let previousDayStart = useSettingsStore.getState().dayStart;
+useSettingsStore.subscribe((state) => {
+  if (state.dayStart === previousDayStart) return;
+  previousDayStart = state.dayStart;
+  if (useTimeStore.getState().isInitialized) {
+    useTimeStore.getState().checkAndUpdateIfNeeded();
+  }
+});

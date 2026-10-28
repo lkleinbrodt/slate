@@ -26,7 +26,12 @@ type AddEditModalProps = SheetProps<"add-edit-modal">;
 export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
   const insets = useSafeAreaInsets();
   const { showToast } = useToast();
-  const { mode, type: initialType, itemId } = payload || {};
+  const {
+    mode,
+    type: initialType,
+    itemId,
+    scheduledFor: defaultScheduledFor,
+  } = payload || {};
 
   // Theme colors
   const backgroundColor = useThemeColor({}, "background");
@@ -43,6 +48,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
   );
   const [title, setTitle] = useState("");
   const [scheduledDate, setScheduledDate] = useState<string | null>(null);
+  const [dueDate, setDueDate] = useState<string | null>(null);
   const [dependsOnTaskId, setDependsOnTaskId] = useState<string | null>(null);
 
   // Create styles with theme colors
@@ -67,6 +73,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
     getHabitById,
     deleteTask,
     deleteHabit,
+    getTodayDate,
   } = useAppStore();
 
   // Load existing item data when editing
@@ -77,6 +84,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
         if (task) {
           setTitle(task.title);
           setScheduledDate(task.scheduledFor || null);
+          setDueDate(task.dueDate || null);
           setDependsOnTaskId(task.dependsOnTaskId || null);
         }
       } else {
@@ -88,11 +96,20 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
     } else if (mode === "add") {
       // Clear state for new item
       setTitle("");
-      setScheduledDate(null);
+      setScheduledDate(defaultScheduledFor ?? null);
+      setDueDate(null);
       setDependsOnTaskId(null);
       setItemType(initialType || "task");
     }
-  }, [mode, itemId, itemType, initialType, getTaskById, getHabitById]);
+  }, [
+    mode,
+    itemId,
+    itemType,
+    initialType,
+    defaultScheduledFor,
+    getTaskById,
+    getHabitById,
+  ]);
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -106,6 +123,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
           await createTask({
             title: title.trim(),
             scheduledFor: scheduledDate || undefined,
+            dueDate: dueDate || undefined,
             dependsOn: dependsOnTaskId || undefined,
           });
           showToast(`Task "${title.trim()}" created successfully!`);
@@ -115,17 +133,20 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
           });
           showToast(`Habit "${title.trim()}" created successfully!`);
         }
-        //dont close the modal, just wipe the data (so it's easy to create a new task)
+        // Don't close the modal, just wipe the data (so it's easy to add another
+        // of the same kind)
         setTitle("");
-        setScheduledDate(null);
+        setScheduledDate(defaultScheduledFor ?? null);
+        setDueDate(null);
         setDependsOnTaskId(null);
-        setItemType("task");
       } else if (mode === "edit" && itemId) {
         if (itemType === "task") {
+          // Pass null (not undefined) so cleared fields are actually cleared
           await updateTask(itemId, {
             title: title.trim(),
-            scheduledFor: scheduledDate || undefined,
-            dependsOn: dependsOnTaskId || undefined,
+            scheduledFor: scheduledDate,
+            dueDate,
+            dependsOnTaskId,
           });
         } else {
           await updateHabit(itemId, {
@@ -150,7 +171,19 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
       payload: {
         onDateSelect: handleDateSelect,
         selectedDate: scheduledDate,
-        title: "Schedule For",
+        title: "Do Date",
+        // Past do-dates would never roll into Today
+        minDate: getTodayDate(),
+      },
+    });
+  };
+
+  const openDueDatePicker = () => {
+    SheetManager.show("date-picker-sheet", {
+      payload: {
+        onDateSelect: setDueDate,
+        selectedDate: dueDate,
+        title: "Due Date",
       },
     });
   };
@@ -279,8 +312,30 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
                     />
                     <Text style={styles.buttonBarButtonText}>
                       {scheduledDate
-                        ? formatDate(fromLocalDateString(scheduledDate))
-                        : "Date"}
+                        ? `Do ${formatDate(fromLocalDateString(scheduledDate), "due")}`
+                        : "Do date"}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+
+              {/* Task-specific Due Date Button */}
+              {itemType === "task" && (
+                <TouchableOpacity
+                  style={styles.buttonBarButton}
+                  onPress={openDueDatePicker}
+                >
+                  <View style={styles.buttonBarButtonContent}>
+                    <Ionicons
+                      name="flag-outline"
+                      size={16}
+                      color={dueDate ? successColor : textTertiaryColor}
+                      style={styles.buttonBarButtonIcon}
+                    />
+                    <Text style={styles.buttonBarButtonText}>
+                      {dueDate
+                        ? `Due ${formatDate(fromLocalDateString(dueDate), "due")}`
+                        : "Due date"}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -496,6 +551,7 @@ const createStyles = (colors: any) =>
     },
     buttonBar: {
       flexDirection: "row",
+      flexWrap: "wrap",
       gap: 12,
       alignItems: "center",
     },

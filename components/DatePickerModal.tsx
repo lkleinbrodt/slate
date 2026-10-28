@@ -24,6 +24,7 @@ export default function DatePickerActionSheet({
     onDateSelect,
     selectedDate = null,
     title = "Select Date",
+    minDate,
   } = payload || {};
 
   // Theme colors
@@ -82,6 +83,8 @@ export default function DatePickerActionSheet({
         </View>
         <Calendar
           onDayPress={handleDateSelect}
+          minDate={minDate}
+          current={selectedDate || undefined}
           markedDates={{
             [selectedDate || ""]: {
               selected: true,

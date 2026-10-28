@@ -5,7 +5,7 @@ import {
   taskHistory,
   tasks,
 } from "@/lib/db/schema";
-import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { addDays, fromLocalDate, toLocalDate } from "./dates";
 
 import { db } from "@/lib/db/connection";
@@ -19,38 +19,41 @@ async function finalizeDay(day: string) {
   console.log(`Finalizing history for day: ${day}`);
 
   // 1) HABIT HISTORY
-  const activeHabits = await db
-    .select()
-    .from(habits)
-    .where(eq(habits.isActive, true));
-  for (const h of activeHabits) {
-    const wasDone = await db
-      .select()
-      .from(habitCompletions)
-      .where(
-        and(eq(habitCompletions.habitId, h.id), eq(habitCompletions.date, day))
-      )
-      .get();
+  // Active habits that existed on this day, plus any habit completed that day
+  // (covers habits deleted after being completed).
+  const [allHabits, completions] = await Promise.all([
+    db.select().from(habits),
+    db.select().from(habitCompletions).where(eq(habitCompletions.date, day)),
+  ]);
+  const completedIds = new Set(completions.map((c) => c.habitId));
+  const habitsForDay = allHabits.filter(
+    (h) =>
+      completedIds.has(h.id) ||
+      (h.isActive && toLocalDate(h.createdAt) <= day)
+  );
+  for (const h of habitsForDay) {
     await db
       .insert(habitHistory)
       .values({
         id: randomUUID(),
         date: day,
         habitId: h.id,
-        completed: !!wasDone,
+        completed: completedIds.has(h.id),
       })
       .onConflictDoNothing();
   }
 
-  // 2) TASK HISTORY: planned for the day
+  // 2) TASK HISTORY: planned for the day (skip tasks deleted without being done)
   const plannedTasks = await db
     .select()
     .from(tasks)
-    .where(eq(tasks.scheduledFor, day));
+    .where(
+      and(
+        eq(tasks.scheduledFor, day),
+        sql`NOT (status = 'archived' AND completed_date IS NULL)`
+      )
+    );
   for (const t of plannedTasks) {
-    const wasDoneOnDay = t.completedAt
-      ? toLocalDate(t.completedAt) === day
-      : false;
     await db
       .insert(taskHistory)
       .values({
@@ -58,19 +61,19 @@ async function finalizeDay(day: string) {
         date: day,
         taskId: t.id,
         planned: true,
-        completed: wasDoneOnDay,
+        completed: t.completedDate === day,
       })
       .onConflictDoNothing();
   }
 
-  // 3) TASK HISTORY: ad-hoc completions
+  // 3) TASK HISTORY: completed on the day without being planned for it
   const adhocTasks = await db
     .select()
     .from(tasks)
     .where(
       and(
-        sql`date(completed_at) = ${day}`,
-        or(isNull(tasks.scheduledFor), sql`scheduled_for != ${day}`)
+        eq(tasks.completedDate, day),
+        sql`(scheduled_for IS NULL OR scheduled_for != ${day})`
       )
     );
   for (const t of adhocTasks) {
@@ -87,7 +90,7 @@ async function finalizeDay(day: string) {
   }
 }
 
-export async function processRollover(nowLocalDate: string) {
+async function runRollover(nowLocalDate: string) {
   const lastProcessedDateStr = await storage.getItem("last_processed_date");
   // Note: If lastProcessedDateStr is null (fresh install or cleared KV store),
   // we default to today. This means if a user installs, uses the app, deletes it,
@@ -111,28 +114,28 @@ export async function processRollover(nowLocalDate: string) {
     await finalizeDay(dayToFinalize);
 
     // Carry over unfinished tasks to the next day
-    const carryOverTasks = await db
-      .select({ id: tasks.id })
-      .from(tasks)
+    const nextDay = addDays(dayToFinalize, 1);
+    await db
+      .update(tasks)
+      .set({ scheduledFor: nextDay })
       .where(
         and(eq(tasks.scheduledFor, dayToFinalize), eq(tasks.status, "open"))
       );
-
-    const nextDay = addDays(dayToFinalize, 1);
-    for (const task of carryOverTasks) {
-      await db
-        .update(tasks)
-        .set({ scheduledFor: nextDay })
-        .where(eq(tasks.id, task.id));
-    }
-
-    // Note: We don't reset completed tasks anymore - the query filtering handles this
-    // This keeps the data integrity intact while solving the display problem
 
     // Update last processed date and move to the next day
     lastProcessedDate = nextDay;
     await storage.setItem("last_processed_date", lastProcessedDate);
   }
+}
 
-  await storage.setItem("last_processed_date", lastProcessedDate);
+// Rollover can be triggered from app start, foregrounding, and the minute
+// timer; serialize runs so two of them never process the same day at once.
+let inFlight: Promise<void> = Promise.resolve();
+
+export function processRollover(nowLocalDate: string): Promise<void> {
+  const run = inFlight.then(() => runRollover(nowLocalDate));
+  inFlight = run.catch((err) => {
+    console.error("Rollover failed", err);
+  });
+  return run;
 }

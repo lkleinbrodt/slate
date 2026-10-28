@@ -7,6 +7,8 @@ export const tasks = sqliteTable("tasks", {
   dueDate: text("due_date"),
   scheduledFor: text("scheduled_for"),
   completedAt: text("completed_at"),
+  // Logical day (respecting day start) the task was completed on, YYYY-MM-DD
+  completedDate: text("completed_date"),
   dependsOnTaskId: text("depends_on_task_id"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),

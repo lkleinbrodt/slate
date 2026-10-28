@@ -19,6 +19,8 @@ declare module "react-native-actions-sheet" {
         mode: "add" | "edit";
         type?: "task" | "habit";
         itemId?: string;
+        // Default do-date for new tasks (e.g. today when adding from Today)
+        scheduledFor?: string;
       };
     }>;
     "date-picker-sheet": SheetDefinition<{
@@ -26,6 +28,7 @@ declare module "react-native-actions-sheet" {
         onDateSelect: (date: string | null) => void;
         selectedDate?: string | null;
         title?: string;
+        minDate?: string;
       };
     }>;
     "dependency-picker-sheet": SheetDefinition<{

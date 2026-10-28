@@ -6,16 +6,17 @@ import {
   taskHistory,
   TaskHistory,
 } from "@/lib/db/schema";
-import { and, count, eq, gte, lte } from "drizzle-orm";
+import { and, count, eq, gte, lt, lte } from "drizzle-orm";
 
 import { db } from "@/lib/db/connection";
 import { addDays } from "@/lib/logic/dates";
-import { calculateStreak } from "@/lib/logic/streaks";
+import { calculateBaseStreaks, displayStreak } from "@/lib/logic/streaks";
 import { create } from "zustand";
 import { useTimeStore } from "./timeStore";
 
 interface HistoryState {
   loading: boolean;
+  hasLoaded: boolean;
   selectedDay: string | null;
   calendarData: Record<
     string,
@@ -58,6 +59,7 @@ interface HistoryState {
 
 export const useHistoryStore = create<HistoryState>((set, get) => ({
   loading: false,
+  hasLoaded: false,
   selectedDay: null,
   calendarData: {},
   overallStats: {
@@ -69,65 +71,64 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
   loadInitialData: async () => {
     set({ loading: true });
     try {
-      // Load overall stats
+      // Last 7 days = 6 finalized days from history + today's live data
       const today = useTimeStore.getState().getCurrentDate();
-      const sevenDaysAgo = addDays(today, -7);
+      const windowStart = addDays(today, -6);
 
-      console.log(
-        "Loading history data for date range:",
-        sevenDaysAgo,
-        "to",
-        today
-      );
+      const [pastTasksCompleted, pastHabitRows, todaySnapshot] =
+        await Promise.all([
+          db
+            .select({ count: count() })
+            .from(taskHistory)
+            .where(
+              and(
+                gte(taskHistory.date, windowStart),
+                lt(taskHistory.date, today),
+                eq(taskHistory.completed, true)
+              )
+            )
+            .then((result) => result[0]?.count || 0),
+          db
+            .select({
+              date: habitHistory.date,
+              completed: habitHistory.completed,
+            })
+            .from(habitHistory)
+            .where(
+              and(gte(habitHistory.date, windowStart), lt(habitHistory.date, today))
+            ),
+          repo.getDaySnapshot(today, today),
+        ]);
 
-      // Get tasks completed in last 7 days
-      const tasksCompleted7d = await db
-        .select({ count: count() })
-        .from(taskHistory)
-        .where(
-          and(
-            gte(taskHistory.date, sevenDaysAgo),
-            eq(taskHistory.completed, true)
-          )
-        )
-        .then((result) => result[0]?.count || 0);
-
-      // Get perfect days count - need to count unique dates where all habits were completed
-      const perfectDaysResult = await db
-        .select({
-          date: habitHistory.date,
-          completed: habitHistory.completed,
-        })
-        .from(habitHistory)
-        .where(gte(habitHistory.date, sevenDaysAgo));
+      const tasksCompleted7d =
+        pastTasksCompleted +
+        todaySnapshot.tasks.filter((t) => t.isCompleted).length;
 
       // Group by date and count perfect days
       const habitDataByDate: Record<string, boolean[]> = {};
-      perfectDaysResult.forEach((record) => {
+      pastHabitRows.forEach((record) => {
         if (!habitDataByDate[record.date]) habitDataByDate[record.date] = [];
         habitDataByDate[record.date].push(record.completed);
       });
 
-      const perfectDays = Object.values(habitDataByDate).filter(
-        (habits) => habits.length > 0 && habits.every((completed) => completed)
-      ).length;
+      const perfectDays =
+        Object.values(habitDataByDate).filter(
+          (habits) => habits.length > 0 && habits.every((completed) => completed)
+        ).length + (todaySnapshot.isPerfectDay ? 1 : 0);
 
-      // Get current streaks for all habits
-      const activeHabits = await repo.listActiveHabits();
+      // Current streaks: finalized streak through yesterday, +1 if done today
+      const baseStreaks = await calculateBaseStreaks(
+        todaySnapshot.habits.map((h) => h.habit.id),
+        today
+      );
       const currentStreaks: Record<string, { streak: number; title: string }> =
         {};
-      for (const habit of activeHabits) {
+      for (const { habit, isCompleted } of todaySnapshot.habits) {
         currentStreaks[habit.id] = {
-          streak: await calculateStreak(habit.id, today),
+          streak: displayStreak(baseStreaks[habit.id] ?? 0, isCompleted),
           title: habit.title,
         };
       }
-
-      console.log("History data loaded successfully:", {
-        tasksCompleted7d,
-        perfectDays,
-        currentStreaksCount: Object.keys(currentStreaks).length,
-      });
 
       set({
         overallStats: {
@@ -136,6 +137,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
           currentStreaks,
         },
         loading: false,
+        hasLoaded: true,
       });
     } catch (error) {
       console.error("Failed to load initial history data:", error);
@@ -223,12 +225,16 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       }
 
       // Calculate metrics for each date (excluding today if it was already set)
-      Object.keys(habitByDate).forEach((date) => {
+      const dates = new Set([
+        ...Object.keys(habitByDate),
+        ...Object.keys(taskByDate),
+      ]);
+      dates.forEach((date) => {
         // Skip today if we already set it from live data
         if (date === today && isTodayInMonth) return;
 
-        const habitsCompleted = habitByDate[date].filter(Boolean).length;
-        const totalHabits = habitByDate[date].length;
+        const habitsCompleted = (habitByDate[date] ?? []).filter(Boolean).length;
+        const totalHabits = habitByDate[date]?.length ?? 0;
         const isPerfectDay = habitsCompleted === totalHabits && totalHabits > 0;
 
         calendarData[date] = {

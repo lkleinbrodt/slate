@@ -6,7 +6,7 @@ import {
   taskHistory,
   tasks,
 } from "@/lib/db/schema";
-import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/connection";
 import { nowISO } from "@/lib/logic/dates";
@@ -36,18 +36,17 @@ export const listUnscheduledTasks = () =>
     .select()
     .from(tasks)
     .where(and(eq(tasks.status, "open"), isNull(tasks.scheduledFor)));
+// Today = open tasks whose do-date is today (or earlier, in case a past date
+// slipped through without being rolled over) + tasks completed today.
 export const listTodayTasks = (date: string) =>
   db
     .select()
     .from(tasks)
     .where(
-      and(
-        sql`status IN ('open', 'done')`,
-        sql`(
-          scheduled_for = ${date} 
-          OR (status = 'done' AND date(completed_at) = ${date})
-        )`
-      )
+      sql`(
+        (status = 'open' AND scheduled_for <= ${date})
+        OR (status = 'done' AND (scheduled_for = ${date} OR completed_date = ${date}))
+      )`
     );
 export const listOverdueTasks = (date: string) =>
   db
@@ -76,6 +75,7 @@ export const createTask = async (data: {
     updatedAt: now,
     status: "open" as const,
     completedAt: null,
+    completedDate: null,
   };
   await db.insert(tasks).values(newTask);
   return newTask;
@@ -96,10 +96,11 @@ export const planTaskFor = (id: string, date: string | null) =>
   updateTask(id, { scheduledFor: date });
 export const skipTaskForToday = (id: string, tomorrowDate: string) =>
   updateTask(id, { scheduledFor: tomorrowDate });
-export const completeTask = (id: string) =>
-  updateTask(id, { status: "done", completedAt: nowISO() });
+// `date` is the app's logical day (respecting day start), not the UTC date
+export const completeTask = (id: string, date: string) =>
+  updateTask(id, { status: "done", completedAt: nowISO(), completedDate: date });
 export const undoCompleteTask = (id: string) =>
-  updateTask(id, { status: "open", completedAt: null });
+  updateTask(id, { status: "open", completedAt: null, completedDate: null });
 
 // Soft delete/archival for tasks
 export const deleteTask = (id: string) =>
@@ -263,8 +264,8 @@ export async function getDaySnapshot(
       .filter((row) => row.tasks !== null) // Filter out deleted tasks
       .map((row) => ({
         task: row.tasks!,
-        isCompleted: row.task_history.completed === 1,
-        isPlanned: row.task_history.planned === 1,
+        isCompleted: row.task_history.completed,
+        isPlanned: row.task_history.planned,
       }));
 
     // Transform history habits to unified format
@@ -272,13 +273,13 @@ export async function getDaySnapshot(
       .filter((row) => row.habits !== null) // Filter out deleted habits
       .map((row) => ({
         habit: row.habits!,
-        isCompleted: row.habit_history.completed === 1,
+        isCompleted: row.habit_history.completed,
       }));
 
     // Calculate perfect day from history
     const isPerfectDay =
       historyHabits.length > 0 &&
-      historyHabits.every((h) => h.habit_history.completed === 1);
+      historyHabits.every((h) => h.habit_history.completed);
 
     return {
       date,

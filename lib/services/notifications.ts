@@ -7,7 +7,8 @@ import dayjs from "dayjs";
 // Configure notification handler
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
   }),
@@ -19,6 +20,13 @@ const NOTIFICATION_IDS = {
   HABIT_REMINDER_PREFIX: "habit_reminder_",
   NIGHT_REVIEW: "night_review_daily",
 } as const;
+
+// Habit reminders are one-shot notifications scheduled this many days ahead
+// (re-filled whenever the app opens). Keep well under iOS's 64 pending limit:
+// worst case 7 days x 5 reminders/day (2h interval) = 35.
+const HABIT_REMINDER_DAYS_AHEAD = 7;
+const HABIT_REMINDER_START_HOUR = 10;
+const HABIT_REMINDER_END_HOUR = 20; // exclusive
 
 /**
  * Request notification permissions from the user
@@ -77,9 +85,9 @@ export async function cancelAllNotifications(): Promise<void> {
 }
 
 /**
- * Get count of incomplete habits for today
+ * Get active habit count and how many are still incomplete today
  */
-async function getIncompleteHabitsCount(): Promise<number> {
+async function getHabitCounts(): Promise<{ active: number; incomplete: number }> {
   const today = useTimeStore.getState().getCurrentDate();
   const [activeHabits, completions] = await Promise.all([
     repo.listActiveHabits(),
@@ -87,24 +95,10 @@ async function getIncompleteHabitsCount(): Promise<number> {
   ]);
 
   const completedHabitIds = new Set(completions.map((c) => c.habitId));
-  return activeHabits.filter((h) => !completedHabitIds.has(h.id)).length;
-}
-
-/**
- * Get count of incomplete tasks for today
- */
-async function getIncompleteTasksCount(): Promise<number> {
-  const today = useTimeStore.getState().getCurrentDate();
-  const todayTasks = await repo.listTodayTasks(today);
-  return todayTasks.filter((t) => t.status !== "done").length;
-}
-
-/**
- * Get count of unscheduled tasks in Slate
- */
-async function getSlateTasksCount(): Promise<number> {
-  const slateTasks = await repo.listUnscheduledTasks();
-  return slateTasks.length;
+  return {
+    active: activeHabits.length,
+    incomplete: activeHabits.filter((h) => !completedHabitIds.has(h.id)).length,
+  };
 }
 
 /**
@@ -118,9 +112,9 @@ export async function schedulePlanYourDayNotification(
 
   const [hour, minute] = time.split(":").map(Number);
   const trigger: Notifications.DailyTriggerInput = {
+    type: Notifications.SchedulableTriggerInputTypes.DAILY,
     hour,
     minute,
-    repeats: true,
   };
 
   await Notifications.scheduleNotificationAsync({
@@ -135,51 +129,54 @@ export async function schedulePlanYourDayNotification(
 }
 
 /**
- * Schedule periodic habit reminders throughout the day
- * Only schedules if there are incomplete habits
+ * Schedule habit reminders every `intervalHours` between 10 AM and 8 PM.
+ *
+ * Uses one-shot date triggers for the next week rather than repeating ones,
+ * so today's remaining reminders can be dropped once all habits are done
+ * without losing tomorrow's.
  */
 export async function scheduleHabitReminders(
   intervalHours: number
 ): Promise<void> {
-  // Cancel all existing habit reminder notifications
   await cancelNotificationsByPrefix(NOTIFICATION_IDS.HABIT_REMINDER_PREFIX);
 
-  // Check if there are incomplete habits
-  const incompleteCount = await getIncompleteHabitsCount();
-  if (incompleteCount === 0) {
-    return; // No incomplete habits, don't schedule reminders
-  }
+  const { active, incomplete } = await getHabitCounts();
+  if (active === 0) return;
 
-  // Start from 10 AM, then add intervals
-  const startHour = 10;
-  const startMinute = 0;
-  const maxHour = 20; // Don't schedule after 8 PM
+  const now = dayjs();
+  const appToday = useTimeStore.getState().getCurrentDate();
+  const step = Math.max(1, intervalHours);
 
-  let currentHour = startHour;
-  let reminderIndex = 0;
+  for (let dayOffset = 0; dayOffset < HABIT_REMINDER_DAYS_AHEAD; dayOffset++) {
+    const day = now.add(dayOffset, "day").startOf("day");
+    const isAppToday = day.format("YYYY-MM-DD") === appToday;
+    if (isAppToday && incomplete === 0) continue;
 
-  while (currentHour < maxHour) {
-    const trigger: Notifications.DailyTriggerInput = {
-      hour: currentHour,
-      minute: startMinute,
-      repeats: true,
-    };
+    for (
+      let hour = HABIT_REMINDER_START_HOUR;
+      hour < HABIT_REMINDER_END_HOUR;
+      hour += step
+    ) {
+      const fireAt = day.hour(hour);
+      if (!fireAt.isAfter(now)) continue;
 
-    await Notifications.scheduleNotificationAsync({
-      identifier: `${NOTIFICATION_IDS.HABIT_REMINDER_PREFIX}${reminderIndex}`,
-      content: {
-        title: "Habit Reminder",
-        body:
-          incompleteCount === 1
-            ? "You have 1 incomplete habit remaining"
-            : `You have ${incompleteCount} incomplete habits remaining`,
-        sound: true,
-      },
-      trigger,
-    });
-
-    currentHour += intervalHours;
-    reminderIndex++;
+      await Notifications.scheduleNotificationAsync({
+        identifier: `${NOTIFICATION_IDS.HABIT_REMINDER_PREFIX}${fireAt.format("YYYYMMDDHH")}`,
+        content: {
+          title: "Habit Reminder",
+          body: isAppToday
+            ? incomplete === 1
+              ? "You have 1 incomplete habit remaining"
+              : `You have ${incomplete} incomplete habits remaining`
+            : "Don't forget your habits today",
+          sound: true,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: fireAt.toDate(),
+        },
+      });
+    }
   }
 }
 
@@ -194,34 +191,18 @@ export async function scheduleNightReviewNotification(
 
   const [hour, minute] = time.split(":").map(Number);
   const trigger: Notifications.DailyTriggerInput = {
+    type: Notifications.SchedulableTriggerInputTypes.DAILY,
     hour,
     minute,
-    repeats: true,
   };
 
-  // Get counts for notification content
-  const [incompleteTasks, slateTasks] = await Promise.all([
-    getIncompleteTasksCount(),
-    getSlateTasksCount(),
-  ]);
-
-  let body = "Review your day";
-  if (incompleteTasks > 0 || slateTasks > 0) {
-    const parts: string[] = [];
-    if (incompleteTasks > 0) {
-      parts.push(`${incompleteTasks} task${incompleteTasks === 1 ? "" : "s"} incomplete`);
-    }
-    if (slateTasks > 0) {
-      parts.push(`${slateTasks} task${slateTasks === 1 ? "" : "s"} in Slate`);
-    }
-    body += ` - ${parts.join(", ")}`;
-  }
-
+  // Body is static: a repeating notification's content is fixed when it's
+  // scheduled, so live counts would go stale after the first day.
   await Notifications.scheduleNotificationAsync({
     identifier: NOTIFICATION_IDS.NIGHT_REVIEW,
     content: {
       title: "Night Review",
-      body,
+      body: "Wrap up today and tidy your Slate for tomorrow",
       sound: true,
     },
     trigger,
@@ -234,19 +215,15 @@ export async function scheduleNightReviewNotification(
  */
 export async function updateHabitRemindersIfNeeded(): Promise<void> {
   const settings = useSettingsStore.getState();
-  if (!settings.habitRemindersEnabled) {
+  if (
+    !settings.habitRemindersEnabled ||
+    settings.notificationPermissionStatus !== "granted"
+  ) {
     return;
   }
 
-  const incompleteCount = await getIncompleteHabitsCount();
-  
-  if (incompleteCount === 0) {
-    // All habits complete, cancel reminders
-    await cancelNotificationsByPrefix(NOTIFICATION_IDS.HABIT_REMINDER_PREFIX);
-  } else {
-    // Reschedule with updated count
-    await scheduleHabitReminders(settings.habitReminderInterval);
-  }
+  // Reschedules with the updated count (drops today's if all are done)
+  await scheduleHabitReminders(settings.habitReminderInterval);
 }
 
 /**
@@ -284,4 +261,3 @@ export async function rescheduleAllNotifications(): Promise<void> {
     await Notifications.cancelScheduledNotificationAsync(NOTIFICATION_IDS.NIGHT_REVIEW);
   }
 }
-

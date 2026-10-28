@@ -1,3 +1,16 @@
+// Newer Node versions strip TypeScript types natively, which bypasses the
+// transpile hook below and fails on .ts files inside node_modules. Re-run
+// with native stripping disabled.
+if (process.features && process.features.typescript && !process.env.SLATE_TEST_CHILD) {
+  const { spawnSync } = require("child_process");
+  const result = spawnSync(
+    process.execPath,
+    ["--no-experimental-strip-types", __filename],
+    { stdio: "inherit", env: { ...process.env, SLATE_TEST_CHILD: "1" } }
+  );
+  process.exit(result.status ?? 1);
+}
+
 const fs = require("fs");
 const path = require("path");
 const Module = require("module");
@@ -9,8 +22,9 @@ const mocks = new Map([
   ["expo-sqlite/kv-store", path.join(projectRoot, "tests/mocks/kv-store.ts")],
   ["expo-crypto", path.join(projectRoot, "tests/mocks/expo-crypto.ts")],
   ["@/lib/db/connection", path.join(projectRoot, "tests/mocks/db-connection.ts")],
-  ["@/lib/logic/repo", path.join(projectRoot, "tests/mocks/repo.ts")],
   ["@/lib/logic/dates", path.join(projectRoot, "tests/mocks/dates.ts")],
+  ["@/lib/services/notifications", path.join(projectRoot, "tests/mocks/notifications.ts")],
+  ["react-native", path.join(projectRoot, "tests/mocks/react-native.ts")],
 ]);
 
 const originalResolveFilename = Module._resolveFilename;

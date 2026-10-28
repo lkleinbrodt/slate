@@ -8,6 +8,7 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import { FloatingActionButton } from "@/components/FloatingActionButton";
 import { SafeAreaThemedView } from "@/components/safe-area-themed-view";
 import { useAppStore } from "@/lib/stores/appStore";
+import { displayStreak } from "@/lib/logic/streaks";
 import { SheetManager } from "react-native-actions-sheet";
 
 export default function TodayScreen() {
@@ -15,12 +16,27 @@ export default function TodayScreen() {
     todayTasks,
     activeHabits,
     todaysHabitCompletions,
+    habitBaseStreaks,
     toggleTask,
     toggleHabit,
     skipTaskForToday,
+    getTodayDate,
   } = useAppStore();
 
   const completedTodayTasks = todayTasks.filter((t) => t.status === "done");
+  // Only count completions of habits that are still active
+  const completedHabitIds = new Set(
+    todaysHabitCompletions.map((c) => c.habitId)
+  );
+  const completedActiveHabits = activeHabits.filter((h) =>
+    completedHabitIds.has(h.id)
+  );
+  const habitStreaks = Object.fromEntries(
+    activeHabits.map((h) => [
+      h.id,
+      displayStreak(habitBaseStreaks[h.id] ?? 0, completedHabitIds.has(h.id)),
+    ])
+  );
 
   const handleTaskToggle = (taskId: string, _isCompleted: boolean) => {
     // Use the new optimistic toggleTask - it handles the state flip internally
@@ -33,8 +49,9 @@ export default function TodayScreen() {
   };
 
   const handleOpenAddModal = () => {
+    // Tasks added from Today are planned for today
     SheetManager.show("add-edit-modal", {
-      payload: { mode: "add" },
+      payload: { mode: "add", scheduledFor: getTodayDate() },
     });
   };
 
@@ -44,17 +61,15 @@ export default function TodayScreen() {
         <PlannerHeader
           completedTasksCount={completedTodayTasks.length}
           totalTasksCount={todayTasks.length}
-          completedHabitsCount={todaysHabitCompletions.length}
+          completedHabitsCount={completedActiveHabits.length}
           totalHabitsCount={activeHabits.length}
         />
 
         <View style={styles.sectionsContainer}>
           <HabitsSection
             habits={activeHabits}
-            completedHabits={todaysHabitCompletions.map((c) => ({
-              id: c.habitId,
-            }))}
-            habitStreaks={{}} // Streaks will be calculated differently now, maybe in the component
+            completedHabits={completedActiveHabits}
+            habitStreaks={habitStreaks}
             onToggle={handleHabitToggle}
           />
 

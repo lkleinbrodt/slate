@@ -4,6 +4,8 @@ import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { UI } from "@/lib/constants/app";
 import { useAppStore } from "@/lib/stores/appStore";
+import { useTimeStore } from "@/lib/stores/timeStore";
+import { fromLocalDate } from "@/lib/logic/dates";
 import React from "react";
 import { SheetManager } from "react-native-actions-sheet";
 import { ThemedText } from "./themed-text";
@@ -15,10 +17,14 @@ export const SlateItem: React.FC<SlateItemProps> = ({ task, onAddToToday }) => {
   const textSecondaryColor = useThemeColor({}, "textSecondary");
   const textTertiaryColor = useThemeColor({}, "textTertiary");
   const borderColor = useThemeColor({}, "border");
-  const { skipTaskForToday, todayDate } = useAppStore();
+  const errorColor = useThemeColor({}, "error");
+  const skipTaskForToday = useAppStore((s) => s.skipTaskForToday);
+  const todayDate = useTimeStore((s) => s.currentDate);
 
-  // Check if task is scheduled for today
-  const isScheduledForToday = task.scheduledFor === todayDate;
+  // Check if task is scheduled for today (or an earlier day it rolled over from)
+  const isScheduledForToday =
+    !!task.scheduledFor && task.scheduledFor <= todayDate;
+  const isOverdue = !!task.dueDate && task.dueDate < todayDate;
 
   return (
     <View style={[styles.container, { borderBottomColor: borderColor }]}>
@@ -59,6 +65,15 @@ export const SlateItem: React.FC<SlateItemProps> = ({ task, onAddToToday }) => {
         >
           {task.title}
         </ThemedText>
+        {task.dueDate && (
+          <ThemedText
+            type="caption"
+            style={{ color: isOverdue ? errorColor : textSecondaryColor }}
+          >
+            {isOverdue ? "Overdue · " : "Due "}
+            {fromLocalDate(task.dueDate).format("MMM D")}
+          </ThemedText>
+        )}
       </View>
 
       {/* Edit Button */}

@@ -24,7 +24,8 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   const iconColor = useThemeColor({}, "textTertiary");
   const textColor = useThemeColor({}, "text");
   const textSecondaryColor = useThemeColor({}, "textSecondary");
-  const isDone = task.status === "done";
+  // Use the prop, not task.status: history passes whether it was done *that day*
+  const isDone = isCompleted;
   const strikeWidth = useSharedValue(isDone ? 100 : 0);
 
   useEffect(() => {
@@ -34,7 +35,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 
   const handleToggle = () => {
     if (!isReadOnly) {
-      onToggle(task.id, task.status === "done"); // Pass current completed status
+      onToggle(task.id, isDone); // Pass current completed status
     }
   };
 
