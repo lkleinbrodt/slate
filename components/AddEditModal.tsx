@@ -26,12 +26,7 @@ type AddEditModalProps = SheetProps<"add-edit-modal">;
 export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
   const insets = useSafeAreaInsets();
   const { showToast } = useToast();
-  const {
-    mode,
-    type: initialType,
-    itemId,
-    scheduledFor: defaultScheduledFor,
-  } = payload || {};
+  const { mode, type: initialType, itemId } = payload || {};
 
   // Theme colors
   const backgroundColor = useThemeColor({}, "background");
@@ -100,7 +95,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
       // Clear state for new item
       setTitle("");
       setNotes("");
-      setScheduledDate(defaultScheduledFor ?? null);
+      setScheduledDate(null);
       setDueDate(null);
       setDependsOnTaskId(null);
       setItemType(initialType || "task");
@@ -110,7 +105,6 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
     itemId,
     itemType,
     initialType,
-    defaultScheduledFor,
     getTaskById,
     getHabitById,
   ]);
@@ -143,7 +137,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
         // of the same kind)
         setTitle("");
         setNotes("");
-        setScheduledDate(defaultScheduledFor ?? null);
+        setScheduledDate(null);
         setDueDate(null);
         setDependsOnTaskId(null);
       } else if (mode === "edit" && itemId) {

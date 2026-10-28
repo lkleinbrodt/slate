@@ -21,7 +21,6 @@ export default function TodayScreen() {
     toggleHabit,
     skipTaskForToday,
     sendTaskBackToSlate,
-    getTodayDate,
   } = useAppStore();
 
   const completedTodayTasks = todayTasks.filter((t) => t.status === "done");
@@ -50,9 +49,8 @@ export default function TodayScreen() {
   };
 
   const handleOpenAddModal = () => {
-    // Tasks added from Today are planned for today
     SheetManager.show("add-edit-modal", {
-      payload: { mode: "add", scheduledFor: getTodayDate() },
+      payload: { mode: "add" },
     });
   };
 
