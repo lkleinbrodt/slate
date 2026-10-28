@@ -35,7 +35,7 @@ interface AppState {
     dueDate?: string;
     scheduledFor?: string;
     dependsOn?: string;
-  }) => Promise<void>;
+  }) => Promise<Task>;
   createHabit: (data: { title: string; notes?: string }) => Promise<void>;
   // null clears a field; undefined leaves it unchanged
   updateTask: (
@@ -64,8 +64,6 @@ interface AppState {
   undoCompleteTask: (taskId: string) => Promise<void>;
   toggleTask: (taskId: string) => void;
   toggleHabit: (habitId: string) => void;
-  completeHabit: (habitId: string) => Promise<void>;
-  undoHabit: (habitId: string) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
   deleteHabit: (habitId: string) => Promise<void>;
 }
@@ -80,6 +78,13 @@ function clampToToday<T extends string | null | undefined>(
   today: string
 ): T | string {
   return date && date < today ? today : date;
+}
+
+// Fire-and-forget: reminder counts depend on which habits exist and are done
+function refreshHabitReminders() {
+  updateHabitRemindersIfNeeded().catch((err) => {
+    console.error("Failed to update habit reminders", err);
+  });
 }
 
 // Tasks due today or earlier belong in Today (mirrors the morning pull-in in
@@ -141,13 +146,18 @@ export const useAppStore = create<AppState>((set, get) => ({
       data.dueDate,
       today
     );
-    await repo.createTask({ ...data, scheduledFor: scheduledFor ?? undefined });
+    const task = await repo.createTask({
+      ...data,
+      scheduledFor: scheduledFor ?? undefined,
+    });
     await get().refreshData();
+    return task;
   },
 
   createHabit: async (data) => {
     await repo.createHabit(data);
     await get().refreshData();
+    refreshHabitReminders();
   },
 
   updateTask: async (id, data) => {
@@ -278,31 +288,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       : repo.completeHabitToday(habitId, today);
 
     promise
-      .then(() => {
-        // Update habit reminders if needed (only on success)
-        updateHabitRemindersIfNeeded().catch((err) => {
-          console.error("Failed to update habit reminders", err);
-        });
-      })
+      .then(refreshHabitReminders)
       .catch((err) => {
         console.error("Habit toggle failed", err);
         // Revert on error
         set({ todaysHabitCompletions: previousCompletions });
       });
-  },
-
-  completeHabit: async (habitId) => {
-    await repo.completeHabitToday(habitId, get().getTodayDate());
-    await get().refreshData();
-    // Update habit reminders if needed
-    await updateHabitRemindersIfNeeded();
-  },
-
-  undoHabit: async (habitId) => {
-    await repo.undoHabitToday(habitId, get().getTodayDate());
-    await get().refreshData();
-    // Update habit reminders if needed
-    await updateHabitRemindersIfNeeded();
   },
 
   deleteTask: async (taskId) => {
@@ -313,5 +304,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   deleteHabit: async (habitId) => {
     await repo.deleteHabit(habitId);
     await get().refreshData();
+    refreshHabitReminders();
   },
 }));

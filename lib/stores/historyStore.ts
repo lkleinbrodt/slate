@@ -17,7 +17,6 @@ import { useTimeStore } from "./timeStore";
 interface HistoryState {
   loading: boolean;
   hasLoaded: boolean;
-  selectedDay: string | null;
   calendarData: Record<
     string,
     { isPerfectDay: boolean; tasksCompleted: number; habitsCompleted: number }
@@ -31,36 +30,11 @@ interface HistoryState {
   // Actions
   loadInitialData: () => Promise<void>;
   loadCalendarData: (month: string) => Promise<void>;
-  selectDay: (date: string) => void;
-  clearSelectedDay: () => void;
-  getDayDetails: (date: string) => Promise<{
-    tasks: {
-      task_history: {
-        id: string;
-        date: string;
-        taskId: string;
-        planned: boolean;
-        completed: boolean;
-      };
-      tasks: repo.Task;
-    }[];
-    habits: {
-      habit_history: {
-        id: string;
-        date: string;
-        habitId: string;
-        completed: boolean;
-      };
-      habits: repo.Habit;
-    }[];
-    isPerfectDay: boolean;
-  }>;
 }
 
 export const useHistoryStore = create<HistoryState>((set, get) => ({
   loading: false,
   hasLoaded: false,
-  selectedDay: null,
   calendarData: {},
   overallStats: {
     tasksCompleted7d: 0,
@@ -247,49 +221,6 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       set({ calendarData: { ...get().calendarData, ...calendarData } });
     } catch (error) {
       console.error("Failed to load calendar data:", error);
-    }
-  },
-
-  selectDay: (date: string) => {
-    set({ selectedDay: date });
-  },
-
-  clearSelectedDay: () => {
-    set({ selectedDay: null });
-  },
-
-  getDayDetails: async (date: string) => {
-    try {
-      const today = useTimeStore.getState().getCurrentDate();
-      const snapshot = await repo.getDaySnapshot(date, today);
-
-      // Transform to the format expected by existing components
-      // (maintaining backward compatibility while using unified source)
-      return {
-        tasks: snapshot.tasks.map((item) => ({
-          task_history: {
-            id: `th-${item.task.id}-${date}`,
-            date,
-            taskId: item.task.id,
-            planned: item.isPlanned,
-            completed: item.isCompleted,
-          },
-          tasks: item.task,
-        })),
-        habits: snapshot.habits.map((item) => ({
-          habit_history: {
-            id: `hh-${item.habit.id}-${date}`,
-            date,
-            habitId: item.habit.id,
-            completed: item.isCompleted,
-          },
-          habits: item.habit,
-        })),
-        isPerfectDay: snapshot.isPerfectDay,
-      };
-    } catch (error) {
-      console.error("Failed to get day details:", error);
-      return { tasks: [], habits: [], isPerfectDay: false };
     }
   },
 }));

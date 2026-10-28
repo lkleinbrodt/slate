@@ -69,7 +69,9 @@ one. Tests run the same migrations against better-sqlite3.
 - Habit reminders: one-shot `DATE` triggers for the next 7 days (iOS caps pending
   notifications at 64), every N hours inside the configured window. Today's reminders
   are skipped once all habits are done.
-- Rescheduled on launch, foreground, settings changes and habit toggles.
+- Rescheduled on launch, foreground, settings changes, and when a habit is
+  toggled, created or deleted. Reschedules run one at a time (each cancels and
+  re-adds over many awaits, so overlapping runs could leave stale reminders).
 
 ## State conventions
 

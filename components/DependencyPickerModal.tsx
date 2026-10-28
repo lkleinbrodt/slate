@@ -12,6 +12,7 @@ import {
 
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
+import { fromLocalDate } from "@/lib/logic/dates";
 import { useAppStore } from "@/lib/stores/appStore";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useThemeColor } from "@/hooks/use-theme-color";
@@ -31,7 +32,6 @@ export default function DependencyPickerModal({
   // Theme colors
   const backgroundColor = useThemeColor({}, "background");
   const textColor = useThemeColor({}, "text");
-  const textSecondaryColor = useThemeColor({}, "textSecondary");
   const textTertiaryColor = useThemeColor({}, "textTertiary");
   const successColor = useThemeColor({}, "success");
   const errorColor = useThemeColor({}, "error");
@@ -82,7 +82,7 @@ export default function DependencyPickerModal({
         </Text>
         {task.scheduledFor && (
           <Text style={styles.taskScheduled}>
-            Scheduled: {new Date(task.scheduledFor).toLocaleDateString()}
+            Scheduled: {fromLocalDate(task.scheduledFor).format("MMM D, YYYY")}
           </Text>
         )}
       </View>

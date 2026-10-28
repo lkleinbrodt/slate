@@ -47,10 +47,6 @@ export const getSixMonthsAgo = (): string => {
   return dayjs().subtract(6, "month").format("YYYY-MM-DD");
 };
 
-export const getCurrentMonth = (): string => {
-  return dayjs().format("YYYY-MM");
-};
-
 export const isDateAfter = (date1: string, date2: string): boolean => {
   return dayjs(date1).isAfter(dayjs(date2), "day");
 };

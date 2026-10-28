@@ -23,7 +23,7 @@ export const HistoryHeader = () => {
           <ThemedText type="bodySemiBold">
             {overallStats.perfectDays}
           </ThemedText>
-          <ThemedText>Perfect Days</ThemedText>
+          <ThemedText>Perfect Days (7d)</ThemedText>
         </View>
       </View>
     </TabHeader>
