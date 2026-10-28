@@ -14,19 +14,17 @@ import { getNotificationPermissionStatus, requestNotificationPermissions, resche
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import Constants from "expo-constants";
+import { DeveloperTools } from "@/components/settings/DeveloperTools";
 import { Radius } from "@/constants/theme";
 import { Screen } from "@/components/ui/Screen";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { ThemedText } from "@/components/themed-text";
 import { TimePickerButton, formatTime } from "@/components/TimePickerButton";
 import { TimePickerModal } from "@/components/TimePickerModal";
-import { useAppStore } from "@/lib/stores/appStore";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSettingsStore } from "@/lib/stores/settings";
 import { useTabBarSpace } from "@/components/TabBar";
 import { useTheme } from "@/hooks/use-theme";
-import { useTimeStore } from "@/lib/stores/timeStore";
 
 type TimeField = "planDay" | "nightReview" | "windowStart" | "windowEnd";
 
@@ -298,16 +296,10 @@ export default function SettingsScreen() {
                 value={formatTime(dayStart)}
                 note="Late nights count as the day before."
               />
-              <Divider />
-              <InfoRow
-                icon="sparkle"
-                title="Version"
-                value={Constants.expoConfig?.version ?? "–"}
-              />
             </Card>
           </View>
 
-          {__DEV__ && <DeveloperCard />}
+          <DeveloperTools />
 
           <ThemedText type="greeting" tone="textTertiary" style={styles.signoff}>
             One day at a time.
@@ -434,48 +426,6 @@ function Divider() {
   return <View style={[styles.divider, { backgroundColor: colors.border }]} />;
 }
 
-/** Simulator helpers; never shown in release builds */
-function DeveloperCard() {
-  const [busy, setBusy] = useState(false);
-  const loadDemo = () => {
-    Alert.alert("Load demo data?", "This replaces every task, habit and day of history.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Replace",
-        style: "destructive",
-        onPress: async () => {
-          setBusy(true);
-          try {
-            const { seedDemoData } = await import("@/lib/dev/seed");
-            await seedDemoData(useTimeStore.getState().getCurrentDate());
-            await useAppStore.getState().refreshData();
-          } finally {
-            setBusy(false);
-          }
-        },
-      },
-    ]);
-  };
-  return (
-    <View>
-      <SectionHeader title="Developer" />
-      <Card variant="sunken" style={styles.dev}>
-        <ThemedText type="caption" tone="textSecondary">
-          Only in development builds.
-        </ThemedText>
-        <Button
-          title="Load demo data"
-          icon="database"
-          variant="secondary"
-          size="md"
-          loading={busy}
-          onPress={loadDemo}
-        />
-      </Card>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
@@ -520,6 +470,5 @@ const styles = StyleSheet.create({
   compactButton: { minHeight: 36, paddingHorizontal: 14 },
   dimmed: { opacity: 0.55 },
   divider: { height: StyleSheet.hairlineWidth, marginLeft: 68 },
-  dev: { gap: 10, alignItems: "flex-start" },
   signoff: { textAlign: "center", marginTop: 4 },
 });
