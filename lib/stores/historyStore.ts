@@ -19,7 +19,12 @@ interface HistoryState {
   hasLoaded: boolean;
   calendarData: Record<
     string,
-    { isPerfectDay: boolean; tasksCompleted: number; habitsCompleted: number }
+    {
+      isPerfectDay: boolean;
+      tasksCompleted: number;
+      habitsCompleted: number;
+      habitsTotal: number;
+    }
   >;
   overallStats: {
     tasksCompleted7d: number;
@@ -163,6 +168,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
           isPerfectDay: boolean;
           tasksCompleted: number;
           habitsCompleted: number;
+          habitsTotal: number;
         }
       > = {};
 
@@ -195,6 +201,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
           isPerfectDay: todaySnapshot.isPerfectDay,
           tasksCompleted: todayTasksCompleted,
           habitsCompleted: todayHabitsCompleted,
+          habitsTotal: todaySnapshot.habits.length,
         };
       }
 
@@ -215,6 +222,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
           isPerfectDay,
           tasksCompleted: taskByDate[date]?.filter(Boolean).length || 0,
           habitsCompleted,
+          habitsTotal: totalHabits,
         };
       });
 

@@ -5,13 +5,15 @@ import {
 } from "@/components/planner";
 import { ScrollView, StyleSheet, View } from "react-native";
 
-import { FloatingActionButton } from "@/components/FloatingActionButton";
-import { SafeAreaThemedView } from "@/components/safe-area-themed-view";
-import { useAppStore } from "@/lib/stores/appStore";
+import { Screen } from "@/components/ui/Screen";
 import { displayStreak } from "@/lib/logic/streaks";
-import { SheetManager } from "react-native-actions-sheet";
+import { useAppStore } from "@/lib/stores/appStore";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTabBarSpace } from "@/components/TabBar";
 
 export default function TodayScreen() {
+  const insets = useSafeAreaInsets();
+  const bottomSpace = useTabBarSpace();
   const {
     todayTasks,
     activeHabits,
@@ -38,25 +40,12 @@ export default function TodayScreen() {
     ])
   );
 
-  const handleTaskToggle = (taskId: string, _isCompleted: boolean) => {
-    // Use the new optimistic toggleTask - it handles the state flip internally
-    toggleTask(taskId);
-  };
-
-  const handleHabitToggle = (habitId: string) => {
-    // Use the new optimistic toggleHabit - it handles the state flip internally
-    toggleHabit(habitId);
-  };
-
-  const handleOpenAddModal = () => {
-    SheetManager.show("add-edit-modal", {
-      payload: { mode: "add" },
-    });
-  };
-
   return (
-    <SafeAreaThemedView style={styles.container}>
-      <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled">
+    <Screen>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingTop: insets.top, paddingBottom: bottomSpace }}
+      >
         <PlannerHeader
           completedTasksCount={completedTodayTasks.length}
           totalTasksCount={todayTasks.length}
@@ -64,37 +53,29 @@ export default function TodayScreen() {
           totalHabitsCount={activeHabits.length}
         />
 
-        <View style={styles.sectionsContainer}>
+        <View style={styles.sections}>
           <HabitsSection
             habits={activeHabits}
             completedHabits={completedActiveHabits}
             habitStreaks={habitStreaks}
-            onToggle={handleHabitToggle}
+            onToggle={toggleHabit}
           />
 
           <TodayTasksSection
             tasks={todayTasks}
-            onToggle={(taskId, currentStatus) =>
-              handleTaskToggle(taskId, currentStatus)
-            }
+            onToggle={(taskId) => toggleTask(taskId)}
             onSkipForToday={skipTaskForToday}
             onSendToSlate={sendTaskBackToSlate}
           />
         </View>
       </ScrollView>
-
-      <FloatingActionButton onPress={handleOpenAddModal} />
-    </SafeAreaThemedView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scrollView: {
-    flex: 1,
-  },
-  sectionsContainer: {
+  sections: {
     paddingHorizontal: 16,
-    gap: 24,
+    gap: 28,
   },
 });

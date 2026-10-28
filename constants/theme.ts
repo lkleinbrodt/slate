@@ -1,141 +1,199 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Slate's design tokens.
+ *
+ * The look comes from the app icon: a sandstone tile with a sunrise pressed
+ * into it. Light mode is warm sand by day; dark mode is slate at dusk. One bold
+ * accent (sunrise) marks actions and tasks, sage marks habits, amber marks
+ * streaks.
  */
 
-import { Platform } from "react-native";
-
-// Modern color palette with sophisticated indigo primary and warm slate gray secondary
-const primaryColor = "#4F46E5"; // Indigo-600
-const primaryColorDark = "#3730A3"; // Indigo-800
-const primaryColorLight = "#E0E7FF"; // Indigo-100
-
-const secondaryColor = "#64748B"; // Slate-500
-const secondaryColorDark = "#334155"; // Slate-700
-const secondaryColorLight = "#F1F5F9"; // Slate-100
-
-const accentColor = "#F59E0B"; // Amber-500
-const accentColorDark = "#D97706"; // Amber-600
-const accentColorLight = "#FEF3C7"; // Amber-100
-
-const tintColorLight = primaryColor;
-const tintColorDark = "#E0E7FF";
-
-export const Colors = {
+const palette = {
   light: {
-    // Text colors
-    text: "#0F172A", // Slate-900
-    textSecondary: "#475569", // Slate-600
-    textTertiary: "#94A3B8", // Slate-400
-    textInverse: "#FFFFFF",
+    background: "#F4EEE3",
+    backgroundSecondary: "#ECE4D5",
+    surface: "#FBF8F2",
+    surfaceElevated: "#FFFFFF",
+    surfaceSunken: "#E9E0CF",
 
-    // Background colors
-    background: "#FFFFFF",
-    backgroundSecondary: "#F8FAFC", // Slate-50
-    backgroundTertiary: "#F1F5F9", // Slate-100
+    text: "#2B2620",
+    textSecondary: "#6E655A",
+    textTertiary: "#A2988A",
+    textInverse: "#FFFDF8",
 
-    // Brand colors
-    primary: primaryColor,
-    primaryDark: primaryColorDark,
-    primaryLight: primaryColorLight,
-    secondary: secondaryColor,
-    secondaryDark: secondaryColorDark,
-    secondaryLight: secondaryColorLight,
-    accent: accentColor,
-    accentDark: accentColorDark,
-    accentLight: accentColorLight,
+    border: "#E3D9C8",
+    borderStrong: "#D2C4AD",
 
-    // Status colors
-    success: "#10B981", // Emerald-500
-    warning: "#F59E0B", // Amber-500
-    error: "#EF4444", // Red-500
-    info: "#3B82F6", // Blue-500
+    primary: "#D2632F",
+    primaryPressed: "#B9531F",
+    primarySoft: "#F7DDCB",
+    onPrimary: "#FFFDF8",
 
-    // UI colors
-    tint: tintColorLight,
-    icon: "#64748B", // Slate-500
-    tabIconDefault: "#94A3B8", // Slate-400
-    tabIconSelected: tintColorLight,
+    habit: "#5F8A66",
+    habitSoft: "#DCE6D6",
 
-    // Border colors
-    border: "#E2E8F0", // Slate-200
-    borderLight: "#F1F5F9", // Slate-100
-    borderDark: "#CBD5E1", // Slate-300
+    streak: "#D9902A",
+    streakSoft: "#F5E4C2",
 
-    // Surface colors
-    surface: "#FFFFFF",
-    surfaceElevated: "#F8FAFC", // Slate-50
-    surfaceOverlay: "rgba(0, 0, 0, 0.5)",
+    clay: "#EFCF9C",
+    claySoft: "#F6E6CA",
+
+    success: "#5F8A66",
+    warning: "#D9902A",
+    error: "#C0442C",
+    errorSoft: "#F6D9D0",
+
+    shadow: "#5A4127",
+    scrim: "rgba(43, 38, 32, 0.45)",
   },
   dark: {
-    // Text colors
-    text: "#F8FAFC", // Slate-50
-    textSecondary: "#CBD5E1", // Slate-300
-    textTertiary: "#94A3B8", // Slate-400
-    textInverse: "#0F172A", // Slate-900
+    background: "#181A1E",
+    backgroundSecondary: "#1F2226",
+    surface: "#22252A",
+    surfaceElevated: "#2A2E34",
+    surfaceSunken: "#141518",
 
-    // Background colors
-    background: "#0F172A", // Slate-900
-    backgroundSecondary: "#1E293B", // Slate-800
-    backgroundTertiary: "#334155", // Slate-700
+    text: "#F1ECE3",
+    textSecondary: "#B2ABA0",
+    textTertiary: "#78736B",
+    textInverse: "#1A1B1E",
 
-    // Brand colors
-    primary: "#6366F1", // Indigo-500
-    primaryDark: "#4F46E5", // Indigo-600
-    primaryLight: "#312E81", // Indigo-900
-    secondary: "#94A3B8", // Slate-400
-    secondaryDark: "#64748B", // Slate-500
-    secondaryLight: "#CBD5E1", // Slate-300
-    accent: "#F59E0B", // Amber-500
-    accentDark: "#D97706", // Amber-600
-    accentLight: "#92400E", // Amber-800
+    border: "#2F3238",
+    borderStrong: "#3E424A",
 
-    // Status colors
-    success: "#10B981", // Emerald-500
-    warning: "#F59E0B", // Amber-500
-    error: "#EF4444", // Red-500
-    info: "#3B82F6", // Blue-500
+    primary: "#EE7E47",
+    primaryPressed: "#D96B35",
+    primarySoft: "#3A2A21",
+    onPrimary: "#1C1410",
 
-    // UI colors
-    tint: tintColorDark,
-    icon: "#94A3B8", // Slate-400
-    tabIconDefault: "#64748B", // Slate-500
-    tabIconSelected: tintColorDark,
+    habit: "#8DB892",
+    habitSoft: "#243028",
 
-    // Border colors
-    border: "#334155", // Slate-700
-    borderLight: "#475569", // Slate-600
-    borderDark: "#1E293B", // Slate-800
+    streak: "#EDB357",
+    streakSoft: "#3A3122",
 
-    // Surface colors
-    surface: "#1E293B", // Slate-800
-    surfaceElevated: "#334155", // Slate-700
-    surfaceOverlay: "rgba(0, 0, 0, 0.7)",
+    clay: "#C9A774",
+    claySoft: "#2E2A24",
+
+    success: "#8DB892",
+    warning: "#EDB357",
+    error: "#EF6A4F",
+    errorSoft: "#3B231E",
+
+    shadow: "#000000",
+    scrim: "rgba(0, 0, 0, 0.6)",
   },
 };
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: "system-ui",
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: "ui-serif",
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: "ui-rounded",
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: "ui-monospace",
-  },
-  default: {
-    sans: "normal",
-    serif: "serif",
-    rounded: "normal",
-    mono: "monospace",
-  },
-  web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded:
-      "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-  },
+type Palette = typeof palette.light;
+
+// Older names some components still read; they map onto the palette above
+const aliases = (p: Palette) => ({
+  backgroundTertiary: p.surfaceSunken,
+  primaryDark: p.primaryPressed,
+  primaryLight: p.primarySoft,
+  secondary: p.textSecondary,
+  secondaryDark: p.text,
+  secondaryLight: p.surfaceSunken,
+  accent: p.streak,
+  accentDark: p.streak,
+  accentLight: p.streakSoft,
+  info: p.primary,
+  tint: p.primary,
+  icon: p.textSecondary,
+  tabIconDefault: p.textTertiary,
+  tabIconSelected: p.primary,
+  borderLight: p.border,
+  borderDark: p.borderStrong,
+  surfaceOverlay: p.scrim,
 });
+
+export const Colors = {
+  light: { ...palette.light, ...aliases(palette.light) },
+  dark: { ...palette.dark, ...aliases(palette.dark) },
+};
+
+export type ThemeColors = typeof Colors.light;
+export type ColorName = keyof ThemeColors;
+
+/** Font family names, as registered in app/_layout.tsx */
+export const FontFamily = {
+  serif: "Fraunces_600SemiBold",
+  serifBold: "Fraunces_700Bold",
+  serifItalic: "Fraunces_400Regular_Italic",
+  sans: "DMSans_400Regular",
+  sansMedium: "DMSans_500Medium",
+  sansSemiBold: "DMSans_600SemiBold",
+  sansBold: "DMSans_700Bold",
+} as const;
+
+export const Type = {
+  display: { fontFamily: FontFamily.serif, fontSize: 36, lineHeight: 42, letterSpacing: -0.8 },
+  title: { fontFamily: FontFamily.serif, fontSize: 26, lineHeight: 32, letterSpacing: -0.4 },
+  heading: { fontFamily: FontFamily.serif, fontSize: 20, lineHeight: 26, letterSpacing: -0.2 },
+  greeting: { fontFamily: FontFamily.serifItalic, fontSize: 17, lineHeight: 22 },
+  numeral: { fontFamily: FontFamily.serifBold, fontSize: 30, lineHeight: 34, letterSpacing: -0.5 },
+  body: { fontFamily: FontFamily.sans, fontSize: 16, lineHeight: 22 },
+  bodyMedium: { fontFamily: FontFamily.sansMedium, fontSize: 16, lineHeight: 22 },
+  bodySemiBold: { fontFamily: FontFamily.sansSemiBold, fontSize: 16, lineHeight: 22 },
+  callout: { fontFamily: FontFamily.sans, fontSize: 14, lineHeight: 19 },
+  calloutMedium: { fontFamily: FontFamily.sansMedium, fontSize: 14, lineHeight: 19 },
+  caption: { fontFamily: FontFamily.sans, fontSize: 13, lineHeight: 17 },
+  captionMedium: { fontFamily: FontFamily.sansMedium, fontSize: 13, lineHeight: 17 },
+  eyebrow: {
+    fontFamily: FontFamily.sansBold,
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 1.4,
+    textTransform: "uppercase" as const,
+  },
+  button: { fontFamily: FontFamily.sansSemiBold, fontSize: 16, lineHeight: 20 },
+} as const;
+
+export type TypeName = keyof typeof Type;
+
+export const Space = {
+  xxs: 2,
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 24,
+  xxxl: 32,
+  huge: 48,
+} as const;
+
+export const Radius = {
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 22,
+  xxl: 28,
+  pill: 999,
+} as const;
+
+/** Soft, warm drop shadow. Dark mode leans on borders instead. */
+export const shadow = (scheme: "light" | "dark", level: 1 | 2 | 3 = 1) => {
+  const c = Colors[scheme];
+  const spec = {
+    1: { y: 2, r: 8, o: 0.07 },
+    2: { y: 6, r: 16, o: 0.1 },
+    3: { y: 12, r: 28, o: 0.16 },
+  }[level];
+  return {
+    shadowColor: c.shadow,
+    shadowOffset: { width: 0, height: spec.y },
+    shadowRadius: spec.r,
+    shadowOpacity: scheme === "dark" ? spec.o * 2.5 : spec.o,
+    elevation: level * 2,
+  };
+};
+
+export const Motion = {
+  spring: { damping: 16, stiffness: 220, mass: 0.9 },
+  springSoft: { damping: 20, stiffness: 140 },
+  springBouncy: { damping: 10, stiffness: 260 },
+  fast: 150,
+  normal: 220,
+  slow: 360,
+} as const;

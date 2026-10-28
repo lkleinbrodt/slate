@@ -1,42 +1,27 @@
-import ActionSheet, {
-  SheetManager,
-  SheetProps,
-} from "react-native-actions-sheet";
-import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, StyleSheet, TextInput, View } from "react-native";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import { Radius, Type } from "@/constants/theme";
 import React, { useEffect, useRef, useState } from "react";
-// import { useSettingsStore } from '@/lib/stores/settings';
-import { formatDate, fromLocalDateString } from "@/lib/utils/dateFormat";
+import { SheetManager, SheetProps } from "react-native-actions-sheet";
+import { Sheet, SheetHeader } from "@/components/ui/Sheet";
 
-import { Ionicons } from "@expo/vector-icons";
+import { Button } from "@/components/ui/Button";
+import { Chip } from "@/components/ui/Chip";
+import { Icon } from "@/components/ui/Icon";
+import { PressableScale } from "@/components/ui/PressableScale";
+import { ThemedText } from "@/components/themed-text";
+import { formatRelativeDay } from "@/lib/utils/dateFormat";
 import { fromLocalDate } from "@/lib/logic/dates";
+import { haptic } from "@/components/ui/PressableScale";
 import { useAppStore } from "@/lib/stores/appStore";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useThemeColor } from "@/hooks/use-theme-color";
+import { useTheme } from "@/hooks/use-theme";
 
 type AddEditModalProps = SheetProps<"add-edit-modal">;
 
 export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
-  const insets = useSafeAreaInsets();
   const { mode, type: initialType, itemId } = payload || {};
+  const { colors } = useTheme();
 
-  // Theme colors
-  const backgroundColor = useThemeColor({}, "background");
-  const backgroundSecondary = useThemeColor({}, "backgroundSecondary");
-  const textColor = useThemeColor({}, "text");
-  const textSecondaryColor = useThemeColor({}, "textSecondary");
-  const textTertiaryColor = useThemeColor({}, "textTertiary");
-  const primaryColor = useThemeColor({}, "primary");
-  const successColor = useThemeColor({}, "success");
-  const errorColor = useThemeColor({}, "error");
-  const borderColor = useThemeColor({}, "border");
   const [itemType, setItemType] = useState<"task" | "habit">(
     initialType || "task"
   );
@@ -52,19 +37,6 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
   const [lastAdded, setLastAdded] = useState<string | null>(null);
   // A ref, not state: a second Return/tap can land before a re-render
   const isSavingRef = useRef(false);
-
-  // Create styles with theme colors
-  const styles = createStyles({
-    backgroundColor,
-    backgroundSecondary,
-    textColor,
-    textSecondaryColor,
-    textTertiaryColor,
-    primaryColor,
-    successColor,
-    errorColor,
-    borderColor,
-  });
 
   const {
     createTask,
@@ -120,7 +92,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
 
   const handleSave = async () => {
     if (!title.trim()) {
-      Alert.alert("Error", "Please enter a title");
+      haptic("light");
       return;
     }
     // Ignore repeat submits while a save is in flight (avoids duplicate tasks)
@@ -188,7 +160,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
       payload: {
         onDateSelect: handleDateSelect,
         selectedDate: scheduledDate,
-        title: "Do Date",
+        title: "When will you do it?",
         // Past do-dates would never roll into Today
         minDate: getTodayDate(),
       },
@@ -200,7 +172,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
       payload: {
         onDateSelect: setDueDate,
         selectedDate: dueDate,
-        title: "Due Date",
+        title: "When is it due?",
       },
     });
   };
@@ -254,359 +226,221 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
     );
   };
 
-  return (
-    <ActionSheet
-      id={sheetId}
-      gestureEnabled={true}
-      safeAreaInsets={insets}
-      containerStyle={{ backgroundColor: backgroundColor }}
-      indicatorStyle={{ backgroundColor: backgroundColor }}
-    >
-      <View style={styles.container}>
-        <ScrollView
-          style={styles.content}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Title Input */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Title *</Text>
-            <TextInput
-              style={styles.textInput}
-              value={title}
-              onChangeText={setTitle}
-              placeholder="Enter title..."
-              placeholderTextColor="#999"
-              autoFocus
-              returnKeyType="done"
-              // Return saves; in add mode the keyboard stays up for the next one
-              submitBehavior={mode === "add" ? "submit" : "blurAndSubmit"}
-              onSubmitEditing={handleSave}
-            />
-          </View>
+  const isTask = itemType === "task";
+  const today = getTodayDate();
+  const noun = isTask ? "task" : "habit";
 
-          {/* Notes Input */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Notes</Text>
+  return (
+    <Sheet id={sheetId}>
+      <SheetHeader
+        sheetId={sheetId}
+        eyebrow={mode === "add" ? "New" : isTask ? "Edit task" : "Edit habit"}
+        title={mode === "add" ? (isTask ? "Something to do" : "A daily habit") : title || "Untitled"}
+      />
+
+      <View style={styles.content}>
+        {mode === "add" && (
+          <View style={[styles.segment, { backgroundColor: colors.surfaceSunken }]}>
+            {(["task", "habit"] as const).map((kind) => {
+              const active = itemType === kind;
+              return (
+                <PressableScale
+                  key={kind}
+                  onPress={() => setItemType(kind)}
+                  haptics="selection"
+                  style={[
+                    styles.segmentItem,
+                    active && { backgroundColor: colors.surfaceElevated },
+                  ]}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: active }}
+                >
+                  <Icon
+                    name={kind === "task" ? "checkCircle" : "repeat"}
+                    size={16}
+                    color={active ? (kind === "task" ? colors.primary : colors.habit) : colors.textTertiary}
+                    weight={active ? "bold" : "regular"}
+                  />
+                  <ThemedText
+                    type="calloutMedium"
+                    tone={active ? "text" : "textTertiary"}
+                  >
+                    {kind === "task" ? "Task" : "Habit"}
+                  </ThemedText>
+                </PressableScale>
+              );
+            })}
+          </View>
+        )}
+
+        <View style={[styles.inputs, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          <TextInput
+            style={[styles.titleInput, { color: colors.text }]}
+            value={title}
+            onChangeText={setTitle}
+            placeholder={isTask ? "What needs doing?" : "What will you do each day?"}
+            placeholderTextColor={colors.textTertiary}
+            autoFocus
+            returnKeyType="done"
+            // Return saves; in add mode the keyboard stays up for the next one
+            submitBehavior={mode === "add" ? "submit" : "blurAndSubmit"}
+            onSubmitEditing={handleSave}
+            selectionColor={colors.primary}
+          />
+          <View style={[styles.inputDivider, { backgroundColor: colors.border }]} />
+          <View style={styles.notesRow}>
+            <Icon name="note" size={16} color="textTertiary" />
             <TextInput
-              style={[styles.textInput, styles.textArea]}
+              style={[styles.notesInput, { color: colors.text }]}
               value={notes}
               onChangeText={setNotes}
-              placeholder="Optional details..."
-              placeholderTextColor="#999"
+              placeholder="Add a note"
+              placeholderTextColor={colors.textTertiary}
               multiline
+              selectionColor={colors.primary}
             />
           </View>
+        </View>
 
-          {/* Single Row Button Bar */}
-          <View style={styles.section}>
-            <View style={styles.buttonBarDivider} />
-            <View style={styles.buttonBar}>
-              {/* Type Toggle Button */}
-              <TouchableOpacity
-                style={[
-                  styles.buttonBarButton,
-                  styles.typeToggleButton,
-                  mode === "edit" && styles.typeToggleButtonDisabled,
-                ]}
-                disabled={mode === "edit"}
-                onPress={() =>
-                  setItemType(itemType === "task" ? "habit" : "task")
-                }
-              >
-                <View style={styles.buttonBarButtonContent}>
-                  <Ionicons
-                    name={
-                      itemType === "task"
-                        ? "checkmark-circle-outline"
-                        : "repeat-outline"
-                    }
-                    size={16}
-                    color="#fff"
-                    style={styles.buttonBarButtonIcon}
-                  />
-                  <Text style={styles.typeToggleButtonText}>
-                    {itemType === "task" ? "Task" : "Habit"}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Task-specific Date Button */}
-              {itemType === "task" && !isDoneTask && (
-                <TouchableOpacity
-                  style={styles.buttonBarButton}
-                  onPress={openDatePicker}
-                >
-                  <View style={styles.buttonBarButtonContent}>
-                    <Ionicons
-                      name="calendar-outline"
-                      size={16}
-                      color={scheduledDate ? successColor : textTertiaryColor}
-                      style={styles.buttonBarButtonIcon}
-                    />
-                    <Text style={styles.buttonBarButtonText}>
-                      {scheduledDate
-                        ? `Do ${formatDate(fromLocalDateString(scheduledDate), "due")}`
-                        : "Do date"}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-
-              {/* Task-specific Due Date Button */}
-              {itemType === "task" && !isDoneTask && (
-                <TouchableOpacity
-                  style={styles.buttonBarButton}
-                  onPress={openDueDatePicker}
-                >
-                  <View style={styles.buttonBarButtonContent}>
-                    <Ionicons
-                      name="flag-outline"
-                      size={16}
-                      color={dueDate ? successColor : textTertiaryColor}
-                      style={styles.buttonBarButtonIcon}
-                    />
-                    <Text style={styles.buttonBarButtonText}>
-                      {dueDate
-                        ? `Due ${formatDate(fromLocalDateString(dueDate), "due")}`
-                        : "Due date"}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-
-              {/* Task-specific Dependency Button */}
-              {itemType === "task" && !isDoneTask && (
-                <TouchableOpacity
-                  style={[
-                    styles.buttonBarButton,
-                    dependsOnTaskId && styles.dependencyButtonSelected,
-                  ]}
-                  onPress={openDependencyPicker}
-                >
-                  <View style={styles.buttonBarButtonContent}>
-                    <Ionicons
-                      name="link-outline"
-                      size={16}
-                      color={dependsOnTaskId ? successColor : textTertiaryColor}
-                      style={styles.buttonBarButtonIcon}
-                    />
-                    <Text
-                      style={[
-                        styles.buttonBarButtonText,
-                        dependsOnTaskId && styles.dependencyLabelSelected,
-                      ]}
-                    >
-                      {dependsOnTaskId ? getDependencyTaskName() : "Depends On"}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-            </View>
-            <View style={styles.buttonBarDivider} />
+        {isTask && !isDoneTask && (
+          <View style={styles.chips}>
+            <Chip
+              size="md"
+              icon="calendar"
+              tone="primary"
+              filled={!!scheduledDate}
+              label={scheduledDate ? dayLabel("Do", scheduledDate, today) : "Do date"}
+              onPress={openDatePicker}
+              onClear={scheduledDate ? () => setScheduledDate(null) : undefined}
+            />
+            <Chip
+              size="md"
+              icon="flag"
+              tone={dueDate && dueDate < today ? "error" : "streak"}
+              filled={!!dueDate}
+              label={dueDate ? dayLabel("Due", dueDate, today) : "Due date"}
+              onPress={openDueDatePicker}
+              onClear={dueDate ? () => setDueDate(null) : undefined}
+            />
+            <Chip
+              size="md"
+              icon="link"
+              tone="neutral"
+              filled={!!dependsOnTaskId}
+              label={dependsOnTaskId ? `After “${getDependencyTaskName()}”` : "Depends on"}
+              onPress={openDependencyPicker}
+              onClear={dependsOnTaskId ? () => setDependsOnTaskId(null) : undefined}
+              style={styles.depChip}
+            />
           </View>
+        )}
 
-          {lastAdded && (
-            <View style={styles.lastAdded}>
-              <Ionicons name="checkmark-circle" size={16} color={successColor} />
-              <Text style={styles.lastAddedText} numberOfLines={2}>
-                {lastAdded}
-              </Text>
-            </View>
-          )}
+        {!isTask && mode === "add" && (
+          <ThemedText type="caption" tone="textTertiary" style={styles.hint}>
+            Habits show up in Today every day and build a streak.
+          </ThemedText>
+        )}
 
-          {/* Save Button */}
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>
-              {mode === "add" ? "Add" : "Save"}{" "}
-              {itemType === "task" ? "Task" : "Habit"}
-            </Text>
-          </TouchableOpacity>
+        {lastAdded && (
+          <Animated.View
+            key={lastAdded}
+            entering={FadeIn.duration(200)}
+            exiting={FadeOut.duration(150)}
+            style={[styles.lastAdded, { backgroundColor: colors.habitSoft }]}
+          >
+            <Icon name="checkCircle" size={16} color={colors.habit} weight="fill" />
+            <ThemedText type="calloutMedium" style={[styles.flex, { color: colors.habit }]} numberOfLines={2}>
+              {lastAdded}
+            </ThemedText>
+          </Animated.View>
+        )}
 
-          {mode === "edit" && (
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={handleDelete}
-            >
-              <Text style={styles.deleteButtonText}>
-                Delete {itemType === "task" ? "Task" : "Habit"}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </ScrollView>
+        <Button
+          title={mode === "add" ? `Add ${noun}` : "Save changes"}
+          icon={mode === "add" ? "plus" : "check"}
+          onPress={handleSave}
+          haptics="medium"
+          disabled={!title.trim()}
+          style={styles.save}
+        />
+
+        {mode === "edit" && (
+          <Button
+            title={`Delete ${noun}`}
+            icon="trash"
+            variant="ghost"
+            size="md"
+            onPress={handleDelete}
+            style={styles.delete}
+          />
+        )}
       </View>
-    </ActionSheet>
+    </Sheet>
   );
 }
 
-const createStyles = (colors: any) =>
-  StyleSheet.create({
-    container: {
-      backgroundColor: colors.backgroundColor,
-    },
-    header: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingHorizontal: 20,
-      paddingVertical: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.borderColor,
-    },
-    headerTitle: {
-      fontSize: 18,
-      fontWeight: "600",
-      color: colors.textColor,
-    },
-    title: {
-      fontSize: 18,
-      fontWeight: "600",
-      color: colors.textColor,
-    },
-    cancelButton: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-    },
-    cancelText: {
-      fontSize: 16,
-      color: colors.textTertiaryColor,
-    },
-    content: {
-      paddingHorizontal: 20,
-    },
-    section: {
-      marginTop: 20,
-    },
-    sectionTitle: {
-      fontSize: 16,
-      fontWeight: "500",
-      color: colors.textSecondaryColor,
-      marginBottom: 8,
-    },
-    // Shared button bar button styles
-    buttonBarButton: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      borderWidth: 1,
-      borderColor: colors.borderColor,
-      borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      backgroundColor: colors.backgroundSecondary,
-      alignSelf: "flex-start",
-      minWidth: 80,
-    },
-    buttonBarButtonContent: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    buttonBarButtonIcon: {
-      marginRight: 8,
-    },
-    buttonBarButtonText: {
-      fontSize: 12,
-      fontWeight: "500",
-      color: colors.textTertiaryColor,
-      textTransform: "uppercase",
-      letterSpacing: 0.5,
-    },
+// "Do today", "Due Friday", "Do Oct 30"
+function dayLabel(prefix: string, date: string, today: string) {
+  const day = formatRelativeDay(date, today);
+  return `${prefix} ${day === "Today" || day === "Tomorrow" ? day.toLowerCase() : day}`;
+}
 
-    typeToggleButton: {
-      backgroundColor: colors.successColor,
-      borderColor: colors.successColor,
-      minWidth: 80,
-    },
-    typeToggleButtonDisabled: {
-      backgroundColor: colors.textTertiaryColor,
-      borderColor: colors.textTertiaryColor,
-    },
-    typeToggleButtonText: {
-      fontSize: 12,
-      fontWeight: "500",
-      color: "#fff",
-      textTransform: "uppercase",
-      letterSpacing: 0.5,
-    },
-    textInput: {
-      borderWidth: 1,
-      borderColor: colors.borderColor,
-      borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      fontSize: 16,
-      color: colors.textColor,
-      backgroundColor: colors.backgroundColor,
-    },
-    textArea: {
-      height: 80,
-      textAlignVertical: "top",
-    },
-    dateValue: {
-      fontSize: 14,
-      fontWeight: "600",
-    },
-    dateValueSet: {
-      color: colors.textColor,
-    },
-    dateValueEmpty: {
-      color: colors.textTertiaryColor,
-      fontStyle: "italic",
-    },
-    dependencyButtonSelected: {
-      backgroundColor: colors.backgroundSecondary,
-      borderColor: colors.successColor,
-    },
-    dependencyLabelSelected: {
-      color: colors.successColor,
-      fontWeight: "600",
-    },
-    lastAdded: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      marginTop: 20,
-    },
-    lastAddedText: {
-      flex: 1,
-      fontSize: 14,
-      color: colors.textSecondaryColor,
-    },
-    saveButton: {
-      backgroundColor: colors.successColor,
-      borderRadius: 8,
-      paddingVertical: 12,
-      alignItems: "center",
-      marginTop: 30,
-      marginBottom: 20,
-    },
-    saveButtonText: {
-      color: "#fff",
-      fontSize: 16,
-      fontWeight: "600",
-    },
-    deleteButton: {
-      backgroundColor: colors.errorColor,
-      borderRadius: 8,
-      paddingVertical: 12,
-      alignItems: "center",
-      marginTop: 12,
-      marginBottom: 20,
-    },
-    deleteButtonText: {
-      color: "#fff",
-      fontSize: 16,
-      fontWeight: "600",
-    },
-    buttonBarDivider: {
-      height: 1,
-      backgroundColor: colors.borderColor,
-      marginVertical: 16,
-    },
-    buttonBar: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 12,
-      alignItems: "center",
-    },
-  });
+const styles = StyleSheet.create({
+  content: { paddingHorizontal: 20, gap: 16 },
+  segment: {
+    flexDirection: "row",
+    borderRadius: Radius.pill,
+    padding: 4,
+  },
+  segmentItem: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    height: 38,
+    borderRadius: Radius.pill,
+  },
+  inputs: {
+    borderRadius: Radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  titleInput: {
+    ...Type.bodyMedium,
+    fontSize: 19,
+    lineHeight: undefined,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  inputDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: 16 },
+  notesRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 13,
+    paddingBottom: 6,
+  },
+  notesInput: {
+    ...Type.callout,
+    lineHeight: undefined,
+    flex: 1,
+    minHeight: 56,
+    paddingTop: 0,
+    textAlignVertical: "top",
+  },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  depChip: { maxWidth: "100%" },
+  hint: { paddingHorizontal: 4 },
+  lastAdded: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: Radius.md,
+  },
+  flex: { flex: 1 },
+  save: { marginTop: 4 },
+  delete: { alignSelf: "center" },
+});

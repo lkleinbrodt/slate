@@ -1,48 +1,34 @@
+import Animated, { FadeOut, LinearTransition } from "react-native-reanimated";
 import React, { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
-import { Ionicons } from "@expo/vector-icons";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SectionHeader } from "@/components/ui/SectionHeader";
 import { SlateItem } from "@/components/SlateItem";
 import { Task } from "@/components/types";
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
-import { UI } from "@/lib/constants/app";
-import { fromLocalDate } from "@/lib/logic/dates";
-import { useThemeColor } from "@/hooks/use-theme-color";
+import { formatRelativeDay } from "@/lib/utils/dateFormat";
+import { useTheme } from "@/hooks/use-theme";
 import { useTimeStore } from "@/lib/stores/timeStore";
 
 interface SlateSectionProps {
   tasks: Task[];
   onAddToToday: (type: "task" | "habit", id: string) => void;
+  onAdd: () => void;
 }
 
 interface TaskSection {
+  key: string;
   title: string;
   tasks: Task[];
-  isUnscheduled?: boolean;
 }
-
-const formatDateHeader = (dateStr: string, todayDate: string): string => {
-  const date = fromLocalDate(dateStr);
-  const today = fromLocalDate(todayDate);
-  const tomorrow = today.add(1, "day");
-  const dayAfterTomorrow = today.add(2, "day");
-
-  if (date.isSame(today, "day")) {
-    return "Today";
-  } else if (date.isSame(tomorrow, "day")) {
-    return "Tomorrow";
-  } else if (date.isSame(dayAfterTomorrow, "day")) {
-    return "Day After Tomorrow";
-  } else {
-    return date.format("MMM D, YYYY");
-  }
-};
 
 export const SlateSection: React.FC<SlateSectionProps> = ({
   tasks,
   onAddToToday,
+  onAdd,
 }) => {
+  const { colors } = useTheme();
   const todayDate = useTimeStore((s) => s.currentDate);
 
   const sections = useMemo(() => {
@@ -65,180 +51,61 @@ export const SlateSection: React.FC<SlateSectionProps> = ({
       return acc;
     }, {} as Record<string, Task[]>);
 
-    // Sort dates and create sections
-    const sortedDates = Object.keys(tasksByDate).sort();
-    const sections: TaskSection[] = [];
-
-    // Add scheduled sections (soonest first)
-    sortedDates.forEach((date) => {
-      const formattedDate = formatDateHeader(date, todayDate);
-      sections.push({
-        title: formattedDate,
+    // Soonest first, then everything without a day
+    const result: TaskSection[] = Object.keys(tasksByDate)
+      .sort()
+      .map((date) => ({
+        key: date,
+        title: formatRelativeDay(date, todayDate),
         tasks: tasksByDate[date],
-      });
-    });
-
-    // Add unscheduled section at the end
+      }));
     if (unscheduledTasks.length > 0) {
-      sections.push({
-        title: "Unscheduled",
-        tasks: unscheduledTasks,
-        isUnscheduled: true,
-      });
+      result.push({ key: "someday", title: "Someday", tasks: unscheduledTasks });
     }
-
-    return sections;
+    return result;
   }, [tasks, todayDate]);
-
-  const backgroundColor = useThemeColor({}, "backgroundSecondary");
-  const primaryColor = useThemeColor({}, "primary");
-  const accentColor = useThemeColor({}, "accent");
-  const borderColor = useThemeColor({}, "border");
-  const textTertiaryColor = useThemeColor({}, "textTertiary");
 
   if (tasks.length === 0) {
     return (
-      <ThemedView style={styles.section}>
-        <ThemedView style={[styles.emptySubsection, { backgroundColor }]}>
-          <Ionicons
-            name="checkmark-done-circle"
-            size={48}
-            color={textTertiaryColor}
-          />
-          <ThemedText type="h3" style={styles.emptySubsectionTitle}>
-            You&apos;re all caught up!
-          </ThemedText>
-          <ThemedText type="body" style={styles.emptySubsectionText}>
-            No tasks in your slate. Add some tasks to get organized.
-          </ThemedText>
-        </ThemedView>
-      </ThemedView>
+      <Card variant="sunken" style={styles.empty}>
+        <EmptyState
+          art="tablet"
+          title="A clean slate"
+          body="Everything you'd like to do some day lives here. Pull tasks into Today when you're ready for them."
+          actionTitle="Add a task"
+          onAction={onAdd}
+        />
+      </Card>
     );
   }
 
   return (
-    <ThemedView style={styles.section}>
-      {sections.map((section, sectionIndex) => (
-        <ThemedView key={sectionIndex} style={styles.sectionGroup}>
-          <View style={[styles.sectionHeader, { backgroundColor }]}>
-            <View style={styles.sectionHeaderContent}>
-              <View
-                style={[
-                  styles.sectionIcon,
-                  {
-                    backgroundColor: section.isUnscheduled
-                      ? accentColor
-                      : primaryColor,
-                  },
-                ]}
-              >
-                <Ionicons
-                  name={
-                    section.isUnscheduled ? "list-outline" : "calendar-outline"
-                  }
-                  size={16}
-                  color="white"
-                />
-              </View>
-              <ThemedText
-                type="h4"
-                style={[
-                  styles.sectionTitle,
-                  section.isUnscheduled && styles.unscheduledTitle,
-                ]}
-              >
-                {section.title}
-              </ThemedText>
-            </View>
-            <View style={[styles.sectionCount, { borderColor }]}>
-              <ThemedText
-                type="captionSemiBold"
-                style={styles.sectionCountText}
-              >
-                {section.tasks.length}
-              </ThemedText>
-            </View>
-          </View>
-
-          <View style={styles.tasksContainer}>
-            {section.tasks.map((task) => (
-              <SlateItem
+    <View style={styles.sections}>
+      {sections.map((section) => (
+        <Animated.View key={section.key} layout={LinearTransition} exiting={FadeOut}>
+          <SectionHeader title={section.title} detail={String(section.tasks.length)} />
+          <Card padded={false} clip>
+            {section.tasks.map((task, i) => (
+              <Animated.View
                 key={task.id}
-                task={task}
-                onAddToToday={onAddToToday}
-              />
+                layout={LinearTransition.springify().damping(18)}
+                exiting={FadeOut.duration(180)}
+              >
+                {i > 0 && (
+                  <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                )}
+                <SlateItem task={task} onAddToToday={onAddToToday} />
+              </Animated.View>
             ))}
-          </View>
-        </ThemedView>
+          </Card>
+        </Animated.View>
       ))}
-    </ThemedView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  section: {
-    padding: UI.SPACING.LG,
-    paddingTop: UI.SPACING.MD,
-  },
-  sectionGroup: {
-    marginBottom: UI.SPACING.XL,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: UI.SPACING.MD,
-    paddingVertical: UI.SPACING.SM,
-    borderRadius: UI.BORDER_RADIUS.MD,
-    marginBottom: UI.SPACING.SM,
-  },
-  sectionHeaderContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    gap: UI.SPACING.SM,
-  },
-  sectionIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  sectionTitle: {
-    flex: 1,
-  },
-  unscheduledTitle: {
-    opacity: 0.7,
-    fontStyle: "italic",
-  },
-  sectionCount: {
-    paddingHorizontal: UI.SPACING.SM,
-    paddingVertical: UI.SPACING.XS,
-    borderRadius: UI.BORDER_RADIUS.SM,
-    borderWidth: 1,
-    minWidth: 28,
-    alignItems: "center",
-  },
-  sectionCountText: {
-    opacity: 0.8,
-  },
-  tasksContainer: {
-    paddingLeft: UI.SPACING.SM,
-  },
-  emptySubsection: {
-    padding: UI.SPACING.XXXL,
-    alignItems: "center",
-    borderRadius: UI.BORDER_RADIUS.LG,
-    marginVertical: UI.SPACING.SM,
-    gap: UI.SPACING.MD,
-  },
-  emptySubsectionTitle: {
-    textAlign: "center",
-    opacity: 0.9,
-  },
-  emptySubsectionText: {
-    textAlign: "center",
-    opacity: 0.7,
-  },
+  sections: { gap: 24 },
+  empty: { marginTop: 8 },
+  divider: { height: StyleSheet.hairlineWidth, marginLeft: 16 },
 });

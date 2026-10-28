@@ -1,45 +1,106 @@
 import { StyleSheet, View } from "react-native";
 
+import { Card } from "@/components/ui/Card";
+import { Icon, type IconName } from "@/components/ui/Icon";
 import React from "react";
-import { TabHeader } from "@/components/shared/TabHeader";
 import { ThemedText } from "@/components/themed-text";
 import { useHistoryStore } from "@/lib/stores/historyStore";
-import { useThemeColor } from "@/hooks/use-theme-color";
+import { useTheme } from "@/hooks/use-theme";
 
 export const HistoryHeader = () => {
+  const { colors } = useTheme();
   const overallStats = useHistoryStore((s) => s.overallStats);
-  const primaryColorLight = useThemeColor({}, "primaryLight");
+  const bestStreak = Math.max(
+    0,
+    ...Object.values(overallStats.currentStreaks).map((s) => s.streak)
+  );
 
   return (
-    <TabHeader title="History">
-      <View style={styles.statsContainer}>
-        <View style={[styles.statBox, { backgroundColor: primaryColorLight }]}>
-          <ThemedText type="bodySemiBold">
-            {overallStats.tasksCompleted7d}
-          </ThemedText>
-          <ThemedText>Tasks Done (7d)</ThemedText>
-        </View>
-        <View style={[styles.statBox, { backgroundColor: primaryColorLight }]}>
-          <ThemedText type="bodySemiBold">
-            {overallStats.perfectDays}
-          </ThemedText>
-          <ThemedText>Perfect Days (7d)</ThemedText>
-        </View>
+    <View>
+      <View style={styles.title}>
+        <ThemedText type="greeting" tone="textSecondary">
+          Look how far you&apos;ve come
+        </ThemedText>
+        <ThemedText type="display">History</ThemedText>
       </View>
-    </TabHeader>
+
+      <View style={styles.stats}>
+        <Stat
+          icon="checkCircle"
+          tint={colors.primary}
+          tintSoft={colors.primarySoft}
+          value={overallStats.tasksCompleted7d}
+          label="Tasks done"
+          sub="last 7 days"
+        />
+        <Stat
+          icon="sparkle"
+          tint={colors.habit}
+          tintSoft={colors.habitSoft}
+          value={overallStats.perfectDays}
+          label="Perfect days"
+          sub="last 7 days"
+        />
+        <Stat
+          icon="fire"
+          tint={colors.streak}
+          tintSoft={colors.streakSoft}
+          value={bestStreak}
+          label="Best streak"
+          sub={bestStreak === 1 ? "day" : "days"}
+        />
+      </View>
+    </View>
   );
 };
 
+function Stat({
+  icon,
+  tint,
+  tintSoft,
+  value,
+  label,
+  sub,
+}: {
+  icon: IconName;
+  tint: string;
+  tintSoft: string;
+  value: number;
+  label: string;
+  sub: string;
+}) {
+  return (
+    <Card style={styles.stat}>
+      <View style={[styles.statIcon, { backgroundColor: tintSoft }]}>
+        <Icon name={icon} size={18} color={tint} weight="fill" />
+      </View>
+      <ThemedText type="numeral" style={styles.numeral}>
+        {value}
+      </ThemedText>
+      <View>
+        <ThemedText type="captionMedium">{label}</ThemedText>
+        <ThemedText type="caption" tone="textTertiary">
+          {sub}
+        </ThemedText>
+      </View>
+    </Card>
+  );
+}
+
 const styles = StyleSheet.create({
-  statsContainer: {
-    flexDirection: "row",
-    marginTop: 20,
-    gap: 20,
+  title: {
+    paddingHorizontal: 4,
+    paddingTop: 12,
+    paddingBottom: 24,
   },
-  statBox: {
-    flex: 1,
-    padding: 15,
-    borderRadius: 12,
+  stats: { flexDirection: "row", gap: 10 },
+  stat: { flex: 1, padding: 14, gap: 8 },
+  statIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: "center",
+    justifyContent: "center",
   },
+  numeral: { fontVariant: ["tabular-nums"] },
 });

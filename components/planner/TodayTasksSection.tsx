@@ -1,17 +1,17 @@
 import Animated, { LinearTransition } from "react-native-reanimated";
-
-import { Ionicons } from "@expo/vector-icons";
-import React from "react";
-import { SectionContainer } from "@/components/planner/SectionContainer";
 import { StyleSheet, View } from "react-native";
+
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import React from "react";
+import { SectionHeader } from "@/components/ui/SectionHeader";
+import type { Task } from "@/components/types";
 import { TaskItem } from "@/components/TaskItem";
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
-import { UI } from "@/lib/constants/app";
-import { useThemeColor } from "@/hooks/use-theme-color";
+import { useRouter } from "expo-router";
+import { useTheme } from "@/hooks/use-theme";
 
 interface TodayTasksSectionProps {
-  tasks: any[];
+  tasks: Task[];
   onToggle: (taskId: string, completed: boolean) => void;
   onSkipForToday?: (taskId: string) => void;
   onSendToSlate?: (taskId: string) => void;
@@ -23,36 +23,40 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
   onSkipForToday,
   onSendToSlate,
 }) => {
-  const completedTasks = tasks.filter((task) => task.status === "done");
+  const { colors } = useTheme();
+  const router = useRouter();
+  const completedCount = tasks.filter((task) => task.status === "done").length;
 
-  const backgroundColor = useThemeColor({}, "backgroundSecondary");
-  const primaryColor = useThemeColor({}, "primary");
-  const primaryColorDark = useThemeColor({}, "primaryDark");
-  const textTertiaryColor = useThemeColor({}, "textTertiary");
-
-  // Sort: Open tasks first, then Done tasks
-  // Important: We need a stable key, but we sort the array so "Done" items go to bottom
+  // Open tasks first, done ones sink to the bottom (stable within each group)
   const sortedTasks = [...tasks].sort((a, b) => {
     if (a.status === b.status) return 0;
     return a.status === "done" ? 1 : -1;
   });
 
   return (
-    <SectionContainer
-      title="Tasks"
-      subtitle={`${completedTasks.length}/${tasks.length}`}
-      backgroundColor={backgroundColor}
-      titleColor={primaryColorDark}
-      borderColor={primaryColor}
-    >
-      {tasks.length > 0 ? (
-        <View style={styles.list}>
-          {sortedTasks.map((task) => (
-            <Animated.View
-              key={task.id}
-              layout={LinearTransition.springify().damping(14)} // THE MAGIC SAUCE
-              style={styles.itemContainer}
-            >
+    <View>
+      <SectionHeader
+        title="Tasks"
+        detail={tasks.length ? `${completedCount} of ${tasks.length}` : undefined}
+      />
+
+      {tasks.length === 0 ? (
+        <Card variant="sunken">
+          <EmptyState
+            compact
+            art="sunrise"
+            title="A clear day"
+            body="Pull something in from the Slate, or add a task with +."
+            actionTitle="Open the Slate"
+            actionIcon="arrowRight"
+            onAction={() => router.navigate("/slate")}
+          />
+        </Card>
+      ) : (
+        <Card padded={false} clip>
+          {sortedTasks.map((task, i) => (
+            <Animated.View key={task.id} layout={LinearTransition.springify().damping(18)}>
+              {i > 0 && <View style={[styles.divider, { backgroundColor: colors.border }]} />}
               <TaskItem
                 task={task}
                 isCompleted={task.status === "done"}
@@ -62,47 +66,12 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
               />
             </Animated.View>
           ))}
-        </View>
-      ) : (
-        <ThemedView style={[styles.emptySubsection, { backgroundColor }]}>
-          <Ionicons
-            name="checkmark-circle-outline"
-            size={32}
-            color={textTertiaryColor}
-          />
-          <ThemedText type="body" style={styles.emptySubsectionText}>
-            No tasks planned for today yet.
-          </ThemedText>
-          <ThemedText type="caption" style={styles.emptySubsectionSubtext}>
-            Add some tasks to get started!
-          </ThemedText>
-        </ThemedView>
+        </Card>
       )}
-    </SectionContainer>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  list: {
-    gap: 0, // Let padding in Item handle gap for larger touch target
-  },
-  itemContainer: {
-    // Background needed for clean transitions if items overlap momentarily
-    backgroundColor: "transparent",
-  },
-  emptySubsection: {
-    padding: UI.SPACING.XXL,
-    alignItems: "center",
-    borderRadius: UI.BORDER_RADIUS.MD,
-    marginVertical: UI.SPACING.SM,
-    gap: UI.SPACING.SM,
-  },
-  emptySubsectionText: {
-    textAlign: "center",
-    opacity: 0.8,
-  },
-  emptySubsectionSubtext: {
-    textAlign: "center",
-    opacity: 0.6,
-  },
+  divider: { height: StyleSheet.hairlineWidth, marginLeft: 58 },
 });

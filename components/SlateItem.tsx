@@ -1,140 +1,97 @@
-import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+import { Radius } from "@/constants/theme";
 
-import { useThemeColor } from "@/hooks/use-theme-color";
-import { UI } from "@/lib/constants/app";
-import { useAppStore } from "@/lib/stores/appStore";
-import { useTimeStore } from "@/lib/stores/timeStore";
-import { fromLocalDate } from "@/lib/logic/dates";
+import { Chip } from "@/components/ui/Chip";
+import { Icon } from "@/components/ui/Icon";
+import { PressableScale } from "@/components/ui/PressableScale";
 import React from "react";
 import { SheetManager } from "react-native-actions-sheet";
-import { ThemedText } from "./themed-text";
 import { SlateItemProps } from "./types";
+import { ThemedText } from "./themed-text";
+import { dueLabel } from "./TaskItem";
+import { useAppStore } from "@/lib/stores/appStore";
+import { useTheme } from "@/hooks/use-theme";
+import { useTimeStore } from "@/lib/stores/timeStore";
 
 export const SlateItem: React.FC<SlateItemProps> = ({ task, onAddToToday }) => {
-  const primaryColor = useThemeColor({}, "primary");
-  const textColor = useThemeColor({}, "text");
-  const textSecondaryColor = useThemeColor({}, "textSecondary");
-  const textTertiaryColor = useThemeColor({}, "textTertiary");
-  const borderColor = useThemeColor({}, "border");
-  const errorColor = useThemeColor({}, "error");
+  const { colors } = useTheme();
   const skipTaskForToday = useAppStore((s) => s.skipTaskForToday);
   const todayDate = useTimeStore((s) => s.currentDate);
 
-  // Check if task is scheduled for today (or an earlier day it rolled over from)
+  // Scheduled for today (or an earlier day it rolled over from)
   const isScheduledForToday =
     !!task.scheduledFor && task.scheduledFor <= todayDate;
   const isOverdue = !!task.dueDate && task.dueDate < todayDate;
 
+  const openEdit = () =>
+    SheetManager.show("add-edit-modal", {
+      payload: { mode: "edit", type: "task", itemId: task.id },
+    });
+
   return (
-    <View style={[styles.container, { borderBottomColor: borderColor }]}>
-      {/* Action Button - changes based on scheduled date */}
-      {isScheduledForToday ? (
-        <TouchableOpacity
-          style={[styles.actionButton]}
-          onPress={() => skipTaskForToday(task.id)}
-        >
-          <MaterialCommunityIcons
-            name="sleep"
-            size={20}
-            color={textTertiaryColor}
-          />
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity
-          style={[styles.actionButton]}
-          onPress={() => onAddToToday("task", task.id)}
-        >
-          <MaterialCommunityIcons
-            name="arrow-up-right"
-            size={20}
-            color={primaryColor}
-          />
-        </TouchableOpacity>
-      )}
-
-      {/* Task Content */}
-      <View style={styles.content}>
-        <ThemedText
-          type="body"
-          style={[
-            styles.title,
-            { color: textColor },
-            task.status === "done" && styles.completedText,
-          ]}
-        >
-          {task.title}
-        </ThemedText>
-        {task.dueDate && (
-          <ThemedText
-            type="caption"
-            style={{ color: isOverdue ? errorColor : textSecondaryColor }}
-          >
-            {isOverdue ? "Overdue · " : "Due "}
-            {fromLocalDate(task.dueDate).format("MMM D")}
-          </ThemedText>
+    <View style={styles.row}>
+      <Pressable onPress={openEdit} style={styles.body} accessibilityRole="button">
+        <ThemedText type="bodyMedium">{task.title}</ThemedText>
+        {(task.dueDate || task.notes) && (
+          <View style={styles.meta}>
+            {task.dueDate && (
+              <Chip
+                icon="flag"
+                tone={isOverdue ? "error" : "streak"}
+                label={dueLabel(task.dueDate, todayDate, isOverdue)}
+              />
+            )}
+            {!!task.notes && <Icon name="note" size={14} color="textTertiary" />}
+          </View>
         )}
-      </View>
+      </Pressable>
 
-      {/* Edit Button */}
-      <TouchableOpacity
-        style={styles.iconButton}
-        onPress={() => {
-          SheetManager.show("add-edit-modal", {
-            payload: {
-              mode: "edit",
-              type: "task",
-              itemId: task.id,
-            },
-          });
-        }}
-      >
-        <MaterialIcons name="more-horiz" size={20} color={textTertiaryColor} />
-      </TouchableOpacity>
+      {isScheduledForToday ? (
+        <PressableScale
+          onPress={() => skipTaskForToday(task.id)}
+          haptics="light"
+          style={[styles.action, { backgroundColor: colors.surfaceSunken }]}
+          accessibilityLabel="Snooze until tomorrow"
+        >
+          <Icon name="moonStars" size={16} color="textSecondary" weight="bold" />
+          <ThemedText type="captionMedium" tone="textSecondary">
+            Later
+          </ThemedText>
+        </PressableScale>
+      ) : (
+        <PressableScale
+          onPress={() => onAddToToday("task", task.id)}
+          haptics="medium"
+          style={[styles.action, { backgroundColor: colors.primarySoft }]}
+          accessibilityLabel="Do it today"
+        >
+          <Icon name="sun" size={16} color="primary" weight="bold" />
+          <ThemedText type="captionMedium" tone="primary">
+            Today
+          </ThemedText>
+        </PressableScale>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: UI.SPACING.MD,
-    paddingHorizontal: UI.SPACING.SM,
-    borderBottomWidth: 1,
-    minHeight: UI.MIN_TOUCH_TARGET_SIZE,
-    gap: UI.SPACING.SM,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 12,
+    minHeight: 60,
   },
-  actionButton: {
-    width: UI.MIN_TOUCH_TARGET_SIZE,
-    height: UI.MIN_TOUCH_TARGET_SIZE,
-    borderRadius: UI.MIN_TOUCH_TARGET_SIZE / 2,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  content: {
-    flex: 1,
-  },
-  title: {
-    fontWeight: "500",
-    marginBottom: UI.SPACING.XS,
-  },
-  completedText: {
-    textDecorationLine: "line-through",
-    opacity: 0.6,
-  },
-  metaInfo: {
+  body: { flex: 1, gap: 6 },
+  meta: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
+  action: {
     flexDirection: "row",
-    gap: UI.SPACING.SM,
-  },
-  metaText: {
-    opacity: 0.8,
-  },
-  iconButton: {
-    width: UI.MIN_TOUCH_TARGET_SIZE,
-    height: UI.MIN_TOUCH_TARGET_SIZE,
-    borderRadius: UI.MIN_TOUCH_TARGET_SIZE / 2,
-    justifyContent: "center",
     alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    height: 34,
+    borderRadius: Radius.pill,
   },
 });

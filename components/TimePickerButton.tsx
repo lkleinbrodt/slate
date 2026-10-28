@@ -1,67 +1,48 @@
-import { StyleSheet, TouchableOpacity } from "react-native";
-
-import { useThemeColor } from "@/hooks/use-theme-color";
-import { UI } from "@/lib/constants/app";
-import { Ionicons } from "@expo/vector-icons";
+import { Icon } from "@/components/ui/Icon";
+import { PressableScale } from "@/components/ui/PressableScale";
+import { Radius } from "@/constants/theme";
 import React from "react";
+import { StyleSheet } from "react-native";
 import { ThemedText } from "./themed-text";
+import { useTheme } from "@/hooks/use-theme";
+
+/** "07:30" -> "7:30 AM" */
+export function formatTime(time: string) {
+  const [h, m] = time.split(":").map(Number);
+  const suffix = h < 12 ? "AM" : "PM";
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${String(m).padStart(2, "0")} ${suffix}`;
+}
 
 interface TimePickerButtonProps {
   time: string;
-  onTimeChange?: (time: string) => void;
-  onPress?: () => void;
+  onPress: () => void;
   disabled?: boolean;
 }
 
 export const TimePickerButton: React.FC<TimePickerButtonProps> = ({
   time,
-  onTimeChange,
   onPress,
   disabled = false,
 }) => {
-  const handlePress = () => {
-    if (onPress) {
-      onPress();
-    } else if (onTimeChange) {
-      // Default behavior: open time picker if onTimeChange is provided
-      onTimeChange(time);
-    }
-  };
-  const backgroundColor = useThemeColor({}, "backgroundSecondary");
-  const borderColor = useThemeColor({}, "border");
-  const textColor = useThemeColor({}, "text");
-  const textSecondaryColor = useThemeColor({}, "textSecondary");
-
+  const { colors } = useTheme();
   return (
-    <TouchableOpacity
+    <PressableScale
+      onPress={onPress}
+      disabled={disabled}
+      haptics="selection"
       style={[
         styles.button,
-        { backgroundColor, borderColor },
-        disabled && styles.disabled,
+        { backgroundColor: colors.surfaceSunken, opacity: disabled ? 0.5 : 1 },
       ]}
-      onPress={handlePress}
-      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={`Time, ${formatTime(time)}`}
     >
-      <Ionicons
-        name="time-outline"
-        size={16}
-        color={disabled ? textSecondaryColor : textColor}
-      />
-      <ThemedText
-        type="body"
-        style={[
-          styles.text,
-          { color: disabled ? textSecondaryColor : textColor },
-        ]}
-      >
-        {time}
+      <Icon name="clock" size={15} color="textSecondary" weight="bold" />
+      <ThemedText type="calloutMedium" style={styles.text}>
+        {formatTime(time)}
       </ThemedText>
-      <Ionicons
-        name="chevron-down"
-        size={16}
-        color={disabled ? textSecondaryColor : textColor}
-      />
-    </TouchableOpacity>
+    </PressableScale>
   );
 };
 
@@ -69,17 +50,10 @@ const styles = StyleSheet.create({
   button: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: UI.SPACING.MD,
-    paddingVertical: UI.SPACING.SM,
-    borderRadius: UI.BORDER_RADIUS.MD,
-    borderWidth: 1,
-    gap: UI.SPACING.SM,
-    minHeight: UI.MIN_TOUCH_TARGET_SIZE,
+    paddingHorizontal: 12,
+    height: 36,
+    borderRadius: Radius.pill,
+    gap: 6,
   },
-  disabled: {
-    opacity: 0.5,
-  },
-  text: {
-    fontWeight: "500",
-  },
+  text: { fontVariant: ["tabular-nums"] },
 });

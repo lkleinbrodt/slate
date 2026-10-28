@@ -1,19 +1,15 @@
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import ActionSheet, {
-  SheetManager,
-  SheetProps,
-} from "react-native-actions-sheet";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { Sheet, SheetHeader } from "@/components/ui/Sheet";
 
-import { HabitItem } from "@/components/HabitItem";
-import { TaskItem } from "@/components/TaskItem";
+import { Icon } from "@/components/ui/Icon";
+import { Illustration } from "@/components/ui/Illustration";
+import { Radius } from "@/constants/theme";
 import React from "react";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SectionHeader } from "@/components/ui/SectionHeader";
+import { SheetProps } from "react-native-actions-sheet";
+import { ThemedText } from "@/components/themed-text";
+import { fromLocalDate } from "@/lib/logic/dates";
+import { useTheme } from "@/hooks/use-theme";
 
 type DayDetailsModalProps = SheetProps<"day-details-sheet">;
 
@@ -21,115 +17,131 @@ export const DayDetailsModal: React.FC<DayDetailsModalProps> = ({
   sheetId,
   payload,
 }) => {
-  const insets = useSafeAreaInsets();
-  const { snapshot, onClose } = payload || {};
+  const { colors } = useTheme();
+  const { snapshot } = payload || {};
 
   if (!snapshot) return null;
 
-  // Dummy functions for read-only view
-  const dummyOnToggle = () => {};
-
-  const handleClose = () => {
-    onClose?.();
-    SheetManager.hide(sheetId);
-  };
+  const habits = snapshot.habits.map((h: any) => ({
+    id: h.habit_history.id as string,
+    title: h.habits?.title as string,
+    done: !!h.habit_history.completed,
+  }));
+  const tasks = snapshot.tasks.map((t: any) => ({
+    id: t.task_history.id as string,
+    title: t.tasks?.title as string,
+    done: !!t.task_history.completed,
+  }));
+  const habitsDone = habits.filter((h) => h.done).length;
+  const tasksDone = tasks.filter((t) => t.done).length;
+  const day = fromLocalDate(snapshot.date);
 
   return (
-    <ActionSheet id={sheetId} gestureEnabled={true} safeAreaInsets={insets}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <Text style={styles.title}>Details for {snapshot.date}</Text>
-            {snapshot.isPerfectDay && (
-              <Text style={styles.perfectDay}>🎉 Perfect Day!</Text>
-            )}
+    <Sheet id={sheetId}>
+      <SheetHeader sheetId={sheetId} eyebrow={day.format("dddd")} title={day.format("MMMM D")} />
+
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+        {snapshot.isPerfectDay && (
+          <View style={[styles.perfect, { backgroundColor: colors.habitSoft }]}>
+            <Illustration name="sunrise" size={44} />
+            <View style={styles.flex}>
+              <ThemedText type="heading" style={{ color: colors.habit }}>
+                A perfect day
+              </ThemedText>
+              <ThemedText type="caption" tone="textSecondary">
+                Every habit, done.
+              </ThemedText>
+            </View>
           </View>
-          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-            <Text style={styles.closeButtonText}>Cancel</Text>
-          </TouchableOpacity>
+        )}
+
+        <View>
+          <SectionHeader
+            title="Habits"
+            detail={habits.length ? `${habitsDone} of ${habits.length}` : undefined}
+          />
+          {habits.length === 0 ? (
+            <ThemedText type="callout" tone="textTertiary" style={styles.none}>
+              No habits that day.
+            </ThemedText>
+          ) : (
+            habits.map((h) => <Row key={h.id} title={h.title} done={h.done} color={colors.habit} />)
+          )}
         </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Habits */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Habits</Text>
-            {snapshot.habits.map((h: any) => (
-              <HabitItem
-                key={h.habit_history.id}
-                habit={h.habits}
-                isCompleted={h.habit_history.completed}
-                streak={0}
-                onToggle={dummyOnToggle}
-                isReadOnly={true}
-              />
-            ))}
-          </View>
-
-          {/* Tasks */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Tasks</Text>
-            {snapshot.tasks.map((t: any) => (
-              <TaskItem
-                key={t.task_history.id}
-                task={t.tasks}
-                isCompleted={t.task_history.completed}
-                onToggle={dummyOnToggle}
-                isReadOnly={true}
-              />
-            ))}
-          </View>
-        </ScrollView>
-      </View>
-    </ActionSheet>
+        <View>
+          <SectionHeader
+            title="Tasks"
+            detail={tasks.length ? `${tasksDone} of ${tasks.length}` : undefined}
+          />
+          {tasks.length === 0 ? (
+            <ThemedText type="callout" tone="textTertiary" style={styles.none}>
+              Nothing planned.
+            </ThemedText>
+          ) : (
+            tasks.map((t) => <Row key={t.id} title={t.title} done={t.done} color={colors.primary} />)
+          )}
+        </View>
+      </ScrollView>
+    </Sheet>
   );
 };
 
+function Row({ title, done, color }: { title: string; done: boolean; color: string }) {
+  const { colors } = useTheme();
+  return (
+    <View style={styles.row}>
+      <View
+        style={[
+          styles.dot,
+          done
+            ? { backgroundColor: color, borderColor: color }
+            : { backgroundColor: colors.surfaceSunken, borderColor: colors.borderStrong },
+        ]}
+      >
+        {done && <Icon name="check" size={12} color={colors.onPrimary} weight="bold" />}
+      </View>
+      <ThemedText
+        type="body"
+        tone={done ? "text" : "textTertiary"}
+        style={styles.flex}
+      >
+        {title}
+      </ThemedText>
+      {!done && (
+        <ThemedText type="caption" tone="textTertiary">
+          Missed
+        </ThemedText>
+      )}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: "#fff",
-    maxHeight: "80%",
-  },
-  header: {
+  scroll: { maxHeight: 520 },
+  content: { paddingHorizontal: 20, gap: 20, paddingBottom: 8 },
+  perfect: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
+    gap: 12,
+    padding: 12,
+    borderRadius: Radius.lg,
   },
-  headerContent: {
-    flex: 1,
+  flex: { flex: 1 },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 9,
+    paddingHorizontal: 4,
   },
-  title: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#111827",
+  dot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  perfectDay: {
-    fontSize: 16,
-    color: "#10B981",
-    fontWeight: "600",
-    marginTop: 4,
-  },
-  closeButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  closeButtonText: {
-    fontSize: 16,
-    color: "#6B7280",
-  },
-  content: {
-    paddingHorizontal: 20,
-  },
-  section: {
-    marginTop: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#374151",
-    marginBottom: 12,
-  },
+  none: { paddingHorizontal: 4 },
 });

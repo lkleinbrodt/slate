@@ -1,19 +1,23 @@
 import * as repo from "@/lib/logic/repo";
 
-import { ActivityIndicator, ScrollView, StyleSheet } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import React, { useCallback } from "react";
 
 import { HabitStreaksSection } from "@/components/history/HabitStreaksSection";
 import { HistoryCalendar } from "@/components/history/HistoryCalendar";
 import { HistoryHeader } from "@/components/history/HistoryHeader";
-import { SafeAreaThemedView } from "@/components/safe-area-themed-view";
+import { Screen } from "@/components/ui/Screen";
 import { SheetManager } from "react-native-actions-sheet";
 import { useFocusEffect } from "expo-router";
 import { useHistoryStore } from "@/lib/stores/historyStore";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTabBarSpace } from "@/components/TabBar";
 import { useTimeStore } from "@/lib/stores/timeStore";
 
 export default function HistoryScreen() {
   const { hasLoaded, loadInitialData } = useHistoryStore();
+  const insets = useSafeAreaInsets();
+  const bottomSpace = useTabBarSpace();
 
   // Tabs stay mounted, so reload whenever the tab is shown to pick up changes
   useFocusEffect(
@@ -65,24 +69,24 @@ export default function HistoryScreen() {
   };
 
   if (!hasLoaded) {
-    return (
-      <SafeAreaThemedView style={styles.container}>
-        <ActivityIndicator style={{ flex: 1 }} />
-      </SafeAreaThemedView>
-    );
+    return <Screen />;
   }
 
   return (
-    <SafeAreaThemedView style={styles.container}>
-      <ScrollView>
-        <HistoryHeader />
-        <HistoryCalendar onDayPress={handleDayPress} />
-        <HabitStreaksSection />
+    <Screen>
+      <ScrollView
+        contentContainerStyle={{ paddingTop: insets.top, paddingBottom: bottomSpace }}
+      >
+        <View style={styles.content}>
+          <HistoryHeader />
+          <HistoryCalendar onDayPress={handleDayPress} />
+          <HabitStreaksSection />
+        </View>
       </ScrollView>
-    </SafeAreaThemedView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  content: { paddingHorizontal: 16, gap: 24 },
 });

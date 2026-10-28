@@ -81,3 +81,26 @@ export function getToday(): Date {
   today.setHours(0, 0, 0, 0);
   return today;
 }
+
+/**
+ * A day relative to today, the way people say it: "Today", "Tomorrow",
+ * "Yesterday", a weekday within the coming week, otherwise "Oct 30".
+ * Both arguments are YYYY-MM-DD logical days.
+ */
+export function formatRelativeDay(date: string, today: string): string {
+  const d = new Date(`${date}T12:00:00`);
+  const t = new Date(`${today}T12:00:00`);
+  const diff = Math.round((d.getTime() - t.getTime()) / 86_400_000);
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Tomorrow";
+  if (diff === -1) return "Yesterday";
+  if (diff > 1 && diff < 7) {
+    return d.toLocaleDateString("en-US", { weekday: "long" });
+  }
+  const sameYear = d.getFullYear() === t.getFullYear();
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    ...(sameYear ? {} : { year: "numeric" }),
+  });
+}

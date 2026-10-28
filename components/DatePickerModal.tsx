@@ -1,17 +1,18 @@
-//Calendar ActionSheet
-//Opens up an ActionSheet with a calendar that lets you select a date
-// and reports that date to the parent component
+// Date picker sheet: quick picks for the common cases, a calendar for the rest
+import { FontFamily, Radius } from "@/constants/theme";
+import { Sheet, SheetHeader } from "@/components/ui/Sheet";
+import { SheetManager, SheetProps } from "react-native-actions-sheet";
+import { StyleSheet, View } from "react-native";
 
-import ActionSheet, {
-  SheetManager,
-  SheetProps,
-} from "react-native-actions-sheet";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-
+import { Button } from "@/components/ui/Button";
 import { Calendar } from "react-native-calendars";
+import { Icon } from "@/components/ui/Icon";
+import { PressableScale } from "@/components/ui/PressableScale";
 import React from "react";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useThemeColor } from "@/hooks/use-theme-color";
+import { ThemedText } from "@/components/themed-text";
+import dayjs from "dayjs";
+import { useTheme } from "@/hooks/use-theme";
+import { useTimeStore } from "@/lib/stores/timeStore";
 
 type DatePickerActionSheetProps = SheetProps<"date-picker-sheet">;
 
@@ -19,135 +20,142 @@ export default function DatePickerActionSheet({
   sheetId,
   payload,
 }: DatePickerActionSheetProps) {
-  const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
+  const today = useTimeStore((s) => s.currentDate);
   const {
     onDateSelect,
     selectedDate = null,
-    title = "Select Date",
+    title = "Pick a day",
     minDate,
   } = payload || {};
 
-  // Theme colors
-  const backgroundColor = useThemeColor({}, "background");
-  const textColor = useThemeColor({}, "text");
-  const textTertiaryColor = useThemeColor({}, "textTertiary");
-  const successColor = useThemeColor({}, "success");
-  const errorColor = useThemeColor({}, "error");
-  const borderColor = useThemeColor({}, "border");
-
-  const handleDateSelect = (day: any) => {
-    onDateSelect?.(day.dateString);
+  const select = (date: string | null) => {
+    onDateSelect?.(date);
     SheetManager.hide(sheetId);
   };
 
-  // Create styles with theme colors
-  const styles = createStyles({
-    backgroundColor,
-    textColor,
-    textTertiaryColor,
-    errorColor,
-    borderColor,
-  });
-
-  const handleCancel = () => {
-    SheetManager.hide(sheetId);
-  };
-
-  const handleClear = () => {
-    onDateSelect?.(null);
-    SheetManager.hide(sheetId);
-  };
+  const base = dayjs(today);
+  const daysToSaturday = (6 - base.day() + 7) % 7 || 7;
+  const daysToMonday = (8 - base.day()) % 7 || 7;
+  const quickPicks = [
+    { label: "Today", icon: "sun" as const, date: today },
+    { label: "Tomorrow", icon: "sunHorizon" as const, date: base.add(1, "day").format("YYYY-MM-DD") },
+    { label: "Saturday", icon: "leaf" as const, date: base.add(daysToSaturday, "day").format("YYYY-MM-DD") },
+    { label: "Next week", icon: "calendar" as const, date: base.add(daysToMonday, "day").format("YYYY-MM-DD") },
+  ].filter((p) => !minDate || p.date >= minDate);
 
   return (
-    <ActionSheet
-      id={sheetId}
-      gestureEnabled={true}
-      safeAreaInsets={insets}
-      containerStyle={{ backgroundColor: backgroundColor }}
-      indicatorStyle={{ backgroundColor: backgroundColor }}
-    >
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>{title}</Text>
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
-              <Text style={styles.clearText}>Clear Date</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleCancel}
-              style={styles.cancelButton}
+    <Sheet id={sheetId}>
+      <SheetHeader sheetId={sheetId} title={title} />
+
+      <View style={styles.quick}>
+        {quickPicks.map((pick) => {
+          const active = pick.date === selectedDate;
+          return (
+            <PressableScale
+              key={pick.label}
+              haptics="selection"
+              onPress={() => select(pick.date)}
+              style={[
+                styles.pick,
+                {
+                  backgroundColor: active ? colors.primary : colors.surfaceSunken,
+                },
+              ]}
             >
-              <Text style={styles.cancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+              <Icon
+                name={pick.icon}
+                size={18}
+                color={active ? colors.onPrimary : colors.textSecondary}
+                weight="duotone"
+              />
+              <ThemedText
+                type="captionMedium"
+                style={{ color: active ? colors.onPrimary : colors.text }}
+              >
+                {pick.label}
+              </ThemedText>
+              <ThemedText
+                type="caption"
+                style={{ color: active ? colors.onPrimary : colors.textTertiary }}
+              >
+                {dayjs(pick.date).format("ddd D")}
+              </ThemedText>
+            </PressableScale>
+          );
+        })}
+      </View>
+
+      <View style={[styles.calendarWrap, { borderColor: colors.border }]}>
         <Calendar
-          onDayPress={handleDateSelect}
+          key={colors.background}
+          onDayPress={(day) => select(day.dateString)}
           minDate={minDate}
-          current={selectedDate || undefined}
-          markedDates={{
-            [selectedDate || ""]: {
-              selected: true,
-              selectedColor: successColor,
-            },
-          }}
+          current={selectedDate || today}
+          markedDates={
+            selectedDate
+              ? { [selectedDate]: { selected: true, selectedColor: colors.primary } }
+              : undefined
+          }
+          renderArrow={(direction) => (
+            <Icon
+              name={direction === "left" ? "caretLeft" : "caretRight"}
+              size={18}
+              color="text"
+              weight="bold"
+            />
+          )}
           theme={{
-            backgroundColor: backgroundColor,
-            calendarBackground: backgroundColor,
-            selectedDayBackgroundColor: successColor,
-            selectedDayTextColor: "#ffffff",
-            todayTextColor: successColor,
-            dayTextColor: textColor,
-            textDisabledColor: textTertiaryColor,
-            arrowColor: successColor,
-            monthTextColor: textColor,
-            indicatorColor: successColor,
+            calendarBackground: "transparent",
+            textSectionTitleColor: colors.textTertiary,
+            selectedDayBackgroundColor: colors.primary,
+            selectedDayTextColor: colors.onPrimary,
+            todayTextColor: colors.primary,
+            dayTextColor: colors.text,
+            textDisabledColor: colors.textTertiary + "80",
+            monthTextColor: colors.text,
+            textDayFontFamily: FontFamily.sans,
+            textMonthFontFamily: FontFamily.serif,
+            textDayHeaderFontFamily: FontFamily.sansSemiBold,
+            textDayFontSize: 15,
+            textMonthFontSize: 18,
+            textDayHeaderFontSize: 11,
           }}
         />
       </View>
-    </ActionSheet>
+
+      {selectedDate && (
+        <Button
+          title="Remove date"
+          icon="x"
+          variant="ghost"
+          size="md"
+          onPress={() => select(null)}
+          style={styles.clear}
+        />
+      )}
+    </Sheet>
   );
 }
 
-const createStyles = (colors: any) =>
-  StyleSheet.create({
-    container: {
-      backgroundColor: colors.backgroundColor,
-    },
-    header: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingHorizontal: 20,
-      paddingVertical: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.borderColor,
-    },
-    title: {
-      fontSize: 18,
-      fontWeight: "600",
-      color: colors.textColor,
-    },
-    buttonContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    clearButton: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      marginRight: 8,
-    },
-    clearText: {
-      fontSize: 16,
-      color: colors.errorColor,
-      fontWeight: "500",
-    },
-    cancelButton: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-    },
-    cancelText: {
-      fontSize: 16,
-      color: colors.textTertiaryColor,
-    },
-  });
+const styles = StyleSheet.create({
+  quick: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 20,
+  },
+  pick: {
+    flex: 1,
+    alignItems: "center",
+    gap: 2,
+    paddingVertical: 12,
+    borderRadius: Radius.lg,
+  },
+  calendarWrap: {
+    marginHorizontal: 12,
+    marginTop: 12,
+    paddingTop: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  clear: { alignSelf: "center", marginTop: 4 },
+});

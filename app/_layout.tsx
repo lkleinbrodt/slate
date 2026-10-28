@@ -1,7 +1,17 @@
 import "react-native-reanimated";
 import "../sheets";
 
-import { ActivityIndicator, Text, View } from "react-native";
+import {
+  DMSans_400Regular,
+  DMSans_500Medium,
+  DMSans_600SemiBold,
+  DMSans_700Bold,
+} from "@expo-google-fonts/dm-sans";
+import {
+  Fraunces_400Regular_Italic,
+  Fraunces_600SemiBold,
+  Fraunces_700Bold,
+} from "@expo-google-fonts/fraunces";
 import {
   DarkTheme,
   DefaultTheme,
@@ -10,23 +20,41 @@ import {
 import { getNotificationPermissionStatus, rescheduleAllNotifications } from "@/lib/services/notifications";
 import { useEffect, useState } from "react";
 
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { SheetProvider } from "react-native-actions-sheet";
+import * as SplashScreen from "expo-splash-screen";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { Text, View } from "react-native";
 import { initializeDatabase } from "@/lib/db/connection";
 import { useAppStore } from "@/lib/stores/appStore";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useFonts } from "expo-font";
 import { useSettingsStore } from "@/lib/stores/settings";
+import { useTheme } from "@/hooks/use-theme";
 import { useTimeStore } from "@/lib/stores/timeStore";
 
+// Keep the splash up until fonts and the database are ready
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const { colors, isDark } = useTheme();
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { loadSettings } = useSettingsStore();
   const { init: initAppStore } = useAppStore();
   const { initialize: initTimeStore } = useTimeStore();
+  const [fontsLoaded, fontError] = useFonts({
+    DMSans_400Regular,
+    DMSans_500Medium,
+    DMSans_600SemiBold,
+    DMSans_700Bold,
+    Fraunces_400Regular_Italic,
+    Fraunces_600SemiBold,
+    Fraunces_700Bold,
+  });
+  // A font that fails to load falls back to the system font; don't block on it
+  const fontsDone = fontsLoaded || !!fontError;
 
   useEffect(() => {
     let cleanupTimeStore: (() => void) | undefined;
@@ -66,6 +94,12 @@ export default function RootLayout() {
     };
   }, [loadSettings, initAppStore, initTimeStore]);
 
+  useEffect(() => {
+    if ((isReady && fontsDone) || error) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [isReady, fontsDone, error]);
+
   if (error) {
     return (
       <View
@@ -73,36 +107,50 @@ export default function RootLayout() {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          padding: 20,
+          padding: 24,
+          gap: 8,
+          backgroundColor: colors.background,
         }}
       >
-        <Text>Failed to initialize app</Text>
-        <Text style={{ color: "red" }}>{error}</Text>
+        <Text style={{ color: colors.text, fontSize: 17, fontWeight: "600" }}>
+          Slate couldn&apos;t start
+        </Text>
+        <Text style={{ color: colors.error, textAlign: "center" }}>{error}</Text>
       </View>
     );
   }
 
-  if (!isReady) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" />
-        <Text>Loading Slate...</Text>
-      </View>
-    );
+  if (!isReady || !fontsDone) {
+    return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   }
+
+  const navTheme = isDark ? DarkTheme : DefaultTheme;
 
   return (
-    <SafeAreaProvider>
-      <SheetProvider>
-        <ThemeProvider
-          value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-        >
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          </Stack>
-          <StatusBar style="auto" />
-        </ThemeProvider>
-      </SheetProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <SheetProvider>
+          <ThemeProvider
+            value={{
+              ...navTheme,
+              colors: {
+                ...navTheme.colors,
+                background: colors.background,
+                card: colors.surface,
+                text: colors.text,
+                border: colors.border,
+                primary: colors.primary,
+              },
+            }}
+          >
+            <Stack screenOptions={{ contentStyle: { backgroundColor: colors.background } }}>
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: "none" }} />
+            </Stack>
+            <StatusBar style={isDark ? "light" : "dark"} />
+          </ThemeProvider>
+        </SheetProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
