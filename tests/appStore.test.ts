@@ -13,6 +13,7 @@ export async function run() {
   await testUpdateTaskClearsAndSavesFields();
   await testPastDoDateClampedToToday();
   await testPlanTaskUsesCurrentDate();
+  await testDueTasksGoToToday();
 }
 
 function setToday(date: string) {
@@ -94,4 +95,36 @@ async function testPlanTaskUsesCurrentDate() {
   const other = await insertTask();
   await useAppStore.getState().planTaskForToday(other.id);
   assert.strictEqual((await getTask(other.id))?.scheduledFor, "2024-09-16");
+}
+
+async function testDueTasksGoToToday() {
+  setToday("2024-10-01");
+  const store = useAppStore.getState();
+
+  await store.createTask({ title: "Due now", dueDate: "2024-09-30" });
+  const [created] = await db
+    .select()
+    .from(tasks)
+    .where(eq(tasks.title, "Due now"));
+  assert.strictEqual(created.scheduledFor, "2024-10-01", "new due task -> Today");
+
+  await store.sendTaskBackToSlate(created.id);
+  assert.strictEqual(
+    (await getTask(created.id))?.scheduledFor,
+    null,
+    "sending a due task back to the Slate sticks"
+  );
+
+  // Editing other fields (same due date) leaves it in the Slate
+  await store.updateTask(created.id, {
+    title: "Due now!",
+    dueDate: "2024-09-30",
+    scheduledFor: null,
+  });
+  assert.strictEqual((await getTask(created.id))?.scheduledFor, null);
+
+  // Changing the due date to today pulls an unplanned task in
+  const later = await insertTask({ dueDate: "2024-10-09" });
+  await store.updateTask(later.id, { dueDate: "2024-10-01" });
+  assert.strictEqual((await getTask(later.id))?.scheduledFor, "2024-10-01");
 }

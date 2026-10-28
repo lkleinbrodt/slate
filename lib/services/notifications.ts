@@ -22,11 +22,15 @@ const NOTIFICATION_IDS = {
 } as const;
 
 // Habit reminders are one-shot notifications scheduled this many days ahead
-// (re-filled whenever the app opens). Keep well under iOS's 64 pending limit:
-// worst case 7 days x 5 reminders/day (2h interval) = 35.
+// (re-filled whenever the app opens). iOS keeps at most 64 pending, and 2 are
+// the daily plan/review ones, so cap the total.
 const HABIT_REMINDER_DAYS_AHEAD = 7;
-const HABIT_REMINDER_START_HOUR = 10;
-const HABIT_REMINDER_END_HOUR = 20; // exclusive
+const MAX_HABIT_REMINDERS = 60;
+
+const toMinutes = (hhmm: string) => {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+};
 
 /**
  * Request notification permissions from the user
@@ -129,14 +133,17 @@ export async function schedulePlanYourDayNotification(
 }
 
 /**
- * Schedule habit reminders every `intervalHours` between 10 AM and 8 PM.
+ * Schedule habit reminders every `intervalHours` from the configured start
+ * time until the end time (inclusive).
  *
  * Uses one-shot date triggers for the next week rather than repeating ones,
  * so today's remaining reminders can be dropped once all habits are done
  * without losing tomorrow's.
  */
 export async function scheduleHabitReminders(
-  intervalHours: number
+  intervalHours: number,
+  start: string,
+  end: string
 ): Promise<void> {
   await cancelNotificationsByPrefix(NOTIFICATION_IDS.HABIT_REMINDER_PREFIX);
 
@@ -145,7 +152,10 @@ export async function scheduleHabitReminders(
 
   const now = dayjs();
   const appToday = useTimeStore.getState().getCurrentDate();
-  const step = Math.max(1, intervalHours);
+  const stepMinutes = Math.max(1, intervalHours) * 60;
+  const startMinutes = toMinutes(start);
+  const endMinutes = toMinutes(end);
+  let scheduled = 0;
 
   for (let dayOffset = 0; dayOffset < HABIT_REMINDER_DAYS_AHEAD; dayOffset++) {
     const day = now.add(dayOffset, "day").startOf("day");
@@ -153,15 +163,17 @@ export async function scheduleHabitReminders(
     if (isAppToday && incomplete === 0) continue;
 
     for (
-      let hour = HABIT_REMINDER_START_HOUR;
-      hour < HABIT_REMINDER_END_HOUR;
-      hour += step
+      let minutes = startMinutes;
+      minutes <= endMinutes && scheduled < MAX_HABIT_REMINDERS;
+      minutes += stepMinutes
     ) {
-      const fireAt = day.hour(hour);
+      // Set wall-clock time directly (adding minutes to midnight drifts on DST days)
+      const fireAt = day.hour(Math.floor(minutes / 60)).minute(minutes % 60);
       if (!fireAt.isAfter(now)) continue;
+      scheduled++;
 
       await Notifications.scheduleNotificationAsync({
-        identifier: `${NOTIFICATION_IDS.HABIT_REMINDER_PREFIX}${fireAt.format("YYYYMMDDHH")}`,
+        identifier: `${NOTIFICATION_IDS.HABIT_REMINDER_PREFIX}${fireAt.format("YYYYMMDDHHmm")}`,
         content: {
           title: "Habit Reminder",
           body: isAppToday
@@ -223,7 +235,11 @@ export async function updateHabitRemindersIfNeeded(): Promise<void> {
   }
 
   // Reschedules with the updated count (drops today's if all are done)
-  await scheduleHabitReminders(settings.habitReminderInterval);
+  await scheduleHabitReminders(
+    settings.habitReminderInterval,
+    settings.habitReminderStart,
+    settings.habitReminderEnd
+  );
 }
 
 /**
@@ -249,7 +265,11 @@ export async function rescheduleAllNotifications(): Promise<void> {
 
   // Schedule habit reminders
   if (settings.habitRemindersEnabled) {
-    await scheduleHabitReminders(settings.habitReminderInterval);
+    await scheduleHabitReminders(
+      settings.habitReminderInterval,
+      settings.habitReminderStart,
+      settings.habitReminderEnd
+    );
   } else {
     await cancelNotificationsByPrefix(NOTIFICATION_IDS.HABIT_REMINDER_PREFIX);
   }

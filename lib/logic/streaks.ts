@@ -59,14 +59,3 @@ export async function calculateBaseStreaks(
 
 export const displayStreak = (baseStreak: number, completedToday: boolean) =>
   baseStreak + (completedToday ? 1 : 0);
-
-export async function isPerfectDay(date: string): Promise<boolean> {
-  const habitsForDay = await db
-    .select()
-    .from(habitHistory)
-    .where(eq(habitHistory.date, date));
-  if (habitsForDay.length === 0) {
-    return false; // Not a perfect day if no habits were tracked
-  }
-  return habitsForDay.every((h) => h.completed);
-}

@@ -15,6 +15,7 @@ export async function run() {
   await testCompletedTaskUsesLogicalCompletionDay();
   await testDeletedOpenTaskNotInHistory();
   await testHabitHistoryOnlyForHabitsThatExisted();
+  await testDueTasksPulledIntoNewDay();
 }
 
 function reset() {
@@ -156,4 +157,41 @@ async function testHabitHistoryOnlyForHabitsThatExisted() {
     false,
     "habits created after the day shouldn't count as missed"
   );
+}
+
+async function testDueTasksPulledIntoNewDay() {
+  reset();
+
+  const day = "2024-07-01";
+  const today = addDays(day, 2);
+  const overdue = await insertTask({ dueDate: day });
+  const dueToday = await insertTask({ dueDate: today });
+  const plannedLater = await insertTask({
+    dueDate: today,
+    scheduledFor: addDays(today, 3),
+  });
+  const dueLater = await insertTask({ dueDate: addDays(today, 1) });
+  const doneOverdue = await insertTask({
+    dueDate: day,
+    status: "done",
+    completedDate: day,
+  });
+
+  await storage.setItem("last_processed_date", day);
+  await processRollover(today);
+
+  assert.strictEqual((await getTask(overdue.id))?.scheduledFor, today);
+  assert.strictEqual((await getTask(dueToday.id))?.scheduledFor, today);
+  assert.strictEqual(
+    (await getTask(plannedLater.id))?.scheduledFor,
+    today,
+    "a do-date after the due date gets pulled in"
+  );
+  assert.strictEqual((await getTask(dueLater.id))?.scheduledFor, null);
+  assert.strictEqual((await getTask(doneOverdue.id))?.scheduledFor, null);
+
+  // Moving it back out of Today sticks until the next day starts
+  await db.update(tasks).set({ scheduledFor: null }).where(eq(tasks.id, overdue.id));
+  await processRollover(today);
+  assert.strictEqual((await getTask(overdue.id))?.scheduledFor, null);
 }

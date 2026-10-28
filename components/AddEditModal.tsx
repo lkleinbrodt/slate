@@ -47,6 +47,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
     initialType || "task"
   );
   const [title, setTitle] = useState("");
+  const [notes, setNotes] = useState("");
   const [scheduledDate, setScheduledDate] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<string | null>(null);
   const [dependsOnTaskId, setDependsOnTaskId] = useState<string | null>(null);
@@ -83,6 +84,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
         const task = getTaskById(itemId);
         if (task) {
           setTitle(task.title);
+          setNotes(task.notes ?? "");
           setScheduledDate(task.scheduledFor || null);
           setDueDate(task.dueDate || null);
           setDependsOnTaskId(task.dependsOnTaskId || null);
@@ -91,11 +93,13 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
         const habit = getHabitById(itemId);
         if (habit) {
           setTitle(habit.title);
+          setNotes(habit.notes ?? "");
         }
       }
     } else if (mode === "add") {
       // Clear state for new item
       setTitle("");
+      setNotes("");
       setScheduledDate(defaultScheduledFor ?? null);
       setDueDate(null);
       setDependsOnTaskId(null);
@@ -122,6 +126,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
         if (itemType === "task") {
           await createTask({
             title: title.trim(),
+            notes: notes.trim() || undefined,
             scheduledFor: scheduledDate || undefined,
             dueDate: dueDate || undefined,
             dependsOn: dependsOnTaskId || undefined,
@@ -130,12 +135,14 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
         } else {
           await createHabit({
             title: title.trim(),
+            notes: notes.trim() || undefined,
           });
           showToast(`Habit "${title.trim()}" created successfully!`);
         }
         // Don't close the modal, just wipe the data (so it's easy to add another
         // of the same kind)
         setTitle("");
+        setNotes("");
         setScheduledDate(defaultScheduledFor ?? null);
         setDueDate(null);
         setDependsOnTaskId(null);
@@ -144,6 +151,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
           // Pass null (not undefined) so cleared fields are actually cleared
           await updateTask(itemId, {
             title: title.trim(),
+            notes: notes.trim() || null,
             scheduledFor: scheduledDate,
             dueDate,
             dependsOnTaskId,
@@ -151,6 +159,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
         } else {
           await updateHabit(itemId, {
             title: title.trim(),
+            notes: notes.trim() || null,
           });
         }
 
@@ -261,6 +270,19 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
               placeholder="Enter title..."
               placeholderTextColor="#999"
               autoFocus
+            />
+          </View>
+
+          {/* Notes Input */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Notes</Text>
+            <TextInput
+              style={[styles.textInput, styles.textArea]}
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="Optional details..."
+              placeholderTextColor="#999"
+              multiline
             />
           </View>
 

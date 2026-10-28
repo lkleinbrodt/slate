@@ -24,7 +24,6 @@ interface AppState {
 
   // Data for "Slate" screen
   slateTasks: Task[];
-  overdueTasks: Task[];
 
   // Actions
   init: () => Promise<void>;
@@ -53,7 +52,7 @@ interface AppState {
     id: string,
     data: {
       title?: string;
-      notes?: string;
+      notes?: string | null;
     }
   ) => Promise<void>;
   getTaskById: (id: string) => Task | undefined;
@@ -83,6 +82,18 @@ function clampToToday<T extends string | null | undefined>(
   return date && date < today ? today : date;
 }
 
+// Tasks due today or earlier belong in Today (mirrors the morning pull-in in
+// rollover), unless they're already planned for today or earlier.
+function planIfDue(
+  scheduledFor: string | null | undefined,
+  dueDate: string | null | undefined,
+  today: string
+): string | null | undefined {
+  const isDue = !!dueDate && dueDate <= today;
+  const plannedByToday = !!scheduledFor && scheduledFor <= today;
+  return isDue && !plannedByToday ? today : scheduledFor;
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   isInitialized: false,
   todayTasks: [],
@@ -90,7 +101,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   todaysHabitCompletions: [],
   habitBaseStreaks: {},
   slateTasks: [],
-  overdueTasks: [],
 
   init: async () => {
     set({ isInitialized: true });
@@ -100,13 +110,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   refreshData: async () => {
     const requestId = ++latestRefreshId;
     const today = get().getTodayDate();
-    const [todayTasks, activeHabits, completions, slateTasks, overdueTasks] =
+    const [todayTasks, activeHabits, completions, slateTasks] =
       await Promise.all([
         repo.listTodayTasks(today),
         repo.listActiveHabits(),
         repo.getHabitCompletionsForDate(today),
         repo.listAllTasks(),
-        repo.listOverdueTasks(today),
       ]);
     const habitBaseStreaks = await calculateBaseStreaks(
       activeHabits.map((h) => h.id),
@@ -122,15 +131,17 @@ export const useAppStore = create<AppState>((set, get) => ({
       todaysHabitCompletions: completions,
       habitBaseStreaks,
       slateTasks,
-      overdueTasks,
     });
   },
 
   createTask: async (data) => {
-    await repo.createTask({
-      ...data,
-      scheduledFor: clampToToday(data.scheduledFor, get().getTodayDate()),
-    });
+    const today = get().getTodayDate();
+    const scheduledFor = planIfDue(
+      clampToToday(data.scheduledFor, today),
+      data.dueDate,
+      today
+    );
+    await repo.createTask({ ...data, scheduledFor: scheduledFor ?? undefined });
     await get().refreshData();
   },
 
@@ -140,10 +151,19 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   updateTask: async (id, data) => {
-    await repo.updateTask(id, {
-      ...data,
-      scheduledFor: clampToToday(data.scheduledFor, get().getTodayDate()),
-    });
+    const today = get().getTodayDate();
+    let scheduledFor = clampToToday(data.scheduledFor, today);
+    // Only when the due date is being changed, so sending a due task back to
+    // the Slate (scheduledFor: null, same due date) still works
+    const existing = await repo.getTask(id);
+    if (data.dueDate !== undefined && data.dueDate !== existing?.dueDate) {
+      scheduledFor = planIfDue(
+        scheduledFor === undefined ? existing?.scheduledFor : scheduledFor,
+        data.dueDate,
+        today
+      );
+    }
+    await repo.updateTask(id, { ...data, scheduledFor });
     await get().refreshData();
   },
 
@@ -155,8 +175,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   getTaskById: (id) => {
     return (
       get().todayTasks.find((t) => t.id === id) ||
-      get().slateTasks.find((t) => t.id === id) ||
-      get().overdueTasks.find((t) => t.id === id)
+      get().slateTasks.find((t) => t.id === id)
     );
   },
 

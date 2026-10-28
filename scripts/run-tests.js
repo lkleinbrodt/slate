@@ -22,7 +22,6 @@ const mocks = new Map([
   ["expo-sqlite/kv-store", path.join(projectRoot, "tests/mocks/kv-store.ts")],
   ["expo-crypto", path.join(projectRoot, "tests/mocks/expo-crypto.ts")],
   ["@/lib/db/connection", path.join(projectRoot, "tests/mocks/db-connection.ts")],
-  ["@/lib/logic/dates", path.join(projectRoot, "tests/mocks/dates.ts")],
   ["@/lib/services/notifications", path.join(projectRoot, "tests/mocks/notifications.ts")],
   ["react-native", path.join(projectRoot, "tests/mocks/react-native.ts")],
 ]);

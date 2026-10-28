@@ -3,7 +3,7 @@ import { StyleSheet, View } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
 import { SlateItem } from "@/components/SlateItem";
-import { Task } from "@/lib/types/common";
+import { Task } from "@/components/types";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { UI } from "@/lib/constants/app";

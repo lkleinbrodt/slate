@@ -20,6 +20,7 @@ export default function TodayScreen() {
     toggleTask,
     toggleHabit,
     skipTaskForToday,
+    sendTaskBackToSlate,
     getTodayDate,
   } = useAppStore();
 
@@ -79,6 +80,7 @@ export default function TodayScreen() {
               handleTaskToggle(taskId, currentStatus)
             }
             onSkipForToday={skipTaskForToday}
+            onSendToSlate={sendTaskBackToSlate}
           />
         </View>
       </ScrollView>

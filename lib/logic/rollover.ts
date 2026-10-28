@@ -15,16 +15,23 @@ import Storage from "expo-sqlite/kv-store";
 // Using expo-sqlite's built-in key-value storage
 export const storage = Storage;
 
-async function finalizeDay(day: string) {
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+// Everything below runs inside one synchronous transaction per day, so a crash
+// mid-rollover can't leave a day half-finalized. (drizzle's SQLite transactions
+// are synchronous; an async callback would commit before its awaits finish.)
+function finalizeDay(tx: Tx, day: string) {
   console.log(`Finalizing history for day: ${day}`);
 
   // 1) HABIT HISTORY
   // Active habits that existed on this day, plus any habit completed that day
   // (covers habits deleted after being completed).
-  const [allHabits, completions] = await Promise.all([
-    db.select().from(habits),
-    db.select().from(habitCompletions).where(eq(habitCompletions.date, day)),
-  ]);
+  const allHabits = tx.select().from(habits).all();
+  const completions = tx
+    .select()
+    .from(habitCompletions)
+    .where(eq(habitCompletions.date, day))
+    .all();
   const completedIds = new Set(completions.map((c) => c.habitId));
   const habitsForDay = allHabits.filter(
     (h) =>
@@ -32,19 +39,19 @@ async function finalizeDay(day: string) {
       (h.isActive && toLocalDate(h.createdAt) <= day)
   );
   for (const h of habitsForDay) {
-    await db
-      .insert(habitHistory)
+    tx.insert(habitHistory)
       .values({
         id: randomUUID(),
         date: day,
         habitId: h.id,
         completed: completedIds.has(h.id),
       })
-      .onConflictDoNothing();
+      .onConflictDoNothing()
+      .run();
   }
 
   // 2) TASK HISTORY: planned for the day (skip tasks deleted without being done)
-  const plannedTasks = await db
+  const plannedTasks = tx
     .select()
     .from(tasks)
     .where(
@@ -52,10 +59,10 @@ async function finalizeDay(day: string) {
         eq(tasks.scheduledFor, day),
         sql`NOT (status = 'archived' AND completed_date IS NULL)`
       )
-    );
+    )
+    .all();
   for (const t of plannedTasks) {
-    await db
-      .insert(taskHistory)
+    tx.insert(taskHistory)
       .values({
         id: randomUUID(),
         date: day,
@@ -63,11 +70,12 @@ async function finalizeDay(day: string) {
         planned: true,
         completed: t.completedDate === day,
       })
-      .onConflictDoNothing();
+      .onConflictDoNothing()
+      .run();
   }
 
   // 3) TASK HISTORY: completed on the day without being planned for it
-  const adhocTasks = await db
+  const adhocTasks = tx
     .select()
     .from(tasks)
     .where(
@@ -75,10 +83,10 @@ async function finalizeDay(day: string) {
         eq(tasks.completedDate, day),
         sql`(scheduled_for IS NULL OR scheduled_for != ${day})`
       )
-    );
+    )
+    .all();
   for (const t of adhocTasks) {
-    await db
-      .insert(taskHistory)
+    tx.insert(taskHistory)
       .values({
         id: randomUUID(),
         date: day,
@@ -86,8 +94,33 @@ async function finalizeDay(day: string) {
         planned: false,
         completed: true,
       })
-      .onConflictDoNothing();
+      .onConflictDoNothing()
+      .run();
   }
+
+  // 4) Carry over unfinished tasks to the next day
+  tx.update(tasks)
+    .set({ scheduledFor: addDays(day, 1) })
+    .where(and(eq(tasks.scheduledFor, day), eq(tasks.status, "open")))
+    .run();
+}
+
+/**
+ * Pull open tasks that are due (or overdue) by `day` into that day's plan.
+ * Runs only when a new day starts, so moving one back out of Today (snooze,
+ * send back to Slate) sticks until tomorrow morning.
+ */
+function pullInDueTasks(tx: Tx, day: string) {
+  tx.update(tasks)
+    .set({ scheduledFor: day })
+    .where(
+      and(
+        eq(tasks.status, "open"),
+        sql`due_date <= ${day}`,
+        sql`(scheduled_for IS NULL OR scheduled_for > ${day})`
+      )
+    )
+    .run();
 }
 
 async function runRollover(nowLocalDate: string) {
@@ -111,18 +144,15 @@ async function runRollover(nowLocalDate: string) {
     fromLocalDate(lastProcessedDate).isBefore(fromLocalDate(nowLocalDate))
   ) {
     const dayToFinalize = lastProcessedDate;
-    await finalizeDay(dayToFinalize);
-
-    // Carry over unfinished tasks to the next day
     const nextDay = addDays(dayToFinalize, 1);
-    await db
-      .update(tasks)
-      .set({ scheduledFor: nextDay })
-      .where(
-        and(eq(tasks.scheduledFor, dayToFinalize), eq(tasks.status, "open"))
-      );
+    db.transaction((tx) => {
+      finalizeDay(tx, dayToFinalize);
+      if (nextDay === nowLocalDate) pullInDueTasks(tx, nextDay);
+    });
 
-    // Update last processed date and move to the next day
+    // Lives in a separate KV database, so it can't join the transaction. If
+    // we crash before this write, re-running the day is harmless: history
+    // inserts ignore duplicates and its open tasks have already moved on.
     lastProcessedDate = nextDay;
     await storage.setItem("last_processed_date", lastProcessedDate);
   }

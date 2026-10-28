@@ -6,7 +6,7 @@ import {
   taskHistory,
   tasks,
 } from "@/lib/db/schema";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/connection";
 import { nowISO } from "@/lib/logic/dates";
@@ -31,11 +31,6 @@ export const setSetting = async (key: string, value: string): Promise<void> => {
 // ====== Tasks ======
 export const listAllTasks = () =>
   db.select().from(tasks).where(eq(tasks.status, "open"));
-export const listUnscheduledTasks = () =>
-  db
-    .select()
-    .from(tasks)
-    .where(and(eq(tasks.status, "open"), isNull(tasks.scheduledFor)));
 // Today = open tasks whose do-date is today (or earlier, in case a past date
 // slipped through without being rolled over) + tasks completed today.
 export const listTodayTasks = (date: string) =>
@@ -48,11 +43,6 @@ export const listTodayTasks = (date: string) =>
         OR (status = 'done' AND (scheduled_for = ${date} OR completed_date = ${date}))
       )`
     );
-export const listOverdueTasks = (date: string) =>
-  db
-    .select()
-    .from(tasks)
-    .where(and(eq(tasks.status, "open"), sql`due_date < ${date}`));
 export const getTask = (id: string) =>
   db.select().from(tasks).where(eq(tasks.id, id)).get();
 

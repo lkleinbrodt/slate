@@ -19,6 +19,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   isCompleted,
   onToggle,
   onSkipForToday,
+  onSendToSlate,
   isReadOnly = false,
 }) => {
   const iconColor = useThemeColor({}, "textTertiary");
@@ -103,9 +104,24 @@ export const TaskItem: React.FC<TaskItemProps> = ({
           <TouchableOpacity
             style={styles.iconButton}
             onPress={handleSkipForToday}
+            accessibilityLabel="Snooze until tomorrow"
           >
             <MaterialCommunityIcons name="sleep" size={20} color={iconColor} />
           </TouchableOpacity>
+
+          {onSendToSlate && (
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => onSendToSlate(task.id)}
+              accessibilityLabel="Send back to Slate"
+            >
+              <MaterialCommunityIcons
+                name="tray-arrow-down"
+                size={20}
+                color={iconColor}
+              />
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity style={styles.iconButton} onPress={handleEdit}>
             <MaterialIcons name="more-horiz" size={20} color={iconColor} />
