@@ -28,7 +28,7 @@ npm start          # Expo dev server
 npm test           # logic tests against an in-memory SQLite DB
 npm run lint
 npx tsc --noEmit
-npm run update -- -m "what changed"   # publish an OTA update (EAS, iOS)
+npm run update -- "what changed"   # publish an OTA update (EAS, iOS; from main, clean tree)
 ```
 
 ## Shipping
@@ -37,7 +37,7 @@ Slate is only for personal installs, so there is one update channel: `production
 Every build listens to it (EAS builds via `eas.json`, local builds via
 `updates.requestHeaders` in `app.json`), and `npm run update` publishes to it.
 
-- **JS-only changes**: `npm run update -- -m "..."`, then Settings → Developer →
+- **JS-only changes**: `npm run update -- "..."`, then Settings → Developer →
   Check for updates (or relaunch the app twice).
 - **Native changes** (new native module, icon, splash, app config): bump `version`
   in `app.json` and install a new build. The runtime version follows `version`,
