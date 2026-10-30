@@ -54,3 +54,7 @@ export const UI = {
     MAX_HEIGHT_PERCENTAGE: "90%",
   },
 } as const;
+
+// App Group shared with the widget extension. Also in app.json
+// (ios.entitlements) and targets/widget/Snapshot.swift.
+export const WIDGET_APP_GROUP = "group.com.lkleinbrodt.slate";
