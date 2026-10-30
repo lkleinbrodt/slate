@@ -156,10 +156,11 @@ struct RectangularView: View {
         return day.isPerfectDay ? "Perfect day" : "Nothing left today"
     }
 
+    // Small icon and tight spacing leave more room for the title
     private func row(icon: String, title: String) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 3) {
             Image(systemName: icon)
-                .font(.caption2)
+                .font(.system(size: 8, weight: .semibold))
                 .widgetAccentable()
             Text(title)
         }
