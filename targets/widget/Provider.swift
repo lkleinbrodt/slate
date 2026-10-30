@@ -20,7 +20,7 @@ struct TodayProvider: TimelineProvider {
 
     func getSnapshot(in context: Context, completion: @escaping (TodayEntry) -> Void) {
         let day = WidgetSnapshot.load()?.day(at: .now)
-        completion(TodayEntry(date: .now, day: day ?? (context.isPreview ? .sample : nil), rotation: 0))
+        completion(TodayEntry(date: .now, day: day ?? (context.isPreview ? WidgetDay.sample : nil), rotation: 0))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<TodayEntry>) -> Void) {
