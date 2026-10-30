@@ -5,6 +5,9 @@ import WidgetKit
 struct SlateWidgets: WidgetBundle {
     var body: some Widget {
         TodayWidget()
+        if #available(iOS 18.0, *) {
+            NewTaskControl()
+        }
     }
 }
 

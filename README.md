@@ -18,7 +18,9 @@ A personal, local-first iOS to-do + habit app (Expo / React Native, SQLite on de
   A **Perfect Day** is one where every habit was completed.
 - **History** – calendar of past days (habits/tasks completed, perfect days) and streaks.
 - **Widget** – Home Screen (medium) and Lock Screen (ring, rectangle, inline) widget
-  showing what's left today. Display only; tapping it opens the app.
+  showing what's left today. Display only; tapping it opens the app, and its "+"
+  opens the add sheet. A "New Task" control (iOS 18: Control Center, Lock Screen
+  corners, Action Button) does the same.
 - **Notifications** – morning "plan your day", habit reminders during a configurable
   window (only while habits are incomplete), and an evening review.
 

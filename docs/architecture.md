@@ -97,6 +97,13 @@ One WidgetKit widget, "Today", in four sizes: Lock Screen circle (habit ring),
 rectangle (counts + one pending habit and one pending task), the inline line above
 the clock, and a medium Home Screen widget (ring + up to four rows). Display only.
 
+Quick add: `slate://add` (`app/add.tsx`) lands on Today with the add sheet open. The
+medium widget's "+" links to it, and an iOS 18 control ("New Task", for Control
+Center, the Lock Screen corners and the Action Button) opens it through
+`targets/widget/_shared/NewTaskIntent.swift`, which apple-targets compiles into the
+app as well. Custom-scheme `OpenURLIntent` is unreliable on devices, so the intent
+opens the app and calls `openURL` itself.
+
 - The widget can't open SQLite or run rollover. The app writes a JSON snapshot to
   the App Group `group.com.lkleinbrodt.slate` (UserDefaults key `widgetSnapshot`)
   and reloads the widget. `lib/services/widget.ts` does this whenever the app

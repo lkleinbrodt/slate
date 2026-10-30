@@ -152,6 +152,7 @@ export default function RootLayout() {
             <Stack screenOptions={{ contentStyle: { backgroundColor: colors.background } }}>
               <Stack.Screen name="index" options={{ headerShown: false }} />
               <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: "none" }} />
+              <Stack.Screen name="add" options={{ headerShown: false, animation: "none" }} />
             </Stack>
             <StatusBar style={isDark ? "light" : "dark"} />
           </ThemeProvider>

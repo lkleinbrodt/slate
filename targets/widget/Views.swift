@@ -178,7 +178,7 @@ struct MediumView: View {
         HStack(spacing: 16) {
             ring
             VStack(alignment: .leading, spacing: 7) {
-                HStack(alignment: .firstTextBaseline) {
+                HStack(alignment: .center) {
                     Text("Today")
                         .font(.system(.headline, design: .serif))
                         .foregroundStyle(Color.slateText)
@@ -188,6 +188,7 @@ struct MediumView: View {
                             .font(.caption)
                             .foregroundStyle(Color.slateTextSecondary)
                     }
+                    AddButton()
                 }
                 if let day, !day.isAllDone {
                     let items = visibleItems(day, capacity: Self.itemCapacity, rotation: rotation)
@@ -247,6 +248,19 @@ struct MediumView: View {
             }
         }
         .frame(width: 84, height: 84)
+    }
+}
+
+// Opens the add sheet; the rest of the widget opens Today
+private struct AddButton: View {
+    var body: some View {
+        Link(destination: URL(string: "slate://add")!) {
+            Image(systemName: "plus")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(Color.slateBackground)
+                .frame(width: 24, height: 24)
+                .background(Circle().fill(Color.slatePrimary))
+        }
     }
 }
 
