@@ -156,13 +156,15 @@ struct RectangularView: View {
         return day.isPerfectDay ? "Perfect day" : "Nothing left today"
     }
 
-    // Small icon and tight spacing leave more room for the title
+    // Small icon, tight spacing and a smaller title fit more of each title.
+    // A fixed size, because text styles here (.subheadline) render like .body.
     private func row(icon: String, title: String) -> some View {
         HStack(spacing: 3) {
             Image(systemName: icon)
                 .font(.system(size: 8, weight: .semibold))
                 .widgetAccentable()
             Text(title)
+                .font(.system(size: 13))
         }
     }
 }
