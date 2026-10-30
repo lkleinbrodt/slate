@@ -24,6 +24,7 @@
     "dayjs": "^1.11.18",
     "drizzle-orm": "^0.44.5",
     "expo": "~54.0.10",
+    "expo-build-properties": "~1.0.10",
     "expo-constants": "~18.0.9",
     "expo-crypto": "~15.0.7",
     "expo-file-system": "^19.0.15",

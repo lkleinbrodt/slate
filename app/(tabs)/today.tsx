@@ -7,8 +7,10 @@ import * as Haptics from "expo-haptics";
 
 import { ScrollView, StyleSheet, View } from "react-native";
 import { useEffect, useRef } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { Screen } from "@/components/ui/Screen";
+import { SheetManager } from "react-native-actions-sheet";
 import { displayStreak } from "@/lib/logic/streaks";
 import { useAppStore } from "@/lib/stores/appStore";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -17,6 +19,20 @@ import { useTabBarSpace } from "@/components/TabBar";
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
   const bottomSpace = useTabBarSpace();
+  const router = useRouter();
+
+  // slate://add (app/add.tsx) lands here with ?add=1: open the add sheet once.
+  // Wait a tick: on a cold start Today can mount in the same commit as the
+  // SheetProvider, whose listeners attach in effects that run after this one.
+  const { add } = useLocalSearchParams<{ add?: string }>();
+  useEffect(() => {
+    if (!add) return;
+    const timer = setTimeout(() => {
+      router.setParams({ add: undefined });
+      SheetManager.show("add-edit-modal", { payload: { mode: "add" } });
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [add, router]);
   const {
     todayTasks,
     activeHabits,

@@ -232,7 +232,9 @@ struct MediumView: View {
                 .trim(from: 0, to: progress)
                 .stroke(tint, style: StrokeStyle(lineWidth: 8, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-            if total > 0 && done >= total {
+            // Sunrise when it's all done, and when there's nothing to count
+            // (no snapshot yet, or a clear day) rather than a bare "0/0"
+            if done >= total {
                 Image(systemName: "sunrise.fill")
                     .font(.title2)
                     .foregroundStyle(tint)
