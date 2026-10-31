@@ -16,7 +16,12 @@ import { useVoiceStore } from "@/lib/stores/voiceStore";
 export default function ReviewSheet({ sheetId }: SheetProps<"voice-review">) {
   const { colors } = useTheme();
   const today = useTimeStore((s) => s.currentDate);
-  const proposal = useVoiceStore((s) => (s.session?.status === "proposed" ? s.session.proposal : null));
+  // The plan as it was when the sheet opened: applying clears the session before the sheet
+  // has closed, and that shouldn't flash "no plan" on the way out
+  const [proposal] = useState(() => {
+    const { session } = useVoiceStore.getState();
+    return session?.status === "proposed" ? session.proposal : null;
+  });
   const changes = useMemo(() => proposal?.changes ?? [], [proposal]);
   const [off, setOff] = useState<Set<number>>(new Set());
   const [busy, setBusy] = useState(false);
