@@ -296,4 +296,17 @@ Behaviour worth knowing:
 - A session left from an earlier day is discarded on launch, so a stale plan can't land on the wrong today.
 - `proposal` stores `costUsd` and `model`; `applied` stores `{applied, skipped, declined}` (declined: what he turned off), for step 5.
 - The step 3 test call is gone; Settings → Voice keeps Test connection.
+- **Hands-free hang-up** (2026-10-31): the instructions let her end the call for him, phone
+  in pocket. She asks first; only after a clear yes does she end her goodbye with exactly
+  "Hanging up now." (`HANG_UP_PHRASE`). When that line arrives finished (not cut off),
+  the store waits 1.2 s and hangs up. If she paraphrases, nothing happens; a Threepio-side
+  hang-up tool would be the sturdier fix if that turns out to be common.
+- **Plan ready in the background**: if the plan lands while Slate isn't in the
+  foreground, a "Your plan is ready" notification (with the summary) goes out, and the
+  review opens when he comes back.
+- `proposal.stats`: `endedBy` (`phrase` | `button` | `dropped`), `transcriptMs` (Threepio
+  handing over the transcript) and `planMs` (the LLM). A test call with a small day took
+  about 3.7 s to plan.
+- Idea, not built: keep talking while the plan is made, and have her say when it's
+  ready. That needs Threepio to take a message from the app mid-call.
 
