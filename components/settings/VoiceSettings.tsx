@@ -1,6 +1,7 @@
 import { Alert, Pressable, StyleSheet, View } from "react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ThreepioError, threepioClient } from "@/lib/voice/threepio";
+import { getOpenRouterKey, setOpenRouterKey } from "@/lib/voice/secrets";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -9,6 +10,7 @@ import { Radius } from "@/constants/theme";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { ThemedText } from "@/components/themed-text";
 import { useSettingsStore } from "@/lib/stores/settings";
+import { useRouter } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 
 type TestState =
@@ -17,9 +19,42 @@ type TestState =
   | { kind: "ok"; characters: string[] }
   | { kind: "error"; message: string };
 
-/** Where Threepio, the voice service, is, and a check that the phone can reach it (docs/voice.md) */
+/** Where Threepio, the voice service, is, a check that the phone can reach it, and Slate's
+ * OpenRouter key (docs/voice.md) */
 export function VoiceSettings() {
   const { colors } = useTheme();
+  const router = useRouter();
+  const [keySet, setKeySet] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    getOpenRouterKey()
+      .then((k) => setKeySet(!!k))
+      .catch(() => setKeySet(false));
+  }, []);
+
+  const editKey = () => {
+    const save = (value: string) => {
+      const key = value.trim();
+      if (!key) return;
+      setOpenRouterKey(key)
+        .then(() => setKeySet(true))
+        .catch((e) => Alert.alert("Couldn't save the key", String(e)));
+    };
+    const remove = () =>
+      setOpenRouterKey(null)
+        .then(() => setKeySet(false))
+        .catch((e) => Alert.alert("Couldn't remove the key", String(e)));
+    Alert.prompt(
+      "OpenRouter key",
+      "Turns a call into your plan. It's kept in the iPhone's Keychain, never shown again. Use a key of its own with a spending limit.",
+      [
+        { text: "Cancel", style: "cancel" },
+        ...(keySet ? [{ text: "Remove", style: "destructive" as const, onPress: remove }] : []),
+        { text: "Save", onPress: (value?: string) => save(value ?? "") },
+      ],
+      "secure-text"
+    );
+  };
   const threepioUrl = useSettingsStore((s) => s.threepioUrl);
   const updateThreepioUrl = useSettingsStore((s) => s.updateThreepioUrl);
   const [test, setTest] = useState<TestState>({ kind: "idle" });
@@ -81,6 +116,21 @@ export function VoiceSettings() {
           <Icon name="pencil" size={18} color="textTertiary" />
         </Pressable>
 
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+        <Pressable onPress={editKey} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+          <View style={[styles.rowIcon, { backgroundColor: colors.surfaceSunken }]}>
+            <Icon name="sparkle" size={20} color="textSecondary" weight="duotone" />
+          </View>
+          <View style={styles.flex}>
+            <ThemedText type="bodySemiBold">OpenRouter key</ThemedText>
+            <ThemedText type="caption" tone="textSecondary">
+              {keySet === null ? "…" : keySet ? "Set" : "Not set"}
+            </ThemedText>
+          </View>
+          <Icon name="pencil" size={18} color="textTertiary" />
+        </Pressable>
+
         <View style={[styles.testBox, { backgroundColor: colors.surfaceSunken }]}>
           {status && (
             <ThemedText type="callout" style={{ color: status.tone }}>
@@ -95,6 +145,7 @@ export function VoiceSettings() {
             loading={test.kind === "testing"}
             onPress={testConnection}
           />
+          <Button title="Test call" icon="microphone" variant="secondary" size="md" onPress={() => router.push("/voice")} />
         </View>
       </Card>
     </View>
@@ -120,4 +171,5 @@ const styles = StyleSheet.create({
   },
   flex: { flex: 1, gap: 2 },
   testBox: { padding: 16, gap: 12, alignItems: "flex-start" },
+  divider: { height: StyleSheet.hairlineWidth, marginLeft: 68 },
 });

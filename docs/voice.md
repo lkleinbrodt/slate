@@ -1,6 +1,6 @@
 # Voice
 
-Plan: 2026-10-31. Steps 1 and 2 are built (see Steps). A second way to use Slate: talk it through with a
+Plan: 2026-10-31. Steps 1 and 2 are built; step 3 is ready to build on airlandon (see Steps). A second way to use Slate: talk it through with a
 character instead of tapping. The first, and for now only, voice mode is **plan the day**.
 
 ## The idea
@@ -124,13 +124,17 @@ shows up; no registry.
 One rebuild on airlandon (version 1.1.0) adds everything voice needs, calendar included, so
 the calendar step later is an OTA:
 
-- Pipecat's React Native client: `@pipecat-ai/client-js`,
-  `@pipecat-ai/react-native-small-webrtc-transport`, and per its README the Daily media
-  manager and its peers (`@daily-co/react-native-webrtc`, `@daily-co/react-native-daily-js`,
-  async-storage, background-timer, get-random-values) plus the Expo config plugin
-  `@daily-co/config-plugin-rn-daily-js`. Check every version on npm (age, publisher) before
-  installing: Threepio's notes flag a supply-chain attack near these packages, and the README
-  and the plugin's latest version (0.0.13, 2026-10-15) disagree.
+- Pipecat's React Native client and Daily's media manager, pinned exactly (checked on npm
+  2026-10-31: publisher, age of at least two weeks, no install scripts, no new audit
+  findings): `@pipecat-ai/client-js` 1.14.0, `@pipecat-ai/react-native-small-webrtc-transport`
+  1.8.0, `@pipecat-ai/react-native-daily-media-manager` 0.0.2, `@daily-co/react-native-daily-js`
+  0.86.0 (the media manager allows only 0.86.x), `@daily-co/react-native-webrtc`
+  124.0.6-daily.2, async-storage 3.1.1, background-timer 2.4.1, get-random-values 1.11.0.
+  The media manager is what does iOS audio routing (speaker, AirPods); the transport can't
+  run without one.
+- **No Daily config plugin.** Its versions for SDK 54 are old and the current ones need SDK
+  55; on iOS (no screen share) all it does is add the microphone and camera strings, which
+  `app.json` sets itself.
 - `expo-secure-store` (the key) and `expo-calendar` (unused until the last step).
 - `NSMicrophoneUsageDescription`, calendar usage strings, `UIBackgroundModes: audio`.
 - iOS deployment target 15 or later (the transport's minimum).
@@ -151,7 +155,11 @@ Each step ends with something that works and is checked.
    call); the schema is one flat change shape, which models follow more reliably than a
    union. Not yet tried against a real model.
 3. **Native build.** The packages above, a bare call screen that talks to Threepio, the key
-   in the Keychain. *Done when* a call from Slate on the phone reaches Elle and its
+   in the Keychain. Ready: `app/voice.tsx` (Settings → Voice → Test call, a real plan-the-day
+   call with today's data, live transcript, then the transcript fetched back),
+   `lib/voice/call.ts`, `lib/voice/secrets.ts`, version 1.1.0. Checked here with tsc, lint,
+   tests, `expo prebuild` (Info.plist, background audio, iOS 15.1) and autolinking; not yet
+   built or run. *Done when* a call from Slate on the phone reaches Elle and its
    transcript comes back.
 4. **The flow (JS).** `voice_sessions`, voiceStore, StartSheet → CallScreen → planning →
    ReviewSheet → apply, resume after a crash. *Done when* a real morning call ends with
