@@ -240,6 +240,8 @@ async function testExtractPlanCallsOpenRouter() {
   assert.strictEqual(req.body.model, DEFAULT_PLAN_MODEL);
   assert.strictEqual(req.body.response_format.json_schema.strict, true);
   assert.strictEqual(req.body.provider.require_parameters, true);
+  // With require_parameters, any unsupported parameter rules out every provider
+  assert.deepStrictEqual(Object.keys(req.body).sort(), ["messages", "model", "provider", "response_format", "usage"]);
   assert.match(req.body.messages[1].content, /Landon: Taxes today\./);
 
   const refused = (async () =>

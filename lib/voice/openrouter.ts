@@ -50,9 +50,10 @@ export async function chatJSON({ apiKey, model, system, user, schema, schemaName
           { role: "user", content: user },
         ],
         response_format: { type: "json_schema", json_schema: { name: schemaName, strict: true, schema } },
-        // Only route to providers that honour the schema
+        // Only route to providers that honour the schema. That also means every parameter
+        // sent must be supported, so no temperature: Claude Sonnet 5.5's providers on
+        // OpenRouter don't take one, and asking for it left no provider at all.
         provider: { require_parameters: true },
-        temperature: 0,
         usage: { include: true },
       }),
       signal: controller.signal,
