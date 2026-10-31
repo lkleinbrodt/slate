@@ -1,7 +1,8 @@
 # Voice
 
-Plan: 2026-10-31. Steps 1–3 are built and work on the phone. **Step 4 is built** (JS,
-2026-10-31; see "Step 4: built" at the end) and waits on a real morning call. A second way to use Slate: talk it through with a character
+Plan: 2026-10-31. Steps 1–3 are built and work on the phone. **Step 4 is done** (JS,
+2026-10-31; see "Step 4: built" at the end): a real call planned the day on the phone.
+**Step 5 (tune) is next.** A second way to use Slate: talk it through with a character
 instead of tapping. The first, and for now only, voice mode is **plan the day**.
 
 ## The idea
@@ -168,10 +169,10 @@ Each step ends with something that works and is checked.
    with today's data, live transcript, then the transcript fetched back), `lib/voice/call.ts`,
    `lib/voice/secrets.ts`. *Done when* a call from Slate on the phone reaches Elle and its
    transcript comes back: done on 1.1.0, 2026-10-31.
-4. **The flow (JS).** `voice_sessions`, voiceStore, StartSheet → CallScreen → planning →
+4. ✅ **The flow (JS).** `voice_sessions`, voiceStore, StartSheet → CallScreen → planning →
    ReviewSheet → apply, resume after a crash. *Done when* a real morning call ends with
    today's tasks set from what he said (OTA). This is Threepio's Phase 2 exit. Built
-   2026-10-31 (PRs #24–#26); not yet tried on the phone.
+   2026-10-31 (PRs #24–#27); done the same day: a real call on the phone planned the day.
 5. **Tune.** A few real mornings, then adjust the instructions, the extraction prompt and
    the model from the saved sessions.
 6. **Calendar (last).** Read today's events into the snapshot, add event changes to the
