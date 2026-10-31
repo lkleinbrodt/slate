@@ -1,6 +1,7 @@
 import { ScrollView, StyleSheet, View } from "react-native";
 
 import React from "react";
+import { PlanWithVoiceButton } from "@/components/voice/PlanWithVoiceButton";
 import { Screen } from "@/components/ui/Screen";
 import { SheetManager } from "react-native-actions-sheet";
 import { SlateSection } from "@/components/planner";
@@ -34,6 +35,7 @@ export default function SlateScreen() {
           <ThemedText type="eyebrow" tone="textTertiary" style={styles.count}>
             {slateTasks.length} open task{slateTasks.length === 1 ? "" : "s"}
           </ThemedText>
+          <PlanWithVoiceButton style={styles.voice} />
         </View>
 
         <View style={styles.content}>
@@ -55,5 +57,6 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   count: { marginTop: 6 },
+  voice: { marginTop: 16 },
   content: { paddingHorizontal: 16 },
 });

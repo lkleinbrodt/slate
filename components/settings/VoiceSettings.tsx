@@ -4,13 +4,13 @@ import { ThreepioError, threepioClient } from "@/lib/voice/threepio";
 import { getOpenRouterKey, setOpenRouterKey } from "@/lib/voice/secrets";
 
 import { Button } from "@/components/ui/Button";
+import { DEFAULT_PLAN_MODEL } from "@/lib/voice/planDay/extract";
 import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { Radius } from "@/constants/theme";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { ThemedText } from "@/components/themed-text";
 import { useSettingsStore } from "@/lib/stores/settings";
-import { useRouter } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 
 type TestState =
@@ -19,11 +19,11 @@ type TestState =
   | { kind: "ok"; characters: string[] }
   | { kind: "error"; message: string };
 
-/** Where Threepio, the voice service, is, a check that the phone can reach it, and Slate's
- * OpenRouter key (docs/voice.md) */
+/** Where Threepio, the voice service, is, a check that the phone can reach it, Slate's
+ * OpenRouter key and the model that makes the plan (docs/voice.md). Calls start from
+ * "Plan with voice" on Today or the Slate. */
 export function VoiceSettings() {
   const { colors } = useTheme();
-  const router = useRouter();
   const [keySet, setKeySet] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -58,6 +58,19 @@ export function VoiceSettings() {
   const threepioUrl = useSettingsStore((s) => s.threepioUrl);
   const updateThreepioUrl = useSettingsStore((s) => s.updateThreepioUrl);
   const [test, setTest] = useState<TestState>({ kind: "idle" });
+  const planModel = useSettingsStore((s) => s.planModel);
+  const updatePlanModel = useSettingsStore((s) => s.updatePlanModel);
+
+  const editModel = () =>
+    Alert.prompt(
+      "Plan model",
+      `The OpenRouter model that turns a call into your plan. It must support structured output. Leave it empty for the default, ${DEFAULT_PLAN_MODEL}.`,
+      async (value) => {
+        await updatePlanModel(value.trim() || DEFAULT_PLAN_MODEL);
+      },
+      "plain-text",
+      planModel
+    );
 
   const editUrl = () =>
     Alert.prompt(
@@ -131,6 +144,21 @@ export function VoiceSettings() {
           <Icon name="pencil" size={18} color="textTertiary" />
         </Pressable>
 
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+        <Pressable onPress={editModel} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+          <View style={[styles.rowIcon, { backgroundColor: colors.surfaceSunken }]}>
+            <Icon name="listChecks" size={20} color="textSecondary" weight="duotone" />
+          </View>
+          <View style={styles.flex}>
+            <ThemedText type="bodySemiBold">Plan model</ThemedText>
+            <ThemedText type="caption" tone="textSecondary" numberOfLines={1}>
+              {planModel}
+            </ThemedText>
+          </View>
+          <Icon name="pencil" size={18} color="textTertiary" />
+        </Pressable>
+
         <View style={[styles.testBox, { backgroundColor: colors.surfaceSunken }]}>
           {status && (
             <ThemedText type="callout" style={{ color: status.tone }}>
@@ -145,7 +173,6 @@ export function VoiceSettings() {
             loading={test.kind === "testing"}
             onPress={testConnection}
           />
-          <Button title="Test call" icon="microphone" variant="secondary" size="md" onPress={() => router.push("/voice")} />
         </View>
       </Card>
     </View>

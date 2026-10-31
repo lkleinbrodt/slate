@@ -9,6 +9,7 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import { useEffect, useRef } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
+import { PlanWithVoiceButton } from "@/components/voice/PlanWithVoiceButton";
 import { Screen } from "@/components/ui/Screen";
 import { SheetManager } from "react-native-actions-sheet";
 import { displayStreak } from "@/lib/logic/streaks";
@@ -86,6 +87,8 @@ export default function TodayScreen() {
           totalHabitsCount={activeHabits.length}
         />
 
+        <PlanWithVoiceButton style={styles.voice} />
+
         <View style={styles.sections}>
           <HabitsSection
             habits={activeHabits}
@@ -107,6 +110,7 @@ export default function TodayScreen() {
 }
 
 const styles = StyleSheet.create({
+  voice: { marginHorizontal: 20, marginTop: -8, marginBottom: 24 },
   sections: {
     paddingHorizontal: 16,
     gap: 28,
