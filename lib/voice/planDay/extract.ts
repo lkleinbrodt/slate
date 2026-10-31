@@ -18,6 +18,7 @@ export type Change = { reason: string } & (
   | { kind: "snooze"; taskId: string; title: string; until: string }
   | { kind: "set_due"; taskId: string; title: string; due: string | null }
   | { kind: "complete"; taskId: string; title: string }
+  | { kind: "delete"; taskId: string; title: string }
   | { kind: "create"; title: string; notes: string | null; due: string | null; today: boolean }
 );
 
@@ -35,7 +36,7 @@ export class ExtractionError extends Error {
   }
 }
 
-const KINDS = ["plan_today", "send_to_slate", "snooze", "set_due", "complete", "create"] as const;
+const KINDS = ["plan_today", "send_to_slate", "snooze", "set_due", "complete", "delete", "create"] as const;
 
 /** One flat shape for every kind (unused fields null): simpler for models than a union. */
 export const PROPOSAL_SCHEMA = {
@@ -78,6 +79,7 @@ export function buildExtractionPrompt(snapshot: DaySnapshot, transcript: CallMes
     "- snooze: move a task to a later day (until).",
     "- set_due: set or clear an existing task's due date.",
     "- complete: he says it's already done.",
+    "- delete: he's not doing it at all, or it no longer matters. Only when he says so plainly; putting it off is a snooze or send_to_slate.",
     "- create: a new task he mentioned (title, notes, due, today). Never create a task that's already in the list; use its ref.",
     "",
     `Refer to existing tasks by ref (t1, t2, …) only. Dates are YYYY-MM-DD; today is ${date} (${dayjs(date).format("dddd")}). Work out days like "Friday" or "next week" from that. Titles are short and plain, like his own. Habits aren't tasks: leave them out.`,
@@ -183,9 +185,14 @@ export function validateProposal(raw: unknown, snapshot: DaySnapshot): Proposal 
     const scheduled = onToday.has(task.ref) && !task.done;
 
     switch (c.kind) {
+      // Done and deleted both end the task: whichever he said last wins
       case "complete":
         if (task.done) return "already done";
-        keep(`${task.ref}:complete`, { kind: "complete", ...base });
+        keep(`${task.ref}:end`, { kind: "complete", ...base });
+        return null;
+      case "delete":
+        if (task.done) return "already done";
+        keep(`${task.ref}:end`, { kind: "delete", ...base });
         return null;
       case "plan_today":
         if (task.done) return "already done";
@@ -215,15 +222,15 @@ export function validateProposal(raw: unknown, snapshot: DaySnapshot): Proposal 
     return "unknown kind";
   }
 
-  // A task being marked done needs nothing else
+  // A task being marked done or deleted needs nothing else
   for (const [key, change] of kept) {
-    if (change.kind === "complete") {
+    if (change.kind === "complete" || change.kind === "delete") {
       const ref = key.split(":")[0];
       for (const other of [`${ref}:schedule`, `${ref}:due`]) {
         const c = kept.get(other);
         if (c) {
           kept.delete(other);
-          dropped.push({ change: c, why: "the task is being marked done" });
+          dropped.push({ change: c, why: change.kind === "complete" ? "the task is being marked done" : "the task is being deleted" });
         }
       }
     }
