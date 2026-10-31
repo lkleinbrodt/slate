@@ -19,6 +19,7 @@ const TODAY = "2024-08-10"; // a Saturday
 export async function run() {
   await testSnapshot();
   await testInstructions();
+  await testOpeningOverview();
   testSpokenDay();
   await testExtractionPrompt();
   await testValidateKeepsWhatFits();
@@ -68,6 +69,7 @@ async function testSnapshot() {
   ]);
   assert.strictEqual(s.slate[0].id, t.taxes.id);
   assert.strictEqual(s.slateOmitted, 0);
+  assert.deepStrictEqual(s.overdue, [{ title: "Taxes", dueDate: "2024-08-08" }]);
   assert.deepStrictEqual(s.habits, [{ title: "Stretch", doneToday: true, streak: 3 }]);
   // Plain JSON, so a voice session can store it
   assert.deepStrictEqual(JSON.parse(JSON.stringify(s)), s);
@@ -94,6 +96,27 @@ async function testInstructions() {
 
   setUp();
   assert.match(buildInstructions(await buildDaySnapshot(TODAY)), /Nothing is on today yet\./);
+}
+
+async function testOpeningOverview() {
+  await seedDay();
+  const text = buildInstructions(await buildDaySnapshot(TODAY));
+  // Overdue comes first, named with how late it is
+  assert.match(text, /Opening overview, in this order:\n\nOverdue \(1\):\n1\. Taxes, was due last Thursday\n\nScheduled for today:/);
+  // Open tasks scheduled for today, numbered; the done one is left out
+  assert.match(text, /Scheduled for today:\n1\. Write the report\n/);
+  assert.doesNotMatch(text, /2\. Go for a run/);
+  // Unplanned: no do date, most urgent first; the planned dentist task is not among them
+  assert.match(text, /Unplanned \(no do date\): 3 in all, first 3 listed\.\n1\. Taxes\n2\. Call the bank\n3\. Paint the fence/);
+
+  setUp();
+  // More than five unplanned: five listed, the count of the rest after
+  for (let i = 1; i <= 7; i++) await insertTask({ title: `Loose end ${i}`, createdAt: `2024-02-0${i}T00:00:00.000Z` });
+  const many = buildInstructions(await buildDaySnapshot(TODAY));
+  assert.match(many, /Unplanned \(no do date\): 7 in all, first 5 listed, 2 more after\./);
+  assert.match(many, /Scheduled for today:\nNothing is scheduled for today yet\./);
+  assert.match(many, /Overdue: none\./);
+  assert.doesNotMatch(many, /6\. Loose end/);
 }
 
 function testSpokenDay() {

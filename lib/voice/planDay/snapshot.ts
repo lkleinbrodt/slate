@@ -12,6 +12,9 @@ import { addDays } from "@/lib/logic/dates";
 /** Open tasks beyond this many (least urgent first) are left out of the Slate list. */
 export const MAX_SLATE_TASKS = 80;
 
+/** Unplanned tasks read out in the opening overview; the rest are counted. */
+export const MAX_UNPLANNED_SHOWN = 5;
+
 export interface PlanTask {
   ref: string;
   id: string;
@@ -22,6 +25,12 @@ export interface PlanTask {
   done: boolean;
   /** On Today because it was planned for yesterday and not finished. */
   carriedOver: boolean;
+}
+
+/** An open task whose due date has passed. Named in the overview, so it's kept whole. */
+export interface PlanOverdue {
+  title: string;
+  dueDate: string;
 }
 
 export interface PlanHabit {
@@ -40,6 +49,12 @@ export interface DaySnapshot {
   slate: PlanTask[];
   /** Open tasks left out of `slate` to keep the call's prompt a sensible size. */
   slateOmitted: number;
+  /** Every open task past its due date, most overdue first. Includes ones on today. */
+  overdue: PlanOverdue[];
+  /** Open tasks with no do date, counted over all of them (not just what `slate` shows). */
+  unplannedCount: number;
+  /** Titles of the most urgent unplanned tasks, up to MAX_UNPLANNED_SHOWN. */
+  unplannedTitles: string[];
   habits: PlanHabit[];
 }
 
@@ -60,6 +75,8 @@ export async function buildDaySnapshot(date: string): Promise<DaySnapshot> {
   const onToday = new Set(todayTasks.map((t) => t.id));
   const rest = openTasks.filter((t) => !onToday.has(t.id)).sort(bySlateUrgency);
   const slate = rest.slice(0, MAX_SLATE_TASKS);
+  // Unplanned tasks sort last, so they're the ones the slate cap would drop: count them from `rest`.
+  const unplanned = rest.filter((t) => !t.scheduledFor);
 
   let n = 0;
   const toPlanTask = (t: repo.Task): PlanTask => ({
@@ -80,6 +97,12 @@ export async function buildDaySnapshot(date: string): Promise<DaySnapshot> {
     today: [...todayTasks].sort((a, b) => Number(a.status === "done") - Number(b.status === "done")).map(toPlanTask),
     slate: slate.map(toPlanTask),
     slateOmitted: rest.length - slate.length,
+    overdue: openTasks
+      .filter((t) => t.dueDate && t.dueDate < date)
+      .sort(bySlateUrgency)
+      .flatMap((t) => (t.dueDate ? [{ title: t.title, dueDate: t.dueDate }] : [])),
+    unplannedCount: unplanned.length,
+    unplannedTitles: unplanned.slice(0, MAX_UNPLANNED_SHOWN).map((t) => t.title),
     habits: activeHabits.map((h) => ({
       title: h.title,
       doneToday: done.has(h.id),

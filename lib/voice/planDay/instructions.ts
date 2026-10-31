@@ -19,9 +19,9 @@ export function endsCall(message: { role: string; text: string; interrupted?: bo
   return message.role === "assistant" && !message.interrupted && /\bhanging up now\b/i.test(message.text);
 }
 
-/** Threepio's `greeting.prompt`: the character writes the opening line from the day. */
+/** Threepio's `greeting.prompt`: the character opens with the overview in the instructions. */
 export const GREETING_PROMPT =
-  "Say hello and open with one thing from his day, like something due or carried over from yesterday, then ask where he wants to start. One or two sentences.";
+  "Open with a quick overview, read out loud. Start with the overdue tasks under \"Overdue\", each called out by name with how late it is. Then what's scheduled for today as a numbered list (1. first item, 2. second item), every item under \"Scheduled for today\". Then the unplanned tasks under \"Unplanned\", numbered the same way, and say how many more there are after those if the list says so. Then ask where he wants to start.";
 
 export function buildInstructions(snapshot: DaySnapshot): string {
   const { date } = snapshot;
@@ -34,11 +34,12 @@ export function buildInstructions(snapshot: DaySnapshot): string {
     `You're helping ${USER_NAME} plan his day, ${dayjs(date).format("dddd, MMMM D")}. It's a short call, a few minutes. Slate, his to-do app, turns this conversation into his plan when he hangs up, so you can tell him you'll put something on today or add it as a task.`,
     [
       "How to run it:",
-      "- Start from what's already on today and what's due, then help him choose what else to take on. Don't read the lists out; bring up what matters, like anything overdue, due soon or carried over, and ask.",
+      "- Open with the overview below, read out loud as the greeting asks. After that, don't read the lists out again: bring up what matters, like anything overdue, due soon or carried over, and ask.",
       "- When he mentions something new to do, make sure you know whether it's for today and when it's due, if he hasn't said.",
       "- Help him keep the day realistic. If it's getting long, say so.",
       "- Before he goes, sum up the plan in a sentence or two so he can correct it.",
     ].join("\n"),
+    overview(snapshot, openToday),
     [
       `Ending the call: he may have his phone in his pocket, so you can hang up for him. Saying "${HANG_UP_PHRASE}" ends the call at once, so:`,
       "- When he wants to wrap up, sum up the plan, then ask whether he'd like you to hang up.",
@@ -52,6 +53,28 @@ export function buildInstructions(snapshot: DaySnapshot): string {
     habits(snapshot.habits),
   ];
   return sections.filter(Boolean).join("\n\n");
+}
+
+/** The opening overview: overdue tasks first, then everything scheduled for today, then the unplanned tasks (no do date). */
+function overview(snapshot: DaySnapshot, openToday: PlanTask[]): string {
+  const { date, unplannedCount, unplannedTitles } = snapshot;
+  const overdue = snapshot.overdue.length
+    ? [
+        `Overdue (${snapshot.overdue.length}):`,
+        ...snapshot.overdue.map((t, i) => `${i + 1}. ${t.title}, was due ${spokenDay(t.dueDate, date)}`),
+      ].join("\n")
+    : "Overdue: none.";
+  const scheduled = openToday.length
+    ? openToday.map((t, i) => `${i + 1}. ${t.title}`).join("\n")
+    : "Nothing is scheduled for today yet.";
+  const more = unplannedCount - unplannedTitles.length;
+  const unplanned = unplannedTitles.length
+    ? [
+        `Unplanned (no do date): ${unplannedCount} in all, first ${unplannedTitles.length} listed${more ? `, ${more} more after` : ""}.`,
+        ...unplannedTitles.map((title, i) => `${i + 1}. ${title}`),
+      ].join("\n")
+    : "Unplanned (no do date): none.";
+  return [`Opening overview, in this order:`, overdue, `Scheduled for today:\n${scheduled}`, unplanned].join("\n\n");
 }
 
 function list(title: string, tasks: PlanTask[], today: string, omitted = 0): string | null {
