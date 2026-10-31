@@ -153,6 +153,7 @@ export default function RootLayout() {
               <Stack.Screen name="index" options={{ headerShown: false }} />
               <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: "none" }} />
               <Stack.Screen name="add" options={{ headerShown: false, animation: "none" }} />
+              <Stack.Screen name="voice" options={{ headerShown: false, presentation: "fullScreenModal" }} />
             </Stack>
             <StatusBar style={isDark ? "light" : "dark"} />
           </ThemeProvider>
