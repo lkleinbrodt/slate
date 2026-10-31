@@ -147,7 +147,7 @@ Each step ends with something that works and is checked.
    schema, validation, apply. *Done when* `npm test` covers each against the in-memory
    database, with a sample transcript and a faked LLM reply. Built in `lib/voice/planDay/`
    and `lib/voice/openrouter.ts`, tested in `tests/planDay.test.ts`. The extraction model
-   defaults to `anthropic/claude-sonnet-5.5` (structured output on OpenRouter, about 2¢ a
+   defaults to `anthropic/claude-sonnet-5.5` (structured output on OpenRouter, $2/$10 per M tokens: about 1¢ a
    call); the schema is one flat change shape, which models follow more reliably than a
    union. Not yet tried against a real model.
 3. **Native build.** The packages above, a bare call screen that talks to Threepio, the key
