@@ -36,6 +36,11 @@ function writeSnapshot() {
  */
 export function startWidgetSync(): () => void {
   if (Platform.OS !== "ios") return () => {};
+  // Without the native module, ExtensionStorage quietly does nothing. That
+  // happens if autolinking skips its pod (it needs iOS 16.4+; see app.json).
+  if (!globalThis.expo?.modules?.ExtensionStorage) {
+    console.warn("Widget: ExtensionStorage native module is missing; snapshots won't be written");
+  }
 
   let timer: ReturnType<typeof setTimeout> | undefined;
   const schedule = () => {
