@@ -2,7 +2,7 @@
   "expo": {
     "name": "slate",
     "slug": "slate",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "slate",
@@ -69,6 +69,14 @@
         {
           "calendarPermission": "Slate reads your calendar to plan your day, and adds the blocks you agree to.",
           "remindersPermission": "Slate does not use Reminders."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "17.0"
+          }
         }
       ]
     ],
