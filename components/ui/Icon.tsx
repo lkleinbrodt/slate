@@ -44,6 +44,7 @@ const icons = {
   note: require("phosphor-react-native/lib/commonjs/icons/Note").NoteIcon,
   listChecks: require("phosphor-react-native/lib/commonjs/icons/ListChecks").ListChecksIcon,
   database: require("phosphor-react-native/lib/commonjs/icons/Database").DatabaseIcon,
+  microphone: require("phosphor-react-native/lib/commonjs/icons/Microphone").MicrophoneIcon,
 } satisfies Record<string, PhosphorIcon>;
 /* eslint-enable @typescript-eslint/no-require-imports */
 

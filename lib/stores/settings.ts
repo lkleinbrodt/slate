@@ -1,5 +1,7 @@
 import * as repo from "@/lib/logic/repo";
 
+import { DEFAULT_THREEPIO_URL } from "@/lib/voice/threepio";
+
 import { create } from "zustand";
 
 type NotificationPermissionStatus = "undetermined" | "granted" | "denied";
@@ -18,7 +20,10 @@ interface SettingsState {
   nightReviewEnabled: boolean;
   nightReviewTime: string;
   notificationPermissionStatus: NotificationPermissionStatus;
-  
+
+  // Voice (docs/voice.md): where Threepio, the voice service, is
+  threepioUrl: string;
+
   loadSettings: () => Promise<void>;
   updateDayStart: (time: string) => Promise<void>;
   updatePlanYourDaySettings: (enabled: boolean, time: string) => Promise<void>;
@@ -26,6 +31,7 @@ interface SettingsState {
   updateHabitReminderWindow: (start: string, end: string) => Promise<void>;
   updateNightReviewSettings: (enabled: boolean, time: string) => Promise<void>;
   setNotificationPermissionStatus: (status: NotificationPermissionStatus) => void;
+  updateThreepioUrl: (url: string) => Promise<void>;
 }
 
 const DEFAULT_SETTINGS = {
@@ -39,6 +45,7 @@ const DEFAULT_SETTINGS = {
   nightReviewEnabled: true,
   nightReviewTime: "20:00",
   notificationPermissionStatus: "undetermined" as NotificationPermissionStatus,
+  threepioUrl: DEFAULT_THREEPIO_URL,
 };
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -57,6 +64,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       habitReminderEnd,
       nightReviewEnabled,
       nightReviewTime,
+      threepioUrl,
     ] = await Promise.all([
       repo.getSetting("day_start"),
       repo.getSetting("notification_plan_day_enabled"),
@@ -67,6 +75,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       repo.getSetting("notification_habit_reminder_end"),
       repo.getSetting("notification_night_review_enabled"),
       repo.getSetting("notification_night_review_time"),
+      repo.getSetting("threepio_url"),
     ]);
     
     set({
@@ -79,6 +88,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       habitReminderEnd: habitReminderEnd || DEFAULT_SETTINGS.habitReminderEnd,
       nightReviewEnabled: nightReviewEnabled === "true" || (nightReviewEnabled === null && DEFAULT_SETTINGS.nightReviewEnabled),
       nightReviewTime: nightReviewTime || DEFAULT_SETTINGS.nightReviewTime,
+      threepioUrl: threepioUrl || DEFAULT_SETTINGS.threepioUrl,
       loading: false,
     });
   },
@@ -122,5 +132,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
 
   setNotificationPermissionStatus: (status: NotificationPermissionStatus) => {
     set({ notificationPermissionStatus: status });
+  },
+
+  updateThreepioUrl: async (url: string) => {
+    await repo.setSetting("threepio_url", url);
+    set({ threepioUrl: url });
   },
 }));

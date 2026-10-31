@@ -21,6 +21,7 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { ThemedText } from "@/components/themed-text";
 import { TimePickerButton, formatTime } from "@/components/TimePickerButton";
 import { TimePickerModal } from "@/components/TimePickerModal";
+import { VoiceSettings } from "@/components/settings/VoiceSettings";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSettingsStore } from "@/lib/stores/settings";
 import { useTabBarSpace } from "@/components/TabBar";
@@ -286,6 +287,8 @@ export default function SettingsScreen() {
               </Animated.View>
             </Card>
           </View>
+
+          <VoiceSettings />
 
           <View>
             <SectionHeader title="About" />
