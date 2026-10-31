@@ -68,7 +68,7 @@
         "expo-calendar",
         {
           "calendarPermission": "Slate reads your calendar to plan your day, and adds the blocks you agree to.",
-          "remindersPermission": false
+          "remindersPermission": "Slate does not use Reminders."
         }
       ]
     ],
