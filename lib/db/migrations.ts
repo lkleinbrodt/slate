@@ -96,6 +96,30 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_tasks_completed_date ON tasks(completed_date);
     `,
   },
+  {
+    // Voice sessions (docs/voice.md): one row per call, the resume point after a crash
+    // and a record to tune prompts from. The JSON columns hold the day snapshot, the
+    // transcript, the proposal and what applying it did.
+    version: 3,
+    sql: `
+      CREATE TABLE voice_sessions (
+        id TEXT PRIMARY KEY,
+        mode TEXT NOT NULL,          -- 'plan_day'
+        date TEXT NOT NULL,          -- logical day, YYYY-MM-DD
+        started_at TEXT NOT NULL,    -- ISO datetime
+        updated_at TEXT NOT NULL,
+        character TEXT,              -- Threepio character id
+        call_id TEXT,                -- Threepio's, once the call has started
+        status TEXT NOT NULL,        -- calling | ended | planning | proposed | applied | discarded | failed
+        error TEXT,
+        snapshot TEXT,               -- JSON
+        transcript TEXT,             -- JSON
+        proposal TEXT,               -- JSON
+        applied TEXT                 -- JSON
+      );
+      CREATE INDEX idx_voice_sessions_started ON voice_sessions(started_at);
+    `,
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

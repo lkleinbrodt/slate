@@ -33,5 +33,6 @@ export const resetDatabase = () => {
     DELETE FROM tasks;
     DELETE FROM habits;
     DELETE FROM app_settings;
+    DELETE FROM voice_sessions;
   `);
 };

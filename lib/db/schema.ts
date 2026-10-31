@@ -53,6 +53,35 @@ export const appSettings = sqliteTable("app_settings", {
   value: text("value").notNull(),
 });
 
+export const VOICE_SESSION_STATUSES = [
+  "calling",
+  "ended",
+  "planning",
+  "proposed",
+  "applied",
+  "discarded",
+  "failed",
+] as const;
+export type VoiceSessionStatus = (typeof VOICE_SESSION_STATUSES)[number];
+
+// JSON columns are text in SQLite; drizzle parses and serializes them
+export const voiceSessions = sqliteTable("voice_sessions", {
+  id: text("id").primaryKey(),
+  mode: text("mode", { enum: ["plan_day"] }).notNull(),
+  // Logical day (respecting day start) the call was for, YYYY-MM-DD
+  date: text("date").notNull(),
+  startedAt: text("started_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  character: text("character"),
+  callId: text("call_id"),
+  status: text("status", { enum: VOICE_SESSION_STATUSES }).notNull(),
+  error: text("error"),
+  snapshot: text("snapshot", { mode: "json" }).$type<unknown>(),
+  transcript: text("transcript", { mode: "json" }).$type<unknown>(),
+  proposal: text("proposal", { mode: "json" }).$type<unknown>(),
+  applied: text("applied", { mode: "json" }).$type<unknown>(),
+});
+
 export type Task = typeof tasks.$inferSelect;
 export type NewTask = typeof tasks.$inferInsert;
 export type Habit = typeof habits.$inferSelect;
@@ -61,3 +90,4 @@ export type HabitCompletion = typeof habitCompletions.$inferSelect;
 export type NewHabitCompletion = typeof habitCompletions.$inferInsert;
 export type HabitHistory = typeof habitHistory.$inferSelect;
 export type TaskHistory = typeof taskHistory.$inferSelect;
+export type VoiceSession = typeof voiceSessions.$inferSelect;

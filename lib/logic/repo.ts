@@ -5,8 +5,9 @@ import {
   habits,
   taskHistory,
   tasks,
+  voiceSessions,
 } from "@/lib/db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, notInArray, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/connection";
 import { nowISO } from "@/lib/logic/dates";
@@ -168,6 +169,59 @@ export const getDayTasksHistory = (date: string) =>
     .leftJoin(tasks, eq(taskHistory.taskId, tasks.id))
     .where(eq(taskHistory.date, date));
 
+// ====== Voice sessions ======
+// One row per voice call (docs/voice.md). The JSON columns are opaque here; the voice
+// store knows their shapes.
+export const createVoiceSession = async (data: {
+  mode: VoiceSession["mode"];
+  date: string;
+  character: string | null;
+  snapshot: unknown;
+}) => {
+  const now = nowISO();
+  const row: VoiceSession = {
+    id: randomUUID(),
+    mode: data.mode,
+    date: data.date,
+    startedAt: now,
+    updatedAt: now,
+    character: data.character,
+    callId: null,
+    status: "calling",
+    error: null,
+    snapshot: data.snapshot,
+    transcript: null,
+    proposal: null,
+    applied: null,
+  };
+  await db.insert(voiceSessions).values(row);
+  return row;
+};
+
+export const getVoiceSession = (id: string) =>
+  db.select().from(voiceSessions).where(eq(voiceSessions.id, id)).get();
+
+export const updateVoiceSession = async (
+  id: string,
+  data: Partial<Omit<VoiceSession, "id" | "mode" | "startedAt" | "updatedAt">>
+) => {
+  await db
+    .update(voiceSessions)
+    .set({ ...data, updatedAt: nowISO() })
+    .where(eq(voiceSessions.id, id));
+  return getVoiceSession(id);
+};
+
+/** The newest session not yet applied or discarded: what to pick up after a crash. */
+export const getUnfinishedVoiceSession = () =>
+  db
+    .select()
+    .from(voiceSessions)
+    .where(notInArray(voiceSessions.status, ["applied", "discarded"]))
+    .orderBy(desc(voiceSessions.startedAt))
+    .limit(1)
+    .get();
+
 // ====== Unified Day Snapshot ======
 /**
  * Unified interface for a day's snapshot - works for both today (live data) and history (immutable data)
@@ -284,3 +338,4 @@ export async function getDaySnapshot(
 export type Task = import("@/lib/db/schema").Task;
 export type Habit = import("@/lib/db/schema").Habit;
 export type HabitCompletion = import("@/lib/db/schema").HabitCompletion;
+export type VoiceSession = import("@/lib/db/schema").VoiceSession;
