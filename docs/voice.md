@@ -1,7 +1,8 @@
 # Voice
 
-Plan: 2026-10-31. Steps 1 and 2 are built; step 3 is ready to build on airlandon (see Steps). A second way to use Slate: talk it through with a
-character instead of tapping. The first, and for now only, voice mode is **plan the day**.
+Plan: 2026-10-31. Steps 1–3 are built and work on the phone; **step 4 is next** (see
+"Step 4: handoff" at the end). A second way to use Slate: talk it through with a character
+instead of tapping. The first, and for now only, voice mode is **plan the day**.
 
 ## The idea
 
@@ -121,8 +122,10 @@ shows up; no registry.
 
 ## Native build
 
-One rebuild on airlandon (version 1.1.0) adds everything voice needs, calendar included, so
-the calendar step later is an OTA:
+One rebuild on airlandon adds everything voice needs, calendar included, so the calendar
+step later is an OTA. Built as 1.1.0 on 2026-10-31; **1.1.1** adds the widget's iOS 17
+target (merged late from the `widgets` branch) and needs one more build, after which steps
+4 to 6 are all OTA:
 
 - Pipecat's React Native client and Daily's media manager, pinned exactly (checked on npm
   2026-10-31: publisher, age of at least two weeks, no install scripts, no new audit
@@ -137,7 +140,11 @@ the calendar step later is an OTA:
   `app.json` sets itself.
 - `expo-secure-store` (the key) and `expo-calendar` (unused until the last step).
 - `NSMicrophoneUsageDescription`, calendar usage strings, `UIBackgroundModes: audio`.
-- iOS deployment target 15 or later (the transport's minimum).
+- **A Reminders string too**, though Slate doesn't use Reminders: expo-calendar checks
+  Reminders permission when it loads, and a missing `NSRemindersFullAccessUsageDescription`
+  crashed 1.1.0 at launch on iOS 17+ (fixed before it shipped).
+- iOS deployment target 17 (`expo-build-properties`; the widget's ExtensionStorage needs 16.4,
+  the transport 15).
 
 Proven with a throwaway call screen before anything else is built on it.
 
@@ -154,13 +161,11 @@ Each step ends with something that works and is checked.
    defaults to `anthropic/claude-sonnet-5.5` (structured output on OpenRouter, $2/$10 per M tokens: about 1¢ a
    call); the schema is one flat change shape, which models follow more reliably than a
    union. Not yet tried against a real model.
-3. **Native build.** The packages above, a bare call screen that talks to Threepio, the key
-   in the Keychain. Ready: `app/voice.tsx` (Settings → Voice → Test call, a real plan-the-day
-   call with today's data, live transcript, then the transcript fetched back),
-   `lib/voice/call.ts`, `lib/voice/secrets.ts`, version 1.1.0. Checked here with tsc, lint,
-   tests, `expo prebuild` (Info.plist, background audio, iOS 15.1) and autolinking; not yet
-   built or run. *Done when* a call from Slate on the phone reaches Elle and its
-   transcript comes back.
+3. ✅ **Native build.** The packages above, a bare call screen that talks to Threepio, the key
+   in the Keychain: `app/voice.tsx` (Settings → Voice → Test call, a real plan-the-day call
+   with today's data, live transcript, then the transcript fetched back), `lib/voice/call.ts`,
+   `lib/voice/secrets.ts`. *Done when* a call from Slate on the phone reaches Elle and its
+   transcript comes back: done on 1.1.0, 2026-10-31.
 4. **The flow (JS).** `voice_sessions`, voiceStore, StartSheet → CallScreen → planning →
    ReviewSheet → apply, resume after a crash. *Done when* a real morning call ends with
    today's tasks set from what he said (OTA). This is Threepio's Phase 2 exit.
@@ -177,3 +182,88 @@ Each step ends with something that works and is checked.
 - Whether the review should allow editing a change (e.g. a task's title) or only keep/drop.
 - Calendar details, for step 6: which calendars iOS shows, whether planned blocks go to a
   "Slate" calendar, and whether Slate may ever move his existing events (start add-only).
+
+## Step 4: handoff
+
+For an agent starting step 4 without the conversation that built steps 1–3. Read this whole
+doc first, then `docs/architecture.md`, then the code under `lib/voice/`.
+
+### What exists
+
+| File | What it is |
+|---|---|
+| `lib/voice/threepio.ts` | Threepio's `/v1` client: `characters()`, `voices()`, `createSession()`, `call(id)`. Typed. Errors are `ThreepioError` with a message fit to show. |
+| `lib/voice/call.ts` | `VoiceCall`: create a session, connect with Pipecat's RN client, `onPhase` / `onCallId` / `onMessage`, `hangUp()`, `setMuted()`. |
+| `lib/voice/planDay/snapshot.ts` | `buildDaySnapshot(date)`: the day as plain JSON with task refs; `tasksByRef()`. |
+| `lib/voice/planDay/instructions.ts` | `buildInstructions(snapshot)`, `GREETING_PROMPT`, `spokenDay()`. |
+| `lib/voice/planDay/extract.ts` | `extractPlan({snapshot, transcript, apiKey, model?})` → `Proposal` (`summary`, `changes`, `dropped`) plus `costUsd`; `validateProposal()`; `DEFAULT_PLAN_MODEL`. |
+| `lib/voice/planDay/apply.ts` | `applyChanges(changes)` → `{applied, skipped}`, through the app store's actions. |
+| `lib/voice/openrouter.ts` | `chatJSON()`: one structured-output OpenRouter call. |
+| `lib/voice/secrets.ts` | `getOpenRouterKey()` / `setOpenRouterKey()`, iOS Keychain. |
+| `components/settings/VoiceSettings.tsx` | Settings → Voice: Threepio address, Test connection, OpenRouter key, Test call. |
+| `app/voice.tsx` | The bare test call (route `/voice`, a full-screen modal). Step 4 replaces it. |
+| `tests/threepio.test.ts`, `tests/planDay.test.ts` | Client and plan-day logic, against the in-memory database. |
+
+Threepio's side (`~/Projects/threepio`, its README and design doc Phase 2) is built and live:
+`POST /v1/sessions`, the `call_started` and `message` events, `GET /v1/calls/{id}`. It also
+takes `voice_provider: "fish" | "pocket"` with a character, for her local (free, Pocket TTS)
+voice when she has one; `/v1/characters` lists each character's `variants`. Slate doesn't use
+it yet; offering "local" on the start sheet is a nice-to-have, not part of step 4.
+
+### What to build
+
+1. **`voice_sessions` table** (append a migration in `lib/db/migrations.ts`; never edit a
+   shipped one; add it to `lib/db/schema.ts`): `id`, `mode` (`plan_day`), `date` (logical
+   day), `started_at`, `character`, `call_id`, `status` (`calling` → `ended` → `planning` →
+   `proposed` → `applied` | `discarded`, or `failed` with `error`), and JSON text columns
+   `snapshot`, `transcript`, `proposal`, `applied` (what was kept and what was skipped).
+   Repo functions in `lib/logic/repo.ts`, the only place with queries.
+2. **`lib/stores/voiceStore.ts`**: the state machine for one session, persisting each step
+   to `voice_sessions` before moving on. On launch, a session left in `calling`/`ended`/
+   `planning` resumes: fetch the transcript with `GET /v1/calls/{call_id}` (Threepio keeps
+   it), then plan; one left in `proposed` reopens the review.
+3. **StartSheet** (register in `sheets.tsx`): the character (last used, remembered in
+   `app_settings`; list from `characters()`), a Call button. A "Plan with voice" button on
+   Today opens it. If the OpenRouter key isn't set, say so and link to Settings before the
+   call, not after.
+4. **CallScreen** (replace `app/voice.tsx`): who, live transcript, mute, hang up, keeps going
+   locked (`UIBackgroundModes: audio` is in). Builds the snapshot and instructions at start
+   (`buildDaySnapshot`, `buildInstructions`, `GREETING_PROMPT`), `metadata: {session_id}`.
+5. **Planning**: after hang-up, wait for `GET /v1/calls/{id}` to say `ended`, store the
+   transcript, run `extractPlan`, store the proposal. Show "Making your plan…". On an
+   error, keep the transcript and offer Try again.
+6. **ReviewSheet**: the summary, then each change with a toggle (on by default) and its
+   `reason` small underneath. Apply → `applyChanges(kept)`, store the result, close to
+   Today. Discard → `discarded`. Show anything `skipped` briefly. `dropped` is for tuning:
+   store it, don't show it.
+7. **Remove the test call** from Settings once the real flow works, or keep it behind
+   `__DEV__`.
+
+Unit-test the store's state machine and the new repo functions with `npm test` (fake the
+Threepio client and OpenRouter as `tests/planDay.test.ts` does). The call itself can only be
+tried on the phone.
+
+### Ask Landon before deciding
+
+- Where else voice planning starts (the open questions above): only the Today button for
+  now is the safe default.
+- Whether the review lets him edit a change or only keep/drop it (keep/drop is the default
+  in this plan).
+- Anything that looks like a new feature beyond this list.
+
+### Rules that bite
+
+- **`main` is protected on GitHub: changes go through a PR.** Work on a branch, open a PR,
+  and merge it with a merge commit (not squash) once Landon says so. Make sure your branch
+  starts from an up-to-date `origin/main` (`git fetch` first): stale local branches already
+  caused one lost merge.
+- **OTA**: `npm run update -- "msg"` from a clean `main` after merging. It's outward-facing:
+  ask Landon first. It reaches only builds of the same version (1.1.1 from here on).
+- **Native changes** (a new native module, app.json native config) need a version bump and
+  a build on airlandon by Landon or his Mac agent; avoid them in step 4.
+- **Test calls cost money** (a few cents) and land in Threepio's stats and `calls/` folder.
+  Landon makes them on his phone; from chewy, test against fakes.
+- **Privacy**: Landon's transcripts are private, in Threepio and in Slate's database. Don't
+  read his real calls or print them; your own test data is yours.
+- **Don't print secrets**: the OpenRouter key lives only in the phone's Keychain.
+
