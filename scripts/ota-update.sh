@@ -26,4 +26,7 @@ echo "Publishing OTA to 'production' (runtime $(node -p "require('./app.json').e
 
 # CI=1: expo's export step refuses --non-interactive without a TTY.
 # --environment: required non-interactively. Slate has no EXPO_PUBLIC_* vars.
-CI=1 eas update --channel production --environment production --platform ios --message "$MESSAGE"
+# EAS_SKIP_AUTO_FINGERPRINT: @expo/fingerprint 0.15 (SDK 54) crashes on app.json's
+# ios.icon being an object (light/dark/tinted). The fingerprint is only metadata here:
+# which builds get an update is decided by runtimeVersion (appVersion policy).
+CI=1 EAS_SKIP_AUTO_FINGERPRINT=1 eas update --channel production --environment production --platform ios --message "$MESSAGE"
