@@ -161,7 +161,8 @@ Each step ends with something that works and is checked.
    and `lib/voice/openrouter.ts`, tested in `tests/planDay.test.ts`. The extraction model
    defaults to `anthropic/claude-sonnet-5.5` (structured output on OpenRouter, $2/$10 per M tokens: about 1¢ a
    call); the schema is one flat change shape, which models follow more reliably than a
-   union. Not yet tried against a real model.
+   union. First real call (2026-10-31): OpenRouter refused `temperature` for this model (with
+   `require_parameters`, one unsupported parameter rules out every provider), so none is sent.
 3. ✅ **Native build.** The packages above, a bare call screen that talks to Threepio, the key
    in the Keychain: `app/voice.tsx` (Settings → Voice → Test call, a real plan-the-day call
    with today's data, live transcript, then the transcript fetched back), `lib/voice/call.ts`,
