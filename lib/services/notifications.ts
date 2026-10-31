@@ -19,6 +19,7 @@ const NOTIFICATION_IDS = {
   PLAN_DAY: "plan_day_daily",
   HABIT_REMINDER_PREFIX: "habit_reminder_",
   NIGHT_REVIEW: "night_review_daily",
+  VOICE_PLAN_READY: "voice_plan_ready",
 } as const;
 
 // Habit reminders are one-shot notifications scheduled this many days ahead
@@ -291,4 +292,25 @@ async function rescheduleAll(): Promise<void> {
   } else {
     await Notifications.cancelScheduledNotificationAsync(NOTIFICATION_IDS.NIGHT_REVIEW);
   }
+}
+
+/** After a voice call, when the plan is made while Slate is in the background (the phone
+ * in his pocket): say it's ready. Opening Slate shows the review. */
+export async function notifyVoicePlanReady(summary: string): Promise<void> {
+  const { status } = await Notifications.getPermissionsAsync();
+  if (status !== "granted") return;
+  await Notifications.scheduleNotificationAsync({
+    identifier: NOTIFICATION_IDS.VOICE_PLAN_READY,
+    content: {
+      title: "Your plan is ready",
+      body: summary || "Open Slate to check it.",
+      sound: true,
+    },
+    trigger: null,
+  });
+}
+
+/** Once the review is open, the notification has done its job. */
+export async function dismissVoicePlanReady(): Promise<void> {
+  await Notifications.dismissNotificationAsync(NOTIFICATION_IDS.VOICE_PLAN_READY).catch(() => {});
 }

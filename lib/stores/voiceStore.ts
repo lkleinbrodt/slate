@@ -4,7 +4,7 @@ import { type ApplyResult, applyChanges } from "@/lib/voice/planDay/apply";
 import { type CallEvents, VoiceCall } from "@/lib/voice/call";
 import { type CallMessage, type SessionRequest, type ThreepioClient, threepioClient } from "@/lib/voice/threepio";
 import { type Change, type Proposal, extractPlan } from "@/lib/voice/planDay/extract";
-import { GREETING_PROMPT, buildInstructions } from "@/lib/voice/planDay/instructions";
+import { GREETING_PROMPT, buildInstructions, endsCall } from "@/lib/voice/planDay/instructions";
 import { type DaySnapshot, buildDaySnapshot } from "@/lib/voice/planDay/snapshot";
 
 import { create } from "zustand";
@@ -19,7 +19,16 @@ import { useTimeStore } from "./timeStore";
 export type VoiceStatus = repo.VoiceSession["status"];
 export type CallPhase = "connecting" | "live";
 
-export type StoredProposal = Proposal & { costUsd: number | null; model: string };
+/** How a call ended: her hang-up phrase, the Hang up button, or a dropped connection. */
+export type EndedBy = "phrase" | "button" | "dropped";
+
+export type StoredProposal = Proposal & {
+  costUsd: number | null;
+  model: string;
+  /** For tuning: how the call ended, how long Threepio took to hand over the transcript
+   * (null when it was already saved, as on a retry), and how long the plan took. */
+  stats: { endedBy: EndedBy | null; transcriptMs: number | null; planMs: number };
+};
 /** What Apply did: ApplyResult, plus the changes he turned off (for tuning). */
 export type StoredApplied = ApplyResult & { declined: Change[] };
 
@@ -49,6 +58,7 @@ export interface VoiceDeps {
   getApiKey: () => Promise<string | null>;
   extract: typeof extractPlan;
   sleep: (ms: number) => Promise<void>;
+  now: () => number;
 }
 
 const defaultDeps: VoiceDeps = {
@@ -57,6 +67,7 @@ const defaultDeps: VoiceDeps = {
   getApiKey: getOpenRouterKey,
   extract: extractPlan,
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  now: () => Date.now(),
 };
 
 let deps = defaultDeps;
@@ -69,6 +80,9 @@ export function setVoiceDeps(overrides: Partial<VoiceDeps> | null) {
 const TRANSCRIPT_POLLS = 15;
 const RESUME_TRANSCRIPT_POLLS = 60;
 const POLL_MS = 1000;
+// After her "Hanging up now.": the line arrives once she's done, but the phone may still
+// be playing the end of it
+const PHRASE_HANG_UP_DELAY_MS = 1200;
 
 export const NO_KEY_ERROR = "Add your OpenRouter key in Settings → Voice to make a plan.";
 
@@ -96,6 +110,9 @@ let call: CallHandle | null = null;
 let starting = false;
 // One transcript-and-plan run at a time
 let planning: Promise<void> | null = null;
+// Stats for the current session's proposal (see StoredProposal)
+let endedBy: EndedBy | null = null;
+let transcriptMs: number | null = null;
 
 export const useVoiceStore = create<VoiceState>((set, get) => {
   const save = async (changes: Partial<Omit<ActiveSession, "id">>) => {
@@ -112,9 +129,12 @@ export const useVoiceStore = create<VoiceState>((set, get) => {
   const finish = (polls: number) => {
     planning ??= (async () => {
       try {
+        transcriptMs = null;
         if (!get().session?.transcript) {
+          const started = deps.now();
           const transcript = await fetchTranscript(polls);
           if (!transcript) return;
+          transcriptMs = deps.now() - started;
           await save({ status: "ended", transcript, error: null });
         }
         await plan();
@@ -161,8 +181,10 @@ export const useVoiceStore = create<VoiceState>((set, get) => {
     }
     const model = useSettingsStore.getState().planModel;
     try {
+      const started = deps.now();
       const result = await deps.extract({ snapshot: session.snapshot, transcript: session.transcript, apiKey, model });
-      await save({ status: "proposed", proposal: { ...result, model } });
+      const stats = { endedBy, transcriptMs, planMs: deps.now() - started };
+      await save({ status: "proposed", proposal: { ...result, model, stats } });
     } catch (e) {
       await fail(e instanceof Error ? e.message : String(e));
     }
@@ -192,6 +214,7 @@ export const useVoiceStore = create<VoiceState>((set, get) => {
         messages: [],
         muted: false,
       });
+      endedBy = null;
 
       const handle = deps.createCall(deps.threepio(), {
         onPhase: (phase, error) => {
@@ -201,6 +224,7 @@ export const useVoiceStore = create<VoiceState>((set, get) => {
             return;
           }
           call = null;
+          endedBy ??= "dropped";
           set({ callPhase: null });
           // A dropped call with an id still has a transcript at Threepio worth planning from
           if (phase === "failed" && !get().session?.callId) {
@@ -210,12 +234,18 @@ export const useVoiceStore = create<VoiceState>((set, get) => {
           void save({ status: "ended" }).then(() => finish(TRANSCRIPT_POLLS));
         },
         onCallId: (callId) => void save({ callId }),
-        onMessage: (index, message) =>
+        onMessage: (index, message) => {
           set((s) => {
             const messages = [...s.messages];
             messages[index] = message;
             return { messages };
-          }),
+          });
+          // Her hang-up phrase: let the phone finish playing it, then end the call
+          if (endsCall(message) && !endedBy) {
+            endedBy = "phrase";
+            void deps.sleep(PHRASE_HANG_UP_DELAY_MS).then(() => (call === handle ? handle.hangUp() : undefined));
+          }
+        },
       });
       call = handle;
       await handle.start({
@@ -229,6 +259,7 @@ export const useVoiceStore = create<VoiceState>((set, get) => {
     },
 
     hangUp: async () => {
+      if (call) endedBy ??= "button";
       await call?.hangUp();
     },
 
@@ -300,6 +331,8 @@ function toActive(row: repo.VoiceSession): ActiveSession {
 /** For tests: forget the in-memory session (the database is untouched). */
 export function resetVoiceStore() {
   call = null;
+  endedBy = null;
+  transcriptMs = null;
   starting = false;
   planning = null;
   useVoiceStore.setState({ session: null, callPhase: null, messages: [], muted: false });

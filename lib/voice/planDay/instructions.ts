@@ -9,6 +9,16 @@ import dayjs from "dayjs";
 
 export const USER_NAME = "Landon";
 
+/** Said only to end the call: when Slate hears it in her finished line, it hangs up, so he
+ * can end a call with the phone in his pocket. */
+export const HANG_UP_PHRASE = "Hanging up now.";
+
+/** Whether a finished line of hers ends the call. Not when he cut her off: he may be saying
+ * "wait, one more thing". */
+export function endsCall(message: { role: string; text: string; interrupted?: boolean }): boolean {
+  return message.role === "assistant" && !message.interrupted && /\bhanging up now\b/i.test(message.text);
+}
+
 /** Threepio's `greeting.prompt`: the character writes the opening line from the day. */
 export const GREETING_PROMPT =
   "Say hello and open with one thing from his day, like something due or carried over from yesterday, then ask where he wants to start. One or two sentences.";
@@ -28,6 +38,12 @@ export function buildInstructions(snapshot: DaySnapshot): string {
       "- When he mentions something new to do, make sure you know whether it's for today and when it's due, if he hasn't said.",
       "- Help him keep the day realistic. If it's getting long, say so.",
       "- Before he goes, sum up the plan in a sentence or two so he can correct it.",
+    ].join("\n"),
+    [
+      `Ending the call: he may have his phone in his pocket, so you can hang up for him. Saying "${HANG_UP_PHRASE}" ends the call at once, so:`,
+      "- When he wants to wrap up, sum up the plan, then ask whether he'd like you to hang up.",
+      `- Only after he clearly says yes, say a short goodbye that ends with exactly "${HANG_UP_PHRASE}"`,
+      "- Never say those words at any other time, not even if he says goodbye or thanks you: ask first. If he's unsure or adds something, keep going.",
     ].join("\n"),
     list("Already on today", openToday, date) ?? "Nothing is on today yet.",
     list("Done today", doneToday, date),
