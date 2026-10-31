@@ -120,6 +120,11 @@ opens the app and calls `openURL` itself.
   entitlements and the App Group are native: changing them needs a new build.
   Headings use the system serif (New York), not Fraunces; bundling fonts into the
   extension wasn't worth it.
+- The app targets iOS 17 (`expo-build-properties` in `app.json`). apple-targets'
+  `ExtensionStorage` pod needs iOS 16.4+; below that, autolinking silently skips
+  it and every snapshot write becomes a no-op (the widget stays on "Open Slate").
+- Previews for every family and state are in `targets/widget/Previews.swift`
+  (Xcode canvas, SlateWidget scheme).
 
 ## State conventions
 

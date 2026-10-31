@@ -156,12 +156,15 @@ struct RectangularView: View {
         return day.isPerfectDay ? "Perfect day" : "Nothing left today"
     }
 
+    // Small icon, tight spacing and a smaller title fit more of each title.
+    // A fixed size, because text styles here (.subheadline) render like .body.
     private func row(icon: String, title: String) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 3) {
             Image(systemName: icon)
-                .font(.caption2)
+                .font(.system(size: 8, weight: .semibold))
                 .widgetAccentable()
             Text(title)
+                .font(.system(size: 13))
         }
     }
 }
@@ -232,7 +235,9 @@ struct MediumView: View {
                 .trim(from: 0, to: progress)
                 .stroke(tint, style: StrokeStyle(lineWidth: 8, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-            if total > 0 && done >= total {
+            // Sunrise when it's all done, and when there's nothing to count
+            // (no snapshot yet, or a clear day) rather than a bare "0/0"
+            if done >= total {
                 Image(systemName: "sunrise.fill")
                     .font(.title2)
                     .foregroundStyle(tint)
