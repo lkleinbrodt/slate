@@ -4,7 +4,9 @@ import Database from "better-sqlite3";
 import * as repo from "@/lib/logic/repo";
 import { calculateBaseStreaks } from "@/lib/logic/streaks";
 import { MIGRATIONS } from "@/lib/db/migrations";
-import { applyMigrations, resetDatabase } from "./mocks/db-connection";
+import { voiceSessions } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+import { applyMigrations, db, resetDatabase } from "./mocks/db-connection";
 import {
   completeHabitOn,
   insertHabit,
@@ -18,6 +20,8 @@ export async function run() {
   await testPastDaySnapshotReadsBooleans();
   await testBaseStreaks();
   await testMigrationBackfillsCompletedDate();
+  await testVoiceSessionRoundTripsJSON();
+  await testUnfinishedVoiceSessionIsNewestOpen();
 }
 
 async function testTodayListUsesLogicalCompletionDay() {
@@ -118,4 +122,39 @@ async function testMigrationBackfillsCompletedDate() {
     legacy.pragma("user_version", { simple: true }),
     MIGRATIONS[MIGRATIONS.length - 1].version
   );
+}
+
+async function testVoiceSessionRoundTripsJSON() {
+  resetDatabase();
+  const snapshot = { date: "2024-07-10", today: [{ ref: "t1", title: "Write the report" }] };
+  const created = await repo.createVoiceSession({ mode: "plan_day", date: "2024-07-10", character: "elle", snapshot });
+  assert.strictEqual(created.status, "calling");
+
+  const transcript = [{ role: "user", text: "Hi", at: "2024-07-10T15:00:00Z" }];
+  await repo.updateVoiceSession(created.id, { callId: "c1", status: "ended", transcript });
+  const row = await repo.getVoiceSession(created.id);
+  assert(row);
+  assert.strictEqual(row.callId, "c1");
+  assert.strictEqual(row.status, "ended");
+  assert.deepStrictEqual(row.snapshot, snapshot);
+  assert.deepStrictEqual(row.transcript, transcript);
+  assert.strictEqual(row.proposal, null);
+  assert.strictEqual(row.startedAt, created.startedAt);
+}
+
+async function testUnfinishedVoiceSessionIsNewestOpen() {
+  resetDatabase();
+  assert.strictEqual(await repo.getUnfinishedVoiceSession(), undefined);
+
+  const make = async (startedAt: string, status: repo.VoiceSession["status"]) => {
+    const s = await repo.createVoiceSession({ mode: "plan_day", date: startedAt.slice(0, 10), character: null, snapshot: {} });
+    await db.update(voiceSessions).set({ startedAt, status }).where(eq(voiceSessions.id, s.id));
+    return s.id;
+  };
+  await make("2024-07-08T15:00:00.000Z", "proposed");
+  const newestOpen = await make("2024-07-09T15:00:00.000Z", "failed");
+  await make("2024-07-10T15:00:00.000Z", "applied");
+  await make("2024-07-10T16:00:00.000Z", "discarded");
+
+  assert.strictEqual((await repo.getUnfinishedVoiceSession())?.id, newestOpen);
 }
