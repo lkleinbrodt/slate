@@ -1,7 +1,7 @@
 # Voice
 
-Plan: 2026-10-31. Steps 1–3 are built and work on the phone; **step 4 is next** (see
-"Step 4: handoff" at the end). A second way to use Slate: talk it through with a character
+Plan: 2026-10-31. Steps 1–3 are built and work on the phone. **Step 4 is built** (JS,
+2026-10-31; see "Step 4: built" at the end) and waits on a real morning call. A second way to use Slate: talk it through with a character
 instead of tapping. The first, and for now only, voice mode is **plan the day**.
 
 ## The idea
@@ -82,6 +82,7 @@ type Change = { reason: string } & (            // reason: a short why, shown in
   | { kind: "create"; title: string; notes?: string; due?: Day; today: boolean }
   | { kind: "set_due"; task: Ref; due: Day | null }
   | { kind: "complete"; task: Ref }             // he says it's already done
+  | { kind: "delete"; task: Ref }               // he's not doing it: archive it
 );
 ```
 
@@ -168,7 +169,8 @@ Each step ends with something that works and is checked.
    transcript comes back: done on 1.1.0, 2026-10-31.
 4. **The flow (JS).** `voice_sessions`, voiceStore, StartSheet → CallScreen → planning →
    ReviewSheet → apply, resume after a crash. *Done when* a real morning call ends with
-   today's tasks set from what he said (OTA). This is Threepio's Phase 2 exit.
+   today's tasks set from what he said (OTA). This is Threepio's Phase 2 exit. Built
+   2026-10-31 (PRs #24–#26); not yet tried on the phone.
 5. **Tune.** A few real mornings, then adjust the instructions, the extraction prompt and
    the model from the saved sessions.
 6. **Calendar (last).** Read today's events into the snapshot, add event changes to the
@@ -177,13 +179,17 @@ Each step ends with something that works and is checked.
 
 ## Open questions
 
-- Entry points besides the Today button: the morning "plan your day" notification opening
-  voice planning, or the Action Button.
-- Whether the review should allow editing a change (e.g. a task's title) or only keep/drop.
+- Entry points beyond the buttons: the morning "plan your day" notification opening voice
+  planning, or the Action Button. (Decided 2026-10-31: a "Plan with voice" button on Today
+  and on the Slate, nothing else for now.)
+- Editing a change in the review (decided 2026-10-31: keep/drop only for now). Editing a
+  task's title or notes by voice is a possible later change kind.
 - Calendar details, for step 6: which calendars iOS shows, whether planned blocks go to a
   "Slate" calendar, and whether Slate may ever move his existing events (start add-only).
 
 ## Step 4: handoff
+
+*Historical: the brief step 4 was built from. What was built is in "Step 4: built" below.*
 
 For an agent starting step 4 without the conversation that built steps 1–3. Read this whole
 doc first, then `docs/architecture.md`, then the code under `lib/voice/`.
@@ -266,4 +272,26 @@ tried on the phone.
 - **Privacy**: Landon's transcripts are private, in Threepio and in Slate's database. Don't
   read his real calls or print them; your own test data is yours.
 - **Don't print secrets**: the OpenRouter key lives only in the phone's Keychain.
+
+## Step 4: built
+
+| File | What it is |
+|---|---|
+| `voice_sessions` (migration v3), `repo.*VoiceSession*` | One row per call; `getUnfinishedVoiceSession()` is the resume point. |
+| `lib/stores/voiceStore.ts` | The session: `startCall`, `hangUp`, `setMuted`, `retry`, `apply(kept)`, `discard`, `resume`. Each step is saved before the next. Threepio, the call, the key, the LLM and the clock come from `setVoiceDeps` (fakes in `tests/voiceStore.test.ts`). |
+| `components/voice/PlanWithVoiceButton.tsx`, `open.ts` | On Today and the Slate. Opens the start sheet, or goes back to an unfinished session ("Back to your call", "Review your plan", "Voice plan: needs a look"). |
+| `components/voice/StartSheet.tsx` | Character chips (last used, from `voice_character`), Call. Without an OpenRouter key it links to Settings instead. |
+| `app/voice.tsx` | The call screen: live transcript, mute, hang up; then "Making your plan…"; on a failure the error, Try again and Discard. Closes itself when the plan is ready. |
+| `components/voice/ReviewSheet.tsx` | Summary, a toggle per change with its reason, Apply n / Discard. Swiping it away keeps the plan. Skipped changes show in an alert. |
+| `components/voice/VoiceSessionWatcher.tsx` | At the root: `resume()` on launch, and opens the review whenever a plan becomes ready. |
+| `lib/voice/planDay/describe.ts` | How a change is worded in the review. |
+
+Behaviour worth knowing:
+
+- One session at a time: the button returns to an unfinished one rather than starting another.
+- After hang-up the store polls `GET /v1/calls/{id}` until `ended` (15 s; 60 s on resume after a crash), then plans with `voice_plan_model` (Settings → Voice → Plan model).
+- Failures keep the transcript; Try again re-plans without fetching it again. A call that dropped before Threepio sent its id can't be recovered.
+- A session left from an earlier day is discarded on launch, so a stale plan can't land on the wrong today.
+- `proposal` stores `costUsd` and `model`; `applied` stores `{applied, skipped, declined}` (declined: what he turned off), for step 5.
+- The step 3 test call is gone; Settings → Voice keeps Test connection.
 

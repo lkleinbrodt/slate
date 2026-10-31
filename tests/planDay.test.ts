@@ -7,6 +7,7 @@ import { taskHistory, tasks } from "@/lib/db/schema";
 import { applyChanges } from "@/lib/voice/planDay/apply";
 import { DEFAULT_PLAN_MODEL, buildExtractionPrompt, extractPlan, validateProposal } from "@/lib/voice/planDay/extract";
 import { buildInstructions, spokenDay } from "@/lib/voice/planDay/instructions";
+import { describeChange } from "@/lib/voice/planDay/describe";
 import { buildDaySnapshot, type DaySnapshot } from "@/lib/voice/planDay/snapshot";
 import { useAppStore } from "@/lib/stores/appStore";
 import { useTimeStore } from "@/lib/stores/timeStore";
@@ -24,6 +25,7 @@ export async function run() {
   await testValidateDropsWhatDoesnt();
   await testExtractPlanCallsOpenRouter();
   await testApply();
+  testDescribeChange();
 }
 
 function setUp() {
@@ -282,4 +284,24 @@ async function testApply() {
   // The store saw it all
   const titles = useAppStore.getState().todayTasks.map((x) => x.title).sort();
   assert.deepStrictEqual(titles, ["Buy milk", "Call the bank", "Go for a run", "Paint the fence", "Taxes"]);
+}
+
+function testDescribeChange() {
+  const base = { taskId: "x", title: "Taxes", reason: "" };
+  const line = (c: Parameters<typeof describeChange>[0]) => {
+    const d = describeChange(c, TODAY);
+    return [d.action, d.title, d.detail];
+  };
+  assert.deepStrictEqual(line({ kind: "plan_today", ...base }), ["Today", "Taxes", null]);
+  assert.deepStrictEqual(line({ kind: "send_to_slate", ...base }), ["Off today", "Taxes", "back to the Slate"]);
+  assert.deepStrictEqual(line({ kind: "snooze", ...base, until: "2024-08-11" }), ["Move to tomorrow", "Taxes", null]);
+  assert.deepStrictEqual(line({ kind: "set_due", ...base, due: "2024-08-16" }), ["Due Friday", "Taxes", null]);
+  assert.deepStrictEqual(line({ kind: "set_due", ...base, due: null }), ["No due date", "Taxes", null]);
+  assert.deepStrictEqual(line({ kind: "complete", ...base }), ["Done", "Taxes", null]);
+  assert.deepStrictEqual(line({ kind: "delete", ...base }), ["Delete", "Taxes", null]);
+  assert.deepStrictEqual(
+    line({ kind: "create", title: "Buy milk", notes: null, due: "2024-08-12", today: true, reason: "" }),
+    ["New task", "Buy milk", "on today, due Monday"]
+  );
+  assert.deepStrictEqual(line({ kind: "create", title: "Fix bike", notes: null, due: null, today: false, reason: "" }), ["New task", "Fix bike", null]);
 }

@@ -4,12 +4,16 @@ import AddEditModal from "./components/AddEditModal";
 import DatePickerActionSheet from "./components/DatePickerModal";
 import DependencyPickerModal from "./components/DependencyPickerModal";
 import { DayDetailsModal } from "./components/history/DayDetailsModal";
+import ReviewSheet from "./components/voice/ReviewSheet";
+import StartSheet from "./components/voice/StartSheet";
 
 // Register the add/edit modal sheet
 registerSheet("add-edit-modal", AddEditModal);
 registerSheet("date-picker-sheet", DatePickerActionSheet);
 registerSheet("dependency-picker-sheet", DependencyPickerModal);
 registerSheet("day-details-sheet", DayDetailsModal);
+registerSheet("voice-start", StartSheet);
+registerSheet("voice-review", ReviewSheet);
 
 // Extend the types for TypeScript support
 declare module "react-native-actions-sheet" {
@@ -47,6 +51,8 @@ declare module "react-native-actions-sheet" {
         onClose: () => void;
       };
     }>;
+    "voice-start": SheetDefinition;
+    "voice-review": SheetDefinition;
   }
 }
 

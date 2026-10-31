@@ -27,6 +27,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Text, View } from "react-native";
+import { VoiceSessionWatcher } from "@/components/voice/VoiceSessionWatcher";
 import { initializeDatabase } from "@/lib/db/connection";
 import { startWidgetSync } from "@/lib/services/widget";
 import { useAppStore } from "@/lib/stores/appStore";
@@ -155,6 +156,7 @@ export default function RootLayout() {
               <Stack.Screen name="add" options={{ headerShown: false, animation: "none" }} />
               <Stack.Screen name="voice" options={{ headerShown: false, presentation: "fullScreenModal" }} />
             </Stack>
+            <VoiceSessionWatcher />
             <StatusBar style={isDark ? "light" : "dark"} />
           </ThemeProvider>
         </SheetProvider>
