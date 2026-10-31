@@ -32,6 +32,8 @@ export async function run() {
   await testResumeReopensReview();
   await testResumeDropsOtherDays();
   await testResumeWithoutCallId();
+  await testHerPhraseHangsUp();
+  await testInterruptedPhraseKeepsTalking();
   setVoiceDeps(null);
 }
 
@@ -49,6 +51,8 @@ interface Fakes {
   apiKey: string | null;
   extracted: Parameters<typeof extractPlan>[0][];
   extractError: string | null;
+  slept: number[];
+  clock: number;
 }
 
 let fakes: Fakes;
@@ -74,6 +78,8 @@ async function setUp() {
     apiKey: "sk-test",
     extracted: [],
     extractError: null,
+    slept: [],
+    clock: 0,
   };
   const threepio = {
     call: async (callId: string): Promise<ThreepioCall> => {
@@ -102,7 +108,11 @@ async function setUp() {
       };
     },
     getApiKey: async () => fakes.apiKey,
-    sleep: async () => {},
+    sleep: async (ms) => {
+      fakes.slept.push(ms);
+    },
+    // Each reading of the clock is a second after the last
+    now: () => (fakes.clock += 1000),
     extract: async (opts) => {
       fakes.extracted.push(opts);
       if (fakes.extractError) throw new Error(fakes.extractError);
@@ -176,7 +186,10 @@ async function testCallToPlanToApply() {
   assert.deepStrictEqual(fakes.extracted[0].snapshot, saved.snapshot);
   assert.strictEqual(fakes.extracted[0].apiKey, "sk-test");
   assert.strictEqual(fakes.extracted[0].model, DEFAULT_PLAN_MODEL);
-  assert.deepStrictEqual((saved.proposal as { model: string; costUsd: number }).model, DEFAULT_PLAN_MODEL);
+  const stored = saved.proposal as { model: string; stats: unknown };
+  assert.strictEqual(stored.model, DEFAULT_PLAN_MODEL);
+  // Hung up with the button; the fake clock ticks a second per reading
+  assert.deepStrictEqual(stored.stats, { endedBy: "button", transcriptMs: 1000, planMs: 1000 });
 
   // He keeps "Taxes today" and turns off the delete
   const id = saved.id;
@@ -316,3 +329,35 @@ async function testResumeWithoutCallId() {
   assert.strictEqual(useVoiceStore.getState().session?.status, "failed");
   assert.match(useVoiceStore.getState().session?.error ?? "", /ended before it started/);
 }
+
+async function testHerPhraseHangsUp() {
+  await setUp();
+  await useVoiceStore.getState().startCall("elle");
+  fakes.events.onPhase?.("live");
+  fakes.events.onCallId?.("c1");
+  SAID.forEach((m, i) => fakes.events.onMessage?.(i, m));
+  fakes.events.onMessage?.(2, { role: "assistant", text: "Want me to hang up?", at: "" });
+  fakes.events.onMessage?.(3, { role: "user", text: "Yes please.", at: "" });
+  assert.strictEqual(fakes.hungUp, 0);
+  fakes.events.onMessage?.(4, { role: "assistant", text: "[warmly] Have a good one. Hanging up now.", at: "" });
+
+  await settle("proposed");
+  assert.strictEqual(fakes.hungUp, 1);
+  // It waited for the phone to finish playing her line first
+  assert.strictEqual(fakes.slept[0], 1200);
+  assert.strictEqual(((await row()).proposal as { stats: { endedBy: string } }).stats.endedBy, "phrase");
+}
+
+async function testInterruptedPhraseKeepsTalking() {
+  await setUp();
+  await useVoiceStore.getState().startCall("elle");
+  fakes.events.onPhase?.("live");
+  fakes.events.onCallId?.("c1");
+  // He cut her off mid-goodbye ("wait, one more thing"), and the user's own words never count
+  fakes.events.onMessage?.(0, { role: "assistant", text: "Okay, hanging up now", at: "", interrupted: true });
+  fakes.events.onMessage?.(1, { role: "user", text: "Hanging up now.", at: "" });
+  await new Promise((r) => setTimeout(r, 5));
+  assert.strictEqual(fakes.hungUp, 0);
+  assert.strictEqual(useVoiceStore.getState().callPhase, "live");
+}
+

@@ -6,7 +6,7 @@ import { db } from "@/lib/db/connection";
 import { taskHistory, tasks } from "@/lib/db/schema";
 import { applyChanges } from "@/lib/voice/planDay/apply";
 import { DEFAULT_PLAN_MODEL, buildExtractionPrompt, extractPlan, validateProposal } from "@/lib/voice/planDay/extract";
-import { buildInstructions, spokenDay } from "@/lib/voice/planDay/instructions";
+import { HANG_UP_PHRASE, buildInstructions, endsCall, spokenDay } from "@/lib/voice/planDay/instructions";
 import { describeChange } from "@/lib/voice/planDay/describe";
 import { buildDaySnapshot, type DaySnapshot } from "@/lib/voice/planDay/snapshot";
 import { useAppStore } from "@/lib/stores/appStore";
@@ -82,6 +82,13 @@ async function testInstructions() {
   assert.match(text, /Due within a week, not on today:\n- Taxes, overdue, was due last Thursday\n- Call the bank, due Monday \(note: ask about the fee\)/);
   assert.match(text, /The rest of his Slate[^\n]*:\n- Book dentist, planned for Thursday\n- Paint the fence/);
   assert.match(text, /- Stretch: done today, a 3-day streak/);
+  // She can hang up for him, but only after asking
+  assert(text.includes(`ends with exactly "${HANG_UP_PHRASE}"`));
+  assert.match(text, /ask whether he'd like you to hang up/);
+  assert(endsCall({ role: "assistant", text: "Bye for now. Hanging up now." }));
+  assert(!endsCall({ role: "assistant", text: "Hanging up now.", interrupted: true }));
+  assert(!endsCall({ role: "user", text: "Hanging up now." }));
+  assert(!endsCall({ role: "assistant", text: "Want me to hang up?" }));
   // No refs or ids: those are for the extraction
   assert.doesNotMatch(text, /\bt\d\b/);
 
