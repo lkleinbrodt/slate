@@ -12,9 +12,9 @@ export interface ApplyResult {
   skipped: { change: Change; why: string }[];
 }
 
-// New tasks first, then done, then where tasks go, then due dates (a due date of today or
+// New tasks first, then done or deleted, then where tasks go, then due dates (a due date of today or
 // earlier pulls a task onto Today, as it does when edited by hand).
-const ORDER: Change["kind"][] = ["create", "complete", "plan_today", "send_to_slate", "snooze", "set_due"];
+const ORDER: Change["kind"][] = ["create", "complete", "delete", "plan_today", "send_to_slate", "snooze", "set_due"];
 
 export async function applyChanges(changes: Change[]): Promise<ApplyResult> {
   const store = useAppStore.getState();
@@ -40,6 +40,9 @@ export async function applyChanges(changes: Change[]): Promise<ApplyResult> {
         switch (change.kind) {
           case "complete":
             await store.completeTask(task.id);
+            break;
+          case "delete":
+            await store.deleteTask(task.id);
             break;
           case "plan_today":
             await store.planTaskForToday(task.id);

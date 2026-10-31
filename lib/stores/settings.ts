@@ -1,5 +1,6 @@
 import * as repo from "@/lib/logic/repo";
 
+import { DEFAULT_PLAN_MODEL } from "@/lib/voice/planDay/extract";
 import { DEFAULT_THREEPIO_URL } from "@/lib/voice/threepio";
 
 import { create } from "zustand";
@@ -23,6 +24,10 @@ interface SettingsState {
 
   // Voice (docs/voice.md): where Threepio, the voice service, is
   threepioUrl: string;
+  // The character last called (a Threepio id); null until the first call
+  voiceCharacter: string | null;
+  // OpenRouter model that turns a call into a plan
+  planModel: string;
 
   loadSettings: () => Promise<void>;
   updateDayStart: (time: string) => Promise<void>;
@@ -32,6 +37,8 @@ interface SettingsState {
   updateNightReviewSettings: (enabled: boolean, time: string) => Promise<void>;
   setNotificationPermissionStatus: (status: NotificationPermissionStatus) => void;
   updateThreepioUrl: (url: string) => Promise<void>;
+  updateVoiceCharacter: (id: string) => Promise<void>;
+  updatePlanModel: (model: string) => Promise<void>;
 }
 
 const DEFAULT_SETTINGS = {
@@ -46,6 +53,8 @@ const DEFAULT_SETTINGS = {
   nightReviewTime: "20:00",
   notificationPermissionStatus: "undetermined" as NotificationPermissionStatus,
   threepioUrl: DEFAULT_THREEPIO_URL,
+  voiceCharacter: null as string | null,
+  planModel: DEFAULT_PLAN_MODEL,
 };
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -65,6 +74,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       nightReviewEnabled,
       nightReviewTime,
       threepioUrl,
+      voiceCharacter,
+      planModel,
     ] = await Promise.all([
       repo.getSetting("day_start"),
       repo.getSetting("notification_plan_day_enabled"),
@@ -76,6 +87,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       repo.getSetting("notification_night_review_enabled"),
       repo.getSetting("notification_night_review_time"),
       repo.getSetting("threepio_url"),
+      repo.getSetting("voice_character"),
+      repo.getSetting("voice_plan_model"),
     ]);
     
     set({
@@ -89,6 +102,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       nightReviewEnabled: nightReviewEnabled === "true" || (nightReviewEnabled === null && DEFAULT_SETTINGS.nightReviewEnabled),
       nightReviewTime: nightReviewTime || DEFAULT_SETTINGS.nightReviewTime,
       threepioUrl: threepioUrl || DEFAULT_SETTINGS.threepioUrl,
+      voiceCharacter: voiceCharacter || DEFAULT_SETTINGS.voiceCharacter,
+      planModel: planModel || DEFAULT_SETTINGS.planModel,
       loading: false,
     });
   },
@@ -137,5 +152,15 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   updateThreepioUrl: async (url: string) => {
     await repo.setSetting("threepio_url", url);
     set({ threepioUrl: url });
+  },
+
+  updateVoiceCharacter: async (id: string) => {
+    await repo.setSetting("voice_character", id);
+    set({ voiceCharacter: id });
+  },
+
+  updatePlanModel: async (model: string) => {
+    await repo.setSetting("voice_plan_model", model);
+    set({ planModel: model });
   },
 }));

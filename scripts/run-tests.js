@@ -25,6 +25,9 @@ const mocks = new Map([
   ["@/lib/services/notifications", path.join(projectRoot, "tests/mocks/notifications.ts")],
   ["expo-notifications", path.join(projectRoot, "tests/mocks/expo-notifications.ts")],
   ["react-native", path.join(projectRoot, "tests/mocks/react-native.ts")],
+  // Native voice pieces (Pipecat's WebRTC client, the Keychain); tests pass fakes to the voice store
+  ["@/lib/voice/call", path.join(projectRoot, "tests/mocks/voice-call.ts")],
+  ["@/lib/voice/secrets", path.join(projectRoot, "tests/mocks/voice-secrets.ts")],
 ]);
 
 const originalResolveFilename = Module._resolveFilename;

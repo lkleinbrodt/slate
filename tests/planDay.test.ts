@@ -172,6 +172,11 @@ async function testValidateDropsWhatDoesnt() {
         change({ kind: "complete", task: "t4" }),
         // A bad due date on a new task drops the date, not the task
         change({ kind: "create", title: "Fix bike", due: "yesterday", today: false }),
+        // Deleting replaces moving it, and the last of done or deleted wins
+        change({ kind: "plan_today", task: "t3" }),
+        change({ kind: "complete", task: "t3" }),
+        change({ kind: "delete", task: "t3" }),
+        change({ kind: "delete", task: "t2" }), // done
       ],
     },
     snapshot
@@ -182,6 +187,7 @@ async function testValidateDropsWhatDoesnt() {
       ["snooze", "2024-08-12", "Paint the fence"],
       ["complete", null, "Call the bank"],
       ["create", null, "Fix bike"],
+      ["delete", null, "Taxes"],
     ]
   );
   assert.deepStrictEqual(
@@ -201,7 +207,9 @@ async function testValidateDropsWhatDoesnt() {
       "no title",
       "already a task (t4)",
       "due date yesterday isn't a day from today on; kept the task without it",
+      "already done",
       "the task is being marked done",
+      "the task is being deleted",
     ]
   );
   assert.throws(() => validateProposal({ changes: [] }, snapshot), /wrong shape/);
@@ -243,6 +251,7 @@ async function testApply() {
   const get = (id: string) => db.select().from(tasks).where(eq(tasks.id, id)).get();
   const ignored = await insertTask({ title: "Deleted meanwhile" });
   await db.update(tasks).set({ status: "archived" }).where(eq(tasks.id, ignored.id));
+  const dropIt = await insertTask({ title: "Learn the banjo" });
 
   const result = await applyChanges([
     { kind: "set_due", taskId: t.paint.id, title: "Paint the fence", due: TODAY, reason: "" },
@@ -253,9 +262,11 @@ async function testApply() {
     { kind: "create", title: "Buy milk", notes: "oat", due: "2024-08-14", today: true, reason: "" },
     { kind: "create", title: "Fix bike", notes: null, due: null, today: false, reason: "" },
     { kind: "plan_today", taskId: ignored.id, title: "Deleted meanwhile", reason: "" },
+    { kind: "delete", taskId: dropIt.id, title: "Learn the banjo", reason: "" },
   ]);
 
-  assert.strictEqual(result.applied.length, 7);
+  assert.strictEqual(result.applied.length, 8);
+  assert.strictEqual((await get(dropIt.id))?.status, "archived");
   assert.deepStrictEqual(result.skipped.map((s) => s.why), ["it's deleted now"]);
   assert.strictEqual((await get(t.report.id))?.scheduledFor, null);
   assert.strictEqual((await get(t.taxes.id))?.scheduledFor, TODAY);
