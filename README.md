@@ -17,6 +17,10 @@ A personal, local-first iOS to-do + habit app (Expo / React Native, SQLite on de
 - **Habits** – things to do every day. They always appear in Today and track streaks.
   A **Perfect Day** is one where every habit was completed.
 - **History** – calendar of past days (habits/tasks completed, perfect days) and streaks.
+- **Widget** – Home Screen (medium) and Lock Screen (ring, rectangle, inline) widget
+  showing what's left today. Display only; tapping it opens the app, and its "+"
+  opens the add sheet. A "New Task" control (iOS 18: Control Center, Lock Screen
+  corners, Action Button) does the same.
 - **Notifications** – morning "plan your day", habit reminders during a configurable
   window (only while habits are incomplete), and an evening review.
 
@@ -28,7 +32,7 @@ npm start          # Expo dev server
 npm test           # logic tests against an in-memory SQLite DB
 npm run lint
 npx tsc --noEmit
-npm run update -- -m "what changed"   # publish an OTA update (EAS, iOS)
+npm run update -- "what changed"   # publish an OTA update (EAS, iOS; from main, clean tree)
 ```
 
 ## Shipping
@@ -37,7 +41,7 @@ Slate is only for personal installs, so there is one update channel: `production
 Every build listens to it (EAS builds via `eas.json`, local builds via
 `updates.requestHeaders` in `app.json`), and `npm run update` publishes to it.
 
-- **JS-only changes**: `npm run update -- -m "..."`, then Settings → Developer →
+- **JS-only changes**: `npm run update -- "..."`, then Settings → Developer →
   Check for updates (or relaunch the app twice).
 - **Native changes** (new native module, icon, splash, app config): bump `version`
   in `app.json` and install a new build. The runtime version follows `version`,

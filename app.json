@@ -2,7 +2,7 @@
   "expo": {
     "name": "slate",
     "slug": "slate",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "slate",
@@ -11,6 +11,12 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.lkleinbrodt.slate",
+      "appleTeamId": "DU26G2LJFP",
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.lkleinbrodt.slate"
+        ]
+      },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleDisplayName": "Slate"
@@ -45,7 +51,8 @@
             "backgroundColor": "#181A1E"
           }
         }
-      ]
+      ],
+      "@bacons/apple-targets"
     ],
     "experiments": {
       "typedRoutes": true,

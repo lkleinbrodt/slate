@@ -28,6 +28,7 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Text, View } from "react-native";
 import { initializeDatabase } from "@/lib/db/connection";
+import { startWidgetSync } from "@/lib/services/widget";
 import { useAppStore } from "@/lib/stores/appStore";
 import { useFonts } from "expo-font";
 import { useSettingsStore } from "@/lib/stores/settings";
@@ -58,6 +59,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     let cleanupTimeStore: (() => void) | undefined;
+    let stopWidgetSync: (() => void) | undefined;
 
     const initialize = async () => {
       try {
@@ -69,6 +71,9 @@ export default function RootLayout() {
 
         // Initialize app store (which now uses TimeStore for current date)
         await initAppStore();
+
+        // Mirror Today into the home/lock screen widget from here on
+        stopWidgetSync = startWidgetSync();
 
         // Check notification permission status and reschedule notifications
         const permissionStatus = await getNotificationPermissionStatus();
@@ -91,6 +96,7 @@ export default function RootLayout() {
       if (cleanupTimeStore) {
         cleanupTimeStore();
       }
+      stopWidgetSync?.();
     };
   }, [loadSettings, initAppStore, initTimeStore]);
 
@@ -146,6 +152,7 @@ export default function RootLayout() {
             <Stack screenOptions={{ contentStyle: { backgroundColor: colors.background } }}>
               <Stack.Screen name="index" options={{ headerShown: false }} />
               <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: "none" }} />
+              <Stack.Screen name="add" options={{ headerShown: false, animation: "none" }} />
             </Stack>
             <StatusBar style={isDark ? "light" : "dark"} />
           </ThemeProvider>

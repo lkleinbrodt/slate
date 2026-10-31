@@ -18,7 +18,8 @@ sheets.tsx           action-sheet registry: add/edit, date picker, dependency pi
 lib/db/              schema.ts (drizzle), migrations.ts, connection.ts
 lib/logic/           repo.ts (all queries), rollover.ts, streaks.ts, dates.ts
 lib/stores/          appStore (tasks/habits), timeStore (current day), settings, historyStore
-lib/services/        notifications.ts
+lib/services/        notifications.ts, widget.ts (writes the widget snapshot)
+targets/widget/      iOS widget extension (SwiftUI), via @bacons/apple-targets
 tests/               logic tests; scripts/run-tests.js is a tiny TS runner with module mocks
 ```
 
@@ -89,6 +90,36 @@ one. Tests run the same migrations against better-sqlite3.
 - Rescheduled on launch, foreground, settings changes, and when a habit is
   toggled, created or deleted. Reschedules run one at a time (each cancels and
   re-adds over many awaits, so overlapping runs could leave stale reminders).
+
+## Widget
+
+One WidgetKit widget, "Today", in four sizes: Lock Screen circle (habit ring),
+rectangle (counts + one pending habit and one pending task), the inline line above
+the clock, and a medium Home Screen widget (ring + up to four rows). Display only.
+
+Quick add: `slate://add` (`app/add.tsx`) lands on Today with the add sheet open. The
+medium widget's "+" links to it, and an iOS 18 control ("New Task", for Control
+Center, the Lock Screen corners and the Action Button) opens it through
+`targets/widget/_shared/NewTaskIntent.swift`, which apple-targets compiles into the
+app as well. Custom-scheme `OpenURLIntent` is unreliable on devices, so the intent
+opens the app and calls `openURL` itself.
+
+- The widget can't open SQLite or run rollover. The app writes a JSON snapshot to
+  the App Group `group.com.lkleinbrodt.slate` (UserDefaults key `widgetSnapshot`)
+  and reloads the widget. `lib/services/widget.ts` does this whenever the app
+  store's Today data or the day start changes (debounced).
+- The snapshot (`lib/logic/widget.ts`, decoded by `targets/widget/Snapshot.swift`;
+  keep them in sync) holds `today` and `next`: what Today will be after the next
+  rollover (all habits undone; unfinished tasks plus tasks planned for or due by
+  the new day). The widget switches to `next` at `rolloverAt` by itself, so it's
+  right at 4 AM without the app running.
+- When more items are pending than fit, the timeline rotates through them every
+  15 minutes (WidgetKit won't go much below ~5 minutes, and the times aren't exact).
+  Rotation slots are absolute, so a reload doesn't restart from the top.
+- Swift, colors (`expo-target.config.js`, mirrored from `constants/theme.ts`),
+  entitlements and the App Group are native: changing them needs a new build.
+  Headings use the system serif (New York), not Fraunces; bundling fonts into the
+  extension wasn't worth it.
 
 ## State conventions
 
