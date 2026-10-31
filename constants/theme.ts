@@ -192,7 +192,7 @@ export const shadow = (scheme: "light" | "dark", level: 1 | 2 | 3 = 1) => {
 export const Motion = {
   spring: { damping: 16, stiffness: 220, mass: 0.9 },
   springSoft: { damping: 20, stiffness: 140 },
-  springBouncy: { damping: 10, stiffness: 260 },
+  springBouncy: { damping: 13, stiffness: 260 },
   fast: 150,
   normal: 220,
   slow: 360,
