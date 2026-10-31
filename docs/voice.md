@@ -1,6 +1,6 @@
 # Voice
 
-Plan: 2026-10-31, nothing built yet. A second way to use Slate: talk it through with a
+Plan: 2026-10-31. Steps 1 and 2 are built (see Steps). A second way to use Slate: talk it through with a
 character instead of tapping. The first, and for now only, voice mode is **plan the day**.
 
 ## The idea
@@ -141,11 +141,15 @@ Proven with a throwaway call screen before anything else is built on it.
 
 Each step ends with something that works and is checked.
 
-1. **Threepio client and settings (JS).** `threepio.ts`, Settings → Voice with Test
+1. ✅ **Threepio client and settings (JS).** `threepio.ts`, Settings → Voice with Test
    connection. *Done when* the phone lists Threepio's characters over the tailnet (OTA).
-2. **Plan-day logic (JS, no UI).** Snapshot, refs, instructions, the extraction prompt and
+2. ✅ **Plan-day logic (JS, no UI).** Snapshot, refs, instructions, the extraction prompt and
    schema, validation, apply. *Done when* `npm test` covers each against the in-memory
-   database, with a sample transcript and a faked LLM reply.
+   database, with a sample transcript and a faked LLM reply. Built in `lib/voice/planDay/`
+   and `lib/voice/openrouter.ts`, tested in `tests/planDay.test.ts`. The extraction model
+   defaults to `anthropic/claude-sonnet-5.5` (structured output on OpenRouter, about 2¢ a
+   call); the schema is one flat change shape, which models follow more reliably than a
+   union. Not yet tried against a real model.
 3. **Native build.** The packages above, a bare call screen that talks to Threepio, the key
    in the Keychain. *Done when* a call from Slate on the phone reaches Elle and its
    transcript comes back.
