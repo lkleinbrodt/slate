@@ -14,6 +14,8 @@ export async function insertTask(
     completedAt: null,
     completedDate: null,
     dependsOnTaskId: null,
+    repeatRule: null,
+    nextTaskId: null,
     createdAt: "2024-01-01T08:00:00.000Z",
     updatedAt: "2024-01-01T08:00:00.000Z",
     status: "open" as const,

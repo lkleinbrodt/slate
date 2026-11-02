@@ -9,6 +9,9 @@ day/rollover logic, migrations) before changing logic.
 chewy at `~/Projects/threepio`): `docs/voice.md` has the plan, what's built, and a handoff
 for the next step. Code is under `lib/voice/`.
 
+**Verification**: `npm test` covers logic. For UI-heavy changes, offer a simulator
+walkthrough (skill `simulator-check`, project-local).
+
 ## Commands (chewy)
 
 ```bash

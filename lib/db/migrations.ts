@@ -120,6 +120,16 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX idx_voice_sessions_started ON voice_sessions(started_at);
     `,
   },
+  {
+    // Repeating tasks: finishing one spawns the next, the next occurrence of its
+    // repeat_rule (see lib/logic/repeat.ts). next_task_id links to that spawned row so undoing the
+    // completion can remove it again.
+    version: 4,
+    sql: `
+      ALTER TABLE tasks ADD COLUMN repeat_rule TEXT;
+      ALTER TABLE tasks ADD COLUMN next_task_id TEXT;
+    `,
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
