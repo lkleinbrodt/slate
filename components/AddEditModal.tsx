@@ -1,4 +1,4 @@
-import { Alert, StyleSheet, TextInput, View } from "react-native";
+import { ActionSheetIOS, Alert, StyleSheet, TextInput, View } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { Radius, Type } from "@/constants/theme";
 import React, { useEffect, useRef, useState } from "react";
@@ -11,6 +11,14 @@ import { Icon } from "@/components/ui/Icon";
 import { PressableScale, haptic } from "@/components/ui/PressableScale";
 import { ThemedText } from "@/components/themed-text";
 import { formatRelativeDay } from "@/lib/utils/dateFormat";
+import {
+  type RepeatRule,
+  WEEKDAY_INITIALS,
+  ordinal,
+  parseRule,
+  ruleLabel,
+  serializeRule,
+} from "@/lib/logic/repeat";
 import { fromLocalDate } from "@/lib/logic/dates";
 import { useAppStore } from "@/lib/stores/appStore";
 import { useTheme } from "@/hooks/use-theme";
@@ -19,7 +27,7 @@ type AddEditModalProps = SheetProps<"add-edit-modal">;
 
 export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
   const { mode, type: initialType, itemId } = payload || {};
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
   const [itemType, setItemType] = useState<"task" | "habit">(
     initialType || "task"
@@ -29,6 +37,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
   const [scheduledDate, setScheduledDate] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<string | null>(null);
   const [dependsOnTaskId, setDependsOnTaskId] = useState<string | null>(null);
+  const [repeat, setRepeat] = useState<RepeatRule | null>(null);
   // Done tasks only get title/notes/delete: moving their dates would rewrite history
   const [isDoneTask, setIsDoneTask] = useState(false);
   // Confirmation for the last item added. Shown inline because the sheet is a
@@ -62,6 +71,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
           setScheduledDate(task.scheduledFor || null);
           setDueDate(task.dueDate || null);
           setDependsOnTaskId(task.dependsOnTaskId || null);
+          setRepeat(parseRule(task.repeatRule));
           setIsDoneTask(task.status === "done");
         }
       } else {
@@ -78,6 +88,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
       setScheduledDate(null);
       setDueDate(null);
       setDependsOnTaskId(null);
+      setRepeat(null);
       setItemType(initialType || "task");
     }
   }, [mode, itemId, initialType, getTaskById, getHabitById]);
@@ -107,6 +118,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
             scheduledFor: scheduledDate || undefined,
             dueDate: dueDate || undefined,
             dependsOn: dependsOnTaskId || undefined,
+            repeatRule: repeat ? serializeRule(repeat) : undefined,
           });
           setLastAdded(describeNewTask(task));
         } else {
@@ -123,6 +135,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
         setScheduledDate(null);
         setDueDate(null);
         setDependsOnTaskId(null);
+        setRepeat(null);
       } else if (mode === "edit" && itemId) {
         if (itemType === "task") {
           // Pass null (not undefined) so cleared fields are actually cleared
@@ -132,6 +145,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
             scheduledFor: scheduledDate,
             dueDate,
             dependsOnTaskId,
+            repeatRule: repeat ? serializeRule(repeat) : null,
           });
         } else {
           await updateHabit(itemId, {
@@ -174,6 +188,54 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
         title: "When is it due?",
       },
     });
+  };
+
+  const openRepeatPicker = () => {
+    // Fixed-day rules start on the day you're planning it for
+    const anchor = fromLocalDate(scheduledDate || getTodayDate());
+    const choices: { label: string; rule: RepeatRule }[] = [
+      { label: "Every other day", rule: { type: "every", days: 2 } },
+      { label: "Every 3 days", rule: { type: "every", days: 3 } },
+      { label: "Every week", rule: { type: "every", days: 7 } },
+      { label: "Certain weekdays…", rule: { type: "weekdays", days: [anchor.day()] } },
+      { label: "Day of the month…", rule: { type: "monthday", day: anchor.date() } },
+    ];
+    const options = [
+      ...choices.map((c) => c.label),
+      ...(repeat ? ["Don't repeat"] : []),
+      "Cancel",
+    ];
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex: options.length - 1,
+        title: "Repeat",
+        userInterfaceStyle: isDark ? "dark" : "light",
+        tintColor: colors.primary,
+      },
+      (index) => {
+        if (index < choices.length) setRepeat(choices[index].rule);
+        else if (options[index] === "Don't repeat") setRepeat(null);
+      }
+    );
+  };
+
+  const toggleWeekday = (day: number) => {
+    if (repeat?.type !== "weekdays") return;
+    const has = repeat.days.includes(day);
+    // At least one day must stay selected
+    if (has && repeat.days.length === 1) return;
+    haptic("selection");
+    setRepeat({
+      type: "weekdays",
+      days: has ? repeat.days.filter((d) => d !== day) : [...repeat.days, day].sort(),
+    });
+  };
+
+  const stepMonthDay = (delta: number) => {
+    if (repeat?.type !== "monthday") return;
+    haptic("selection");
+    setRepeat({ type: "monthday", day: ((repeat.day - 1 + delta + 31) % 31) + 1 });
   };
 
   const handleDependencySelect = (taskId: string | null) => {
@@ -331,6 +393,65 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
               onClear={dependsOnTaskId ? () => setDependsOnTaskId(null) : undefined}
               style={styles.depChip}
             />
+            <Chip
+              size="md"
+              icon="repeat"
+              tone="habit"
+              filled={!!repeat}
+              label={repeat ? ruleLabel(repeat) : "Repeat"}
+              onPress={openRepeatPicker}
+              onClear={repeat ? () => setRepeat(null) : undefined}
+            />
+          </View>
+        )}
+
+        {isTask && !isDoneTask && repeat?.type === "weekdays" && (
+          <View style={styles.weekdays}>
+            {WEEKDAY_INITIALS.map((initial, day) => {
+              const on = repeat.days.includes(day);
+              return (
+                <PressableScale
+                  key={day}
+                  onPress={() => toggleWeekday(day)}
+                  style={[
+                    styles.weekday,
+                    { backgroundColor: on ? colors.habit : colors.surfaceSunken },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
+                  accessibilityLabel={ruleLabel({ type: "weekdays", days: [day] })}
+                >
+                  <ThemedText
+                    type="calloutMedium"
+                    style={{ color: on ? colors.onPrimary : colors.textSecondary }}
+                  >
+                    {initial}
+                  </ThemedText>
+                </PressableScale>
+              );
+            })}
+          </View>
+        )}
+
+        {isTask && !isDoneTask && repeat?.type === "monthday" && (
+          <View style={styles.monthday}>
+            <PressableScale
+              onPress={() => stepMonthDay(-1)}
+              style={[styles.step, { backgroundColor: colors.surfaceSunken }]}
+              accessibilityLabel="Earlier day of the month"
+            >
+              <Icon name="minus" size={16} color={colors.text} />
+            </PressableScale>
+            <ThemedText type="calloutMedium">
+              The {ordinal(repeat.day)} of each month
+            </ThemedText>
+            <PressableScale
+              onPress={() => stepMonthDay(1)}
+              style={[styles.step, { backgroundColor: colors.surfaceSunken }]}
+              accessibilityLabel="Later day of the month"
+            >
+              <Icon name="plus" size={16} color={colors.text} />
+            </PressableScale>
           </View>
         )}
 
@@ -429,6 +550,26 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
   },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  weekdays: { flexDirection: "row", justifyContent: "space-between" },
+  weekday: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.pill,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  monthday: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  step: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.pill,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   depChip: { maxWidth: "100%" },
   hint: { paddingHorizontal: 4 },
   lastAdded: {

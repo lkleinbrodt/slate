@@ -10,6 +10,10 @@ export const tasks = sqliteTable("tasks", {
   // Logical day (respecting day start) the task was completed on, YYYY-MM-DD
   completedDate: text("completed_date"),
   dependsOnTaskId: text("depends_on_task_id"),
+  // Repeat rule string (lib/logic/repeat.ts); finishing the task spawns the next one
+  repeatRule: text("repeat_rule"),
+  // The instance spawned when this one was finished (removed again on undo)
+  nextTaskId: text("next_task_id"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
   status: text("status", { enum: ["open", "done", "archived"] })

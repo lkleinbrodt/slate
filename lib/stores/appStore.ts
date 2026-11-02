@@ -35,6 +35,7 @@ interface AppState {
     dueDate?: string;
     scheduledFor?: string;
     dependsOn?: string;
+    repeatRule?: string;
   }) => Promise<Task>;
   createHabit: (data: { title: string; notes?: string }) => Promise<void>;
   // null clears a field; undefined leaves it unchanged
@@ -46,6 +47,7 @@ interface AppState {
       dueDate?: string | null;
       scheduledFor?: string | null;
       dependsOnTaskId?: string | null;
+      repeatRule?: string | null;
     }
   ) => Promise<void>;
   updateHabit: (
@@ -99,6 +101,16 @@ function planIfDue(
   return isDue && !plannedByToday ? today : scheduledFor;
 }
 
+// A repeating task needs a due date to count as overdue once rollover carries it
+// forward (rollover overwrites the do date), so default it to the do date.
+function dueForRepeat(
+  repeatRule: string | null | undefined,
+  dueDate: string | null | undefined,
+  scheduledFor: string | null | undefined
+): string | null | undefined {
+  return repeatRule && !dueDate && scheduledFor ? scheduledFor : dueDate;
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   isInitialized: false,
   todayTasks: [],
@@ -141,13 +153,13 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   createTask: async (data) => {
     const today = get().getTodayDate();
-    const scheduledFor = planIfDue(
-      clampToToday(data.scheduledFor, today),
-      data.dueDate,
-      today
-    );
+    const doDate = clampToToday(data.scheduledFor, today);
+    const dueDate =
+      dueForRepeat(data.repeatRule, data.dueDate, doDate) ?? undefined;
+    const scheduledFor = planIfDue(doDate, dueDate, today);
     const task = await repo.createTask({
       ...data,
+      dueDate,
       scheduledFor: scheduledFor ?? undefined,
     });
     await get().refreshData();
@@ -173,7 +185,18 @@ export const useAppStore = create<AppState>((set, get) => ({
         today
       );
     }
-    await repo.updateTask(id, { ...data, scheduledFor });
+    const repeat =
+      data.repeatRule === undefined ? existing?.repeatRule : data.repeatRule;
+    const dueDate = dueForRepeat(
+      repeat,
+      data.dueDate === undefined ? existing?.dueDate : data.dueDate,
+      scheduledFor === undefined ? existing?.scheduledFor : scheduledFor
+    );
+    await repo.updateTask(id, {
+      ...data,
+      scheduledFor,
+      dueDate: data.dueDate === undefined && dueDate === existing?.dueDate ? undefined : dueDate,
+    });
     await get().refreshData();
   },
 

@@ -18,6 +18,7 @@ import { SheetManager } from "react-native-actions-sheet";
 import { TaskItemProps } from "./types";
 import { ThemedText } from "./themed-text";
 import { formatRelativeDay } from "@/lib/utils/dateFormat";
+import { parseRule, ruleLabel } from "@/lib/logic/repeat";
 import { haptic } from "@/components/ui/PressableScale";
 import { useAppStore } from "@/lib/stores/appStore";
 import { useTheme } from "@/hooks/use-theme";
@@ -40,6 +41,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   // Read-only rows are past days in History, where "overdue" vs today is meaningless
   const isOverdue =
     !isReadOnly && !isDone && !!task.dueDate && task.dueDate < todayDate;
+  const repeat = parseRule(task.repeatRule);
   const dependency = task.dependsOnTaskId ? getTaskById(task.dependsOnTaskId) : undefined;
 
   const done = useSharedValue(isDone ? 1 : 0);
@@ -103,13 +105,14 @@ export const TaskItem: React.FC<TaskItemProps> = ({
           label={dueLabel(task.dueDate, todayDate, isOverdue)}
         />
       )}
+      {repeat && <Chip icon="repeat" tone="habit" label={ruleLabel(repeat)} />}
       {dependency && dependency.status === "open" && (
         <Chip icon="link" label={`After “${dependency.title}”`} style={styles.depChip} />
       )}
       {!!task.notes && <Icon name="note" size={14} color="textTertiary" />}
     </View>
   );
-  const hasMeta = !!task.dueDate || (!!dependency && dependency.status === "open") || !!task.notes;
+  const hasMeta = !!task.dueDate || !!repeat || (!!dependency && dependency.status === "open") || !!task.notes;
 
   const row = (
     <View style={[styles.row, { backgroundColor: colors.surface }]}>

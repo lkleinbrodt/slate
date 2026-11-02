@@ -10,6 +10,7 @@ import {
 import { and, desc, eq, notInArray, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/connection";
+import { nextOccurrence, parseRule } from "@/lib/logic/repeat";
 import { nowISO } from "@/lib/logic/dates";
 import { randomUUID } from "expo-crypto";
 
@@ -53,6 +54,7 @@ export const createTask = async (data: {
   dueDate?: string;
   scheduledFor?: string;
   dependsOn?: string;
+  repeatRule?: string;
 }) => {
   const now = nowISO();
   const newTask = {
@@ -62,6 +64,8 @@ export const createTask = async (data: {
     dueDate: data.dueDate ?? null,
     scheduledFor: data.scheduledFor ?? null,
     dependsOnTaskId: data.dependsOn ?? null,
+    repeatRule: data.repeatRule ?? null,
+    nextTaskId: null,
     createdAt: now,
     updatedAt: now,
     status: "open" as const,
@@ -87,11 +91,68 @@ export const planTaskFor = (id: string, date: string | null) =>
   updateTask(id, { scheduledFor: date });
 export const skipTaskForToday = (id: string, tomorrowDate: string) =>
   updateTask(id, { scheduledFor: tomorrowDate });
-// `date` is the app's logical day (respecting day start), not the UTC date
-export const completeTask = (id: string, date: string) =>
-  updateTask(id, { status: "done", completedAt: nowISO(), completedDate: date });
-export const undoCompleteTask = (id: string) =>
-  updateTask(id, { status: "open", completedAt: null, completedDate: null });
+// `date` is the app's logical day (respecting day start), not the UTC date.
+// A repeating task spawns its next instance, due that many days after `date`
+// (not after the day it was planned for, so a late or early finish shifts the
+// rhythm). If it isn't done by then it carries over and shows as overdue.
+export const completeTask = async (id: string, date: string) => {
+  db.transaction((tx) => {
+    const now = nowISO();
+    const task = tx.select().from(tasks).where(eq(tasks.id, id)).get();
+    if (!task) return;
+    let nextTaskId = task.nextTaskId;
+    const rule = parseRule(task.repeatRule);
+    if (rule && !nextTaskId) {
+      const nextDate = nextOccurrence(rule, date, task.dueDate ?? task.scheduledFor);
+      nextTaskId = randomUUID();
+      tx.insert(tasks)
+        .values({
+          id: nextTaskId,
+          title: task.title,
+          notes: task.notes,
+          scheduledFor: nextDate,
+          dueDate: nextDate,
+          repeatRule: task.repeatRule,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+    }
+    tx.update(tasks)
+      .set({
+        status: "done",
+        completedAt: now,
+        completedDate: date,
+        nextTaskId,
+        updatedAt: now,
+      })
+      .where(eq(tasks.id, id))
+      .run();
+  });
+  return getTask(id);
+};
+export const undoCompleteTask = async (id: string) => {
+  db.transaction((tx) => {
+    const task = tx.select().from(tasks).where(eq(tasks.id, id)).get();
+    // Drop the spawned instance unless it has already been touched
+    if (task?.nextTaskId) {
+      tx.delete(tasks)
+        .where(and(eq(tasks.id, task.nextTaskId), eq(tasks.status, "open")))
+        .run();
+    }
+    tx.update(tasks)
+      .set({
+        status: "open",
+        completedAt: null,
+        completedDate: null,
+        nextTaskId: null,
+        updatedAt: nowISO(),
+      })
+      .where(eq(tasks.id, id))
+      .run();
+  });
+  return getTask(id);
+};
 
 // Soft delete/archival for tasks
 export const deleteTask = (id: string) =>

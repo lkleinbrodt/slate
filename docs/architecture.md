@@ -51,6 +51,17 @@ faint paper grain (`components/ui/Screen`).
 
 `last_processed_date` (the last day rollover finalized) lives in `expo-sqlite/kv-store`.
 
+**Repeating tasks**: `tasks.repeat_rule`, a string parsed by `lib/logic/repeat.ts`:
+`every:N` (N days after the day it was *done*, so an extra rest day shifts the rhythm),
+`weekdays:2,4` (fixed days of the week, 0 = Sunday) or `monthday:30` (clamped to the last
+day of short months). Set from the Repeat chip in the add/edit sheet. Completing one
+(`repo.completeTask`) spawns the next instance with `scheduled_for` and `due_date` set to
+the next occurrence and records it in `next_task_id`; undo deletes that spawn. Fixed-day
+rules look past the later of the completion day and the instance's due date. If an
+instance isn't done on its day, rollover carries it forward and its older due date shows
+it as "Overdue"; the next one is only created once it's done, so misses never pile up.
+Deleting an open instance ends the series.
+
 ### Migrations
 
 `lib/db/migrations.ts` is an ordered list tracked with `PRAGMA user_version`; each runs

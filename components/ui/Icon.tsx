@@ -17,6 +17,7 @@ const icons = {
   calendarDots: require("phosphor-react-native/lib/commonjs/icons/CalendarDots").CalendarDotsIcon,
   calendarCheck: require("phosphor-react-native/lib/commonjs/icons/CalendarCheck").CalendarCheckIcon,
   gear: require("phosphor-react-native/lib/commonjs/icons/GearSix").GearSixIcon,
+  minus: require("phosphor-react-native/lib/commonjs/icons/Minus").MinusIcon,
   plus: require("phosphor-react-native/lib/commonjs/icons/Plus").PlusIcon,
   tray: require("phosphor-react-native/lib/commonjs/icons/Tray").TrayIcon,
   dots: require("phosphor-react-native/lib/commonjs/icons/DotsThree").DotsThreeIcon,

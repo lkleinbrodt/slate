@@ -9,6 +9,7 @@ import { SheetManager } from "react-native-actions-sheet";
 import { SlateItemProps } from "./types";
 import { ThemedText } from "./themed-text";
 import { dueLabel } from "./TaskItem";
+import { parseRule, ruleLabel } from "@/lib/logic/repeat";
 import { useAppStore } from "@/lib/stores/appStore";
 import { useTheme } from "@/hooks/use-theme";
 import { useTimeStore } from "@/lib/stores/timeStore";
@@ -22,6 +23,7 @@ export const SlateItem: React.FC<SlateItemProps> = ({ task, onAddToToday }) => {
   const isScheduledForToday =
     !!task.scheduledFor && task.scheduledFor <= todayDate;
   const isOverdue = !!task.dueDate && task.dueDate < todayDate;
+  const repeat = parseRule(task.repeatRule);
 
   const openEdit = () =>
     SheetManager.show("add-edit-modal", {
@@ -32,7 +34,7 @@ export const SlateItem: React.FC<SlateItemProps> = ({ task, onAddToToday }) => {
     <View style={styles.row}>
       <Pressable onPress={openEdit} style={styles.body} accessibilityRole="button">
         <ThemedText type="bodyMedium">{task.title}</ThemedText>
-        {(task.dueDate || task.notes) && (
+        {(task.dueDate || repeat || task.notes) && (
           <View style={styles.meta}>
             {task.dueDate && (
               <Chip
@@ -41,6 +43,7 @@ export const SlateItem: React.FC<SlateItemProps> = ({ task, onAddToToday }) => {
                 label={dueLabel(task.dueDate, todayDate, isOverdue)}
               />
             )}
+            {repeat && <Chip icon="repeat" tone="habit" label={ruleLabel(repeat)} />}
             {!!task.notes && <Icon name="note" size={14} color="textTertiary" />}
           </View>
         )}
