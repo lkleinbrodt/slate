@@ -1,7 +1,7 @@
 import * as repo from "@/lib/logic/repo";
 
 import { DEFAULT_PLAN_MODEL } from "@/lib/voice/planDay/extract";
-import { DEFAULT_THREEPIO_URL } from "@/lib/voice/threepio";
+import { DEFAULT_THREEPIO_URL, type VoiceProvider } from "@/lib/voice/threepio";
 
 import { create } from "zustand";
 
@@ -28,6 +28,8 @@ interface SettingsState {
   voiceCharacter: string | null;
   // OpenRouter model that turns a call into a plan
   planModel: string;
+  // Whose voice the character speaks with: "pocket" is local on chewy, "fish" is cloud
+  voiceProvider: VoiceProvider;
 
   loadSettings: () => Promise<void>;
   updateDayStart: (time: string) => Promise<void>;
@@ -39,6 +41,7 @@ interface SettingsState {
   updateThreepioUrl: (url: string) => Promise<void>;
   updateVoiceCharacter: (id: string) => Promise<void>;
   updatePlanModel: (model: string) => Promise<void>;
+  updateVoiceProvider: (provider: VoiceProvider) => Promise<void>;
 }
 
 const DEFAULT_SETTINGS = {
@@ -55,6 +58,7 @@ const DEFAULT_SETTINGS = {
   threepioUrl: DEFAULT_THREEPIO_URL,
   voiceCharacter: null as string | null,
   planModel: DEFAULT_PLAN_MODEL,
+  voiceProvider: "pocket" as VoiceProvider,
 };
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -76,6 +80,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       threepioUrl,
       voiceCharacter,
       planModel,
+      voiceProvider,
     ] = await Promise.all([
       repo.getSetting("day_start"),
       repo.getSetting("notification_plan_day_enabled"),
@@ -89,6 +94,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       repo.getSetting("threepio_url"),
       repo.getSetting("voice_character"),
       repo.getSetting("voice_plan_model"),
+      repo.getSetting("voice_provider"),
     ]);
     
     set({
@@ -104,6 +110,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       threepioUrl: threepioUrl || DEFAULT_SETTINGS.threepioUrl,
       voiceCharacter: voiceCharacter || DEFAULT_SETTINGS.voiceCharacter,
       planModel: planModel || DEFAULT_SETTINGS.planModel,
+      voiceProvider: voiceProvider === "fish" ? "fish" : DEFAULT_SETTINGS.voiceProvider,
       loading: false,
     });
   },
@@ -157,6 +164,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   updateVoiceCharacter: async (id: string) => {
     await repo.setSetting("voice_character", id);
     set({ voiceCharacter: id });
+  },
+
+  updateVoiceProvider: async (provider: VoiceProvider) => {
+    await repo.setSetting("voice_provider", provider);
+    set({ voiceProvider: provider });
   },
 
   updatePlanModel: async (model: string) => {

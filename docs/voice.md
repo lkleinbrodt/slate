@@ -100,6 +100,19 @@ call_id, status (`calling` → `ended` → `proposed` → `applied` | `discarded
 the transcript, the proposal, and which changes were applied. It's the resume point after a
 crash and a record to tune prompts from. Private like everything else on the phone.
 
+### Local voice and failures
+
+Calls default to Threepio's **Pocket (local)** voice: the request carries
+`voice_provider: "pocket"` (Settings → Voice → Voice switches back to Fish). Threepio refuses
+a character with no voice for that provider, so the start sheet lists only characters that
+have one. Plan extraction still goes to OpenRouter.
+
+Failures end somewhere you can leave: connect and disconnect have timeouts, so Hang up
+always returns; transcript polling rides out network blips; any error while planning lands
+the session in `failed` (Try again / Discard / Close) instead of a spinner; a call that
+can't even be set up shows its error on the call screen; and a render error shows
+`ScreenErrorBoundary` (Close / Try again) instead of a dead screen.
+
 ### Settings (Settings → Voice)
 
 Threepio URL (default `https://chewy.tail77f3eb.ts.net:8443`), OpenRouter key (pasted once,

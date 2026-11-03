@@ -2,7 +2,7 @@ import * as repo from "@/lib/logic/repo";
 
 import { type ApplyResult, applyChanges } from "@/lib/voice/planDay/apply";
 import { type CallEvents, VoiceCall } from "@/lib/voice/call";
-import { type CallMessage, type SessionRequest, type ThreepioClient, threepioClient } from "@/lib/voice/threepio";
+import { type CallMessage, type SessionRequest, type ThreepioClient, ThreepioError, type VoiceProvider, threepioClient } from "@/lib/voice/threepio";
 import { type Change, type Proposal, extractPlan } from "@/lib/voice/planDay/extract";
 import { GREETING_PROMPT, buildInstructions, endsCall } from "@/lib/voice/planDay/instructions";
 import { type DaySnapshot, buildDaySnapshot } from "@/lib/voice/planDay/snapshot";
@@ -93,9 +93,13 @@ interface VoiceState {
   /** Live transcript, by Threepio's line index. */
   messages: CallMessage[];
   muted: boolean;
+  /** Why a call couldn't even be set up (no session exists to carry the error); null otherwise. */
+  startError: string | null;
 
   /** Starts a call, unless a session is already under way (then it's kept, not replaced). */
-  startCall: (character: string) => Promise<void>;
+  startCall: (character: string, provider?: VoiceProvider) => Promise<void>;
+  /** Clears `startError`. */
+  dismissStartError: () => void;
   hangUp: () => Promise<void>;
   setMuted: (muted: boolean) => void;
   /** After a failure: plan again from the saved transcript (or fetch it first). */
@@ -138,6 +142,10 @@ export const useVoiceStore = create<VoiceState>((set, get) => {
           await save({ status: "ended", transcript, error: null });
         }
         await plan();
+      } catch (e) {
+        // Whatever broke (the database, the Keychain, a fetch), the session must land in
+        // "failed" with Try again and Discard, never sit on "planning" with a spinner.
+        await fail(errorText(e)).catch(() => {});
       } finally {
         planning = null;
       }
@@ -152,17 +160,25 @@ export const useVoiceStore = create<VoiceState>((set, get) => {
       return null;
     }
     const threepio = deps.threepio();
+    // A blip (the phone changing networks, Threepio restarting) shouldn't lose the call:
+    // keep polling, and only give up with the last error when it never recovers.
+    let lastError: unknown = null;
     for (let i = 0; i < polls; i++) {
       try {
         const c = await threepio.call(callId);
         if (c.status === "ended") return c.messages;
+        lastError = null;
       } catch (e) {
-        await fail(e instanceof Error ? e.message : String(e));
-        return null;
+        // A 404 won't get better
+        if (e instanceof ThreepioError && e.status === 404) {
+          await fail("Threepio no longer has that call.");
+          return null;
+        }
+        lastError = e;
       }
       await deps.sleep(POLL_MS);
     }
-    await fail("Threepio hasn't finished the call yet. Try again in a minute.");
+    await fail(lastError ? errorText(lastError) : "Threepio hasn't finished the call yet. Try again in a minute.");
     return null;
   };
 
@@ -174,7 +190,7 @@ export const useVoiceStore = create<VoiceState>((set, get) => {
       await fail("Nothing was said on the call, so there's nothing to plan.");
       return;
     }
-    const apiKey = await deps.getApiKey();
+    const apiKey = await deps.getApiKey().catch(() => null);
     if (!apiKey) {
       await fail(NO_KEY_ERROR);
       return;
@@ -186,7 +202,7 @@ export const useVoiceStore = create<VoiceState>((set, get) => {
       const stats = { endedBy, transcriptMs, planMs: deps.now() - started };
       await save({ status: "proposed", proposal: { ...result, model, stats } });
     } catch (e) {
-      await fail(e instanceof Error ? e.message : String(e));
+      await fail(errorText(e));
     }
   };
 
@@ -195,16 +211,22 @@ export const useVoiceStore = create<VoiceState>((set, get) => {
     callPhase: null,
     messages: [],
     muted: false,
+    startError: null,
 
-    startCall: async (character) => {
+    startCall: async (character, provider = "pocket") => {
       if (get().session || call || starting) return;
       starting = true;
+      set({ startError: null });
       const date = useTimeStore.getState().getCurrentDate();
       let snapshot: DaySnapshot;
       let row: repo.VoiceSession;
       try {
         snapshot = await buildDaySnapshot(date);
         row = await repo.createVoiceSession({ mode: "plan_day", date, character, snapshot });
+      } catch (e) {
+        // No session to hold the error, so the call screen shows this one
+        set({ startError: errorText(e) });
+        return;
       } finally {
         starting = false;
       }
@@ -216,24 +238,27 @@ export const useVoiceStore = create<VoiceState>((set, get) => {
       });
       endedBy = null;
 
-      const handle = deps.createCall(deps.threepio(), {
+      let handle: CallHandle | undefined;
+      const onEvents: CallEvents = {
         onPhase: (phase, error) => {
           if (get().session?.id !== row.id) return; // discarded
           if (phase === "connecting" || phase === "live") {
             set({ callPhase: phase });
             return;
           }
-          call = null;
+          if (call === handle) call = null;
           endedBy ??= "dropped";
           set({ callPhase: null });
           // A dropped call with an id still has a transcript at Threepio worth planning from
           if (phase === "failed" && !get().session?.callId) {
-            void fail(error ?? "The call failed.");
+            void fail(error ?? "The call failed.").catch(logVoiceError);
             return;
           }
-          void save({ status: "ended" }).then(() => finish(TRANSCRIPT_POLLS));
+          void save({ status: "ended" })
+            .then(() => finish(TRANSCRIPT_POLLS))
+            .catch(logVoiceError);
         },
-        onCallId: (callId) => void save({ callId }),
+        onCallId: (callId) => void save({ callId }).catch(logVoiceError),
         onMessage: (index, message) => {
           set((s) => {
             const messages = [...s.messages];
@@ -243,24 +268,35 @@ export const useVoiceStore = create<VoiceState>((set, get) => {
           // Her hang-up phrase: let the phone finish playing it, then end the call
           if (endsCall(message) && !endedBy) {
             endedBy = "phrase";
-            void deps.sleep(PHRASE_HANG_UP_DELAY_MS).then(() => (call === handle ? handle.hangUp() : undefined));
+            void deps.sleep(PHRASE_HANG_UP_DELAY_MS).then(() => (call === handle ? handle.hangUp() : undefined)).catch(logVoiceError);
           }
         },
-      });
-      call = handle;
-      await handle.start({
-        instructions: buildInstructions(snapshot),
-        character,
-        greeting: { prompt: GREETING_PROMPT },
-        local_date: date,
-        app: "slate",
-        metadata: { session_id: row.id },
-      });
+      };
+      try {
+        handle = deps.createCall(deps.threepio(), onEvents);
+        call = handle;
+        await handle.start({
+          instructions: buildInstructions(snapshot),
+          character,
+          voice_provider: provider,
+          greeting: { prompt: GREETING_PROMPT },
+          local_date: date,
+          app: "slate",
+          metadata: { session_id: row.id },
+        });
+      } catch (e) {
+        // VoiceCall.start reports its own failures through onPhase; this is anything else
+        if (call === handle) call = null;
+        set({ callPhase: null });
+        await fail(errorText(e)).catch(logVoiceError);
+      }
     },
+
+    dismissStartError: () => set({ startError: null }),
 
     hangUp: async () => {
       if (call) endedBy ??= "button";
-      await call?.hangUp();
+      await call?.hangUp().catch(logVoiceError);
     },
 
     setMuted: (muted) => {
@@ -288,9 +324,10 @@ export const useVoiceStore = create<VoiceState>((set, get) => {
       const session = get().session;
       if (!session) return;
       // Forget it first, so hanging up doesn't go on to plan
-      set({ session: null, callPhase: null, messages: [] });
-      await call?.hangUp();
+      set({ session: null, callPhase: null, messages: [], startError: null });
+      const ending = call;
       call = null;
+      await ending?.hangUp().catch(logVoiceError);
       await repo.updateVoiceSession(session.id, { status: "discarded" });
     },
 
@@ -312,6 +349,14 @@ export const useVoiceStore = create<VoiceState>((set, get) => {
     },
   };
 });
+
+function errorText(e: unknown): string {
+  return e instanceof Error && e.message ? e.message : String(e);
+}
+
+function logVoiceError(e: unknown) {
+  console.error("[voice]", e);
+}
 
 function toActive(row: repo.VoiceSession): ActiveSession {
   return {
@@ -335,5 +380,5 @@ export function resetVoiceStore() {
   transcriptMs = null;
   starting = false;
   planning = null;
-  useVoiceStore.setState({ session: null, callPhase: null, messages: [], muted: false });
+  useVoiceStore.setState({ session: null, callPhase: null, messages: [], muted: false, startError: null });
 }

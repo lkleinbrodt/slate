@@ -39,6 +39,9 @@ import { useTimeStore } from "@/lib/stores/timeStore";
 // Keep the splash up until fonts and the database are ready
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+// A render error anywhere shows a screen with a way out, not a blank one
+export { ScreenErrorBoundary as ErrorBoundary } from "@/components/ScreenErrorBoundary";
+
 export default function RootLayout() {
   const { colors, isDark } = useTheme();
   const [isReady, setIsReady] = useState(false);

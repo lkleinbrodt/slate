@@ -14,6 +14,9 @@ import { useVoiceStore } from "@/lib/stores/voiceStore";
 // this closes and the review sheet opens (VoiceSessionWatcher). The call and the planning
 // live in the voice store, so closing this screen mid-planning loses nothing.
 
+/** If this screen itself throws, expo-router shows this instead of a dead screen: a way out. */
+export { ScreenErrorBoundary as ErrorBoundary } from "@/components/ScreenErrorBoundary";
+
 export default function VoiceScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -22,6 +25,7 @@ export default function VoiceScreen() {
   const callPhase = useVoiceStore((s) => s.callPhase);
   const messages = useVoiceStore((s) => s.messages);
   const muted = useVoiceStore((s) => s.muted);
+  const startError = useVoiceStore((s) => s.startError);
   const scroll = useRef<ScrollView>(null);
 
   const who = name ?? (session?.character ? session.character[0].toUpperCase() + session.character.slice(1) : "your call");
@@ -37,7 +41,7 @@ export default function VoiceScreen() {
 
   const live = callPhase !== null;
   const planning = !live && (status === "calling" || status === "ended" || status === "planning");
-  const failed = status === "failed";
+  const failed = status === "failed" || (!session && !!startError);
 
   const heading = live
     ? callPhase === "connecting"
@@ -49,8 +53,18 @@ export default function VoiceScreen() {
     ? "That didn't work"
     : "Starting…";
 
+  // Close is always there. If a call is still up it keeps running (like leaving any
+  // screen); a failed session stays for Today to offer again.
+  const close = () => {
+    useVoiceStore.getState().dismissStartError();
+    if (router.canGoBack()) router.back();
+    else router.replace("/");
+  };
+
   const discard = async () => {
-    await useVoiceStore.getState().discard();
+    useVoiceStore.getState().dismissStartError();
+    // The screen closes itself once the session is gone
+    await useVoiceStore.getState().discard().catch((e) => console.error("[voice] discard failed:", e));
   };
 
   return (
@@ -61,9 +75,9 @@ export default function VoiceScreen() {
         </ThemedText>
         <ThemedText type="display">{heading}</ThemedText>
         {planning && <ActivityIndicator style={styles.spinner} />}
-        {failed && session?.error && (
+        {failed && (session?.error ?? startError) && (
           <ThemedText type="callout" tone="error">
-            {session.error}
+            {session?.error ?? startError}
           </ThemedText>
         )}
 
@@ -96,15 +110,18 @@ export default function VoiceScreen() {
               />
               <Button title="Hang up" icon="x" haptics="medium" onPress={() => useVoiceStore.getState().hangUp()} style={styles.flex} />
             </>
-          ) : failed ? (
+          ) : failed && session ? (
             <>
               <Button title="Discard" variant="secondary" onPress={discard} style={styles.flex} />
               <Button title="Try again" icon="repeat" haptics="medium" onPress={() => useVoiceStore.getState().retry()} style={styles.flex} />
             </>
           ) : (
-            <Button title="Close" variant="secondary" onPress={() => router.back()} style={styles.flex} />
+            <Button title="Close" variant="secondary" onPress={close} style={styles.flex} />
           )}
         </View>
+        {failed && session && (
+          <Button title="Close" variant="ghost" onPress={close} />
+        )}
         {planning && (
           <ThemedText type="caption" tone="textTertiary" style={styles.note}>
             You can close this; the plan will be waiting on Today.
