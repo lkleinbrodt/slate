@@ -8,7 +8,7 @@ import type { CallEvents } from "@/lib/voice/call";
 import type { CallMessage, SessionRequest, ThreepioCall, ThreepioClient } from "@/lib/voice/threepio";
 import { buildDaySnapshot } from "@/lib/voice/planDay/snapshot";
 import { DEFAULT_PLAN_MODEL, type Change, type extractPlan } from "@/lib/voice/planDay/extract";
-import { NO_KEY_ERROR, resetVoiceStore, setVoiceDeps, useVoiceStore } from "@/lib/stores/voiceStore";
+import { NO_KEY_ERROR, type VoiceDeps, resetVoiceStore, setVoiceDeps, useVoiceStore } from "@/lib/stores/voiceStore";
 import { useAppStore } from "@/lib/stores/appStore";
 import { useTimeStore } from "@/lib/stores/timeStore";
 import { resetDatabase } from "./mocks/db-connection";
@@ -27,6 +27,11 @@ export async function run() {
   await testExtractionErrorKeepsTranscript();
   await testCallFailingBeforeItStarts();
   await testNothingSaid();
+  await testVoiceProviderDefaultsToLocal();
+  await testKeychainErrorFails();
+  await testFlakyPollingRecovers();
+  await testPollingGivesUpWithTheError();
+  await testSetupErrorIsShown();
   await testDiscardMidCall();
   await testResumeAfterCrashMidCall();
   await testResumeReopensReview();
@@ -59,7 +64,7 @@ let fakes: Fakes;
 let taxes: repo.Task;
 let banjo: repo.Task;
 
-async function setUp() {
+async function setUp(overrides: Partial<VoiceDeps> = {}) {
   resetDatabase();
   resetVoiceStore();
   useTimeStore.setState({ currentDate: TODAY, isInitialized: true });
@@ -122,6 +127,7 @@ async function setUp() {
       ];
       return { summary: "Taxes today.", changes, dropped: [], costUsd: 0.01 };
     },
+    ...overrides,
   });
 }
 
@@ -268,6 +274,71 @@ async function testNothingSaid() {
   await settle("failed");
   assert.match((await row()).error ?? "", /Nothing was said/);
   assert.strictEqual(fakes.extracted.length, 0);
+}
+
+async function testVoiceProviderDefaultsToLocal() {
+  await setUp();
+  await useVoiceStore.getState().startCall("elle");
+  assert.strictEqual(fakes.requests[0].voice_provider, "pocket");
+  await useVoiceStore.getState().discard();
+  await useVoiceStore.getState().startCall("elle", "fish");
+  assert.strictEqual(fakes.requests[1].voice_provider, "fish");
+}
+
+async function testKeychainErrorFails() {
+  await setUp({
+    getApiKey: async () => {
+      throw new Error("keychain locked");
+    },
+  });
+  await talk();
+  // Reads as a missing key, with Try again and Discard, not a spinner that never ends
+  await settle("failed");
+  assert.strictEqual((await row()).error, NO_KEY_ERROR);
+}
+
+async function testFlakyPollingRecovers() {
+  let calls = 0;
+  await setUp({
+    threepio: () =>
+      ({
+        call: async (callId: string) => {
+          if (calls++ < 2) throw new Error("Can't reach Threepio. Is Tailscale on?");
+          return { call_id: callId, status: "ended", messages: SAID };
+        },
+      }) as unknown as ThreepioClient,
+  });
+  await talk();
+  await settle("proposed");
+  assert.strictEqual(calls, 3);
+}
+
+async function testPollingGivesUpWithTheError() {
+  await setUp({
+    threepio: () =>
+      ({
+        call: async () => {
+          throw new Error("Can't reach Threepio. Is Tailscale on?");
+        },
+      }) as unknown as ThreepioClient,
+  });
+  await talk();
+  await settle("failed");
+  assert.strictEqual((await row()).error, "Can't reach Threepio. Is Tailscale on?");
+}
+
+async function testSetupErrorIsShown() {
+  await setUp({
+    createCall: () => {
+      throw new Error("no audio");
+    },
+  });
+  await useVoiceStore.getState().startCall("elle");
+  // The session exists (the row was made), so it's failed with Try again/Discard
+  const state = useVoiceStore.getState();
+  assert.strictEqual(state.callPhase, null);
+  assert.strictEqual(state.session?.status, "failed");
+  assert.strictEqual(state.session?.error, "no audio");
 }
 
 async function testDiscardMidCall() {

@@ -16,13 +16,14 @@ import { useVoiceStore } from "@/lib/stores/voiceStore";
 
 type Load =
   | { kind: "loading" }
-  | { kind: "ready"; characters: ThreepioCharacter[]; keySet: boolean }
+  | { kind: "ready"; characters: ThreepioCharacter[]; keySet: boolean; skipped: number }
   | { kind: "error"; message: string };
 
 export default function StartSheet({ sheetId }: SheetProps<"voice-start">) {
   const threepioUrl = useSettingsStore((s) => s.threepioUrl);
   const lastCharacter = useSettingsStore((s) => s.voiceCharacter);
   const updateVoiceCharacter = useSettingsStore((s) => s.updateVoiceCharacter);
+  const voiceProvider = useSettingsStore((s) => s.voiceProvider);
   const [load, setLoad] = useState<Load>({ kind: "loading" });
   const [picked, setPicked] = useState<string | null>(null);
 
@@ -31,15 +32,17 @@ export default function StartSheet({ sheetId }: SheetProps<"voice-start">) {
     Promise.all([threepioClient(threepioUrl).characters(), getOpenRouterKey().catch(() => null)])
       .then(([characters, key]) => {
         if (!live) return;
-        setLoad({ kind: "ready", characters, keySet: !!key });
-        const last = characters.find((c) => c.id === lastCharacter);
-        setPicked((last ?? characters.find((c) => c.default) ?? characters[0])?.id ?? null);
+        // Only characters with a voice from the chosen provider: Threepio refuses the rest
+        const callable = characters.filter((c) => c.variants?.[voiceProvider] || c.voice?.provider === voiceProvider);
+        setLoad({ kind: "ready", characters: callable, keySet: !!key, skipped: characters.length - callable.length });
+        const last = callable.find((c) => c.id === lastCharacter);
+        setPicked((last ?? callable.find((c) => c.default) ?? callable[0])?.id ?? null);
       })
       .catch((e) => live && setLoad({ kind: "error", message: e instanceof Error ? e.message : String(e) }));
     return () => {
       live = false;
     };
-  }, [threepioUrl, lastCharacter]);
+  }, [threepioUrl, lastCharacter, voiceProvider]);
 
   const character = load.kind === "ready" ? load.characters.find((c) => c.id === picked) : undefined;
 
@@ -47,7 +50,7 @@ export default function StartSheet({ sheetId }: SheetProps<"voice-start">) {
     if (!character) return;
     await SheetManager.hide(sheetId);
     void updateVoiceCharacter(character.id);
-    void useVoiceStore.getState().startCall(character.id);
+    void useVoiceStore.getState().startCall(character.id, voiceProvider);
     router.push({ pathname: "/voice", params: { name: character.name } });
   };
 
@@ -89,7 +92,9 @@ export default function StartSheet({ sheetId }: SheetProps<"voice-start">) {
 
         {load.kind === "ready" && !load.characters.length && (
           <ThemedText type="callout" tone="error">
-            Threepio offers no characters to Slate.
+            {load.skipped
+              ? `No character has a ${voiceProvider === "pocket" ? "local (Pocket)" : "Fish"} voice. Change it in Settings → Voice.`
+              : "Threepio offers no characters to Slate."}
           </ThemedText>
         )}
 

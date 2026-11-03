@@ -9,16 +9,20 @@ const TIMEOUT_MS = 10_000;
 export interface ThreepioVoice {
   id: string;
   name: string;
-  provider: "fish" | "pocket";
+  provider: VoiceProvider;
   model: string;
   supports_tags: boolean;
   gender: "female" | "male" | null;
 }
 
+export type VoiceProvider = "fish" | "pocket";
+
 export interface ThreepioCharacter {
   id: string;
   name: string;
   voice: ThreepioVoice | null;
+  /** Her voice per provider; a provider she has no voice for is missing. */
+  variants?: Partial<Record<VoiceProvider, ThreepioVoice>>;
   default: boolean;
 }
 
@@ -28,6 +32,9 @@ export interface SessionRequest {
   character?: string;
   /** Overrides the character's voice. One of Threepio's voice ids. */
   voice?: string;
+  /** With a character and no `voice`: her voice for this provider. Threepio refuses it if
+   * she has none, rather than quietly using the other (a local call must not spend Fish). */
+  voice_provider?: VoiceProvider;
   /** `say`: exact words, spoken at once. `prompt`: the LLM writes them. */
   greeting?: { say: string } | { prompt: string } | null;
   llm?: { model: string; temperature?: number | null };

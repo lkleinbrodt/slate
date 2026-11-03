@@ -58,6 +58,8 @@ export function VoiceSettings() {
   const threepioUrl = useSettingsStore((s) => s.threepioUrl);
   const updateThreepioUrl = useSettingsStore((s) => s.updateThreepioUrl);
   const [test, setTest] = useState<TestState>({ kind: "idle" });
+  const voiceProvider = useSettingsStore((s) => s.voiceProvider);
+  const updateVoiceProvider = useSettingsStore((s) => s.updateVoiceProvider);
   const planModel = useSettingsStore((s) => s.planModel);
   const updatePlanModel = useSettingsStore((s) => s.updatePlanModel);
 
@@ -70,6 +72,17 @@ export function VoiceSettings() {
       },
       "plain-text",
       planModel
+    );
+
+  const editVoiceProvider = () =>
+    Alert.alert(
+      "Voice",
+      "Pocket is local on chewy and free. Fish is the cloud voice and needs Fish credits. A character needs a voice from the one you pick.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: `Pocket (local)${voiceProvider === "pocket" ? " ✓" : ""}`, onPress: () => void updateVoiceProvider("pocket") },
+        { text: `Fish (cloud)${voiceProvider === "fish" ? " ✓" : ""}`, onPress: () => void updateVoiceProvider("fish") },
+      ]
     );
 
   const editUrl = () =>
@@ -124,6 +137,21 @@ export function VoiceSettings() {
             <ThemedText type="bodySemiBold">Threepio</ThemedText>
             <ThemedText type="caption" tone="textSecondary" numberOfLines={1}>
               {threepioUrl}
+            </ThemedText>
+          </View>
+          <Icon name="pencil" size={18} color="textTertiary" />
+        </Pressable>
+
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+        <Pressable onPress={editVoiceProvider} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+          <View style={[styles.rowIcon, { backgroundColor: colors.surfaceSunken }]}>
+            <Icon name="microphone" size={20} color="textSecondary" weight="duotone" />
+          </View>
+          <View style={styles.flex}>
+            <ThemedText type="bodySemiBold">Voice</ThemedText>
+            <ThemedText type="caption" tone="textSecondary">
+              {voiceProvider === "pocket" ? "Pocket (local)" : "Fish (cloud)"}
             </ThemedText>
           </View>
           <Icon name="pencil" size={18} color="textTertiary" />

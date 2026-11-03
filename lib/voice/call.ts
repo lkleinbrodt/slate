@@ -9,6 +9,19 @@ import { RNSmallWebRTCTransport } from "@pipecat-ai/react-native-small-webrtc-tr
 // call's id once the client is ready, and a `message` for each line as it's saved; the saved
 // transcript is fetched afterwards with GET /v1/calls/{id}.
 
+// A connection that never comes up, or a disconnect that never returns (the server hung or
+// died), must not leave the call stuck with buttons that do nothing.
+const CONNECT_TIMEOUT_MS = 30_000;
+const DISCONNECT_TIMEOUT_MS = 4_000;
+
+function within<T>(work: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([work, timeout]).finally(() => clearTimeout(timer));
+}
+
 export type CallPhase = "connecting" | "live" | "ended" | "failed";
 
 export interface CallEvents {
@@ -49,20 +62,35 @@ export class VoiceCall {
           },
         },
       });
-      await this.client.connect({ webrtcRequestParams: { endpoint: this.threepio.url(session.connect_url) } });
+      await within(
+        this.client.connect({ webrtcRequestParams: { endpoint: this.threepio.url(session.connect_url) } }),
+        CONNECT_TIMEOUT_MS,
+        "Threepio didn't answer the call. Is it running?"
+      );
     } catch (e) {
       this.finish("failed", e instanceof Error ? e.message : String(e));
-      await this.client?.disconnect().catch(() => {});
+      await this.disconnect();
     }
   }
 
   async hangUp(): Promise<void> {
-    await this.client?.disconnect().catch(() => {});
+    // Finish first: the phone is done with the call whether or not the server noticed
     this.finish("ended");
+    await this.disconnect();
+  }
+
+  private async disconnect() {
+    const client = this.client;
+    this.client = null;
+    await within(client?.disconnect() ?? Promise.resolve(), DISCONNECT_TIMEOUT_MS, "disconnect timed out").catch(() => {});
   }
 
   setMuted(muted: boolean) {
-    this.client?.enableMic(!muted);
+    try {
+      this.client?.enableMic(!muted);
+    } catch {
+      // the connection is going away anyway
+    }
   }
 
   private handleServerMessage(data: { type?: string } & Record<string, unknown>) {
