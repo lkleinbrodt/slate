@@ -6,6 +6,7 @@ import { Screen } from "@/components/ui/Screen";
 import { SheetManager } from "react-native-actions-sheet";
 import { SlateSection } from "@/components/planner";
 import { ThemedText } from "@/components/themed-text";
+import { useTimeStore } from "@/lib/stores/timeStore";
 import { useAppStore } from "@/lib/stores/appStore";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTabBarSpace } from "@/components/TabBar";
@@ -13,7 +14,13 @@ import { useTabBarSpace } from "@/components/TabBar";
 export default function SlateScreen() {
   const insets = useSafeAreaInsets();
   const bottomSpace = useTabBarSpace();
-  const { slateTasks, planTaskForToday } = useAppStore();
+  const { slateTasks: allOpen, planTaskForToday } = useAppStore();
+  const today = useTimeStore((s) => s.currentDate);
+  // Repeating tasks wait for their day and then show up in Today; they aren't
+  // Slate material until then
+  const slateTasks = allOpen.filter(
+    (t) => !(t.repeatRule && t.scheduledFor && t.scheduledFor > today)
+  );
 
   const handleOpenAddModal = () => {
     SheetManager.show("add-edit-modal", {
