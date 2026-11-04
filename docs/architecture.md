@@ -60,7 +60,9 @@ the next occurrence and records it in `next_task_id`; undo deletes that spawn. F
 rules look past the later of the completion day and the instance's due date. If an
 instance isn't done on its day, rollover carries it forward and its older due date shows
 it as "Overdue"; the next one is only created once it's done, so misses never pile up.
-Deleting an open instance ends the series.
+Deleting an open instance ends the series. The Slate tab's collapsed "Recurring tasks"
+section (`components/planner/RecurringSection.tsx`) lists each series by its one open
+instance; tap one to edit the rule or delete it.
 
 ### Migrations
 

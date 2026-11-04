@@ -4,7 +4,7 @@ import React from "react";
 import { PlanWithVoiceButton } from "@/components/voice/PlanWithVoiceButton";
 import { Screen } from "@/components/ui/Screen";
 import { SheetManager } from "react-native-actions-sheet";
-import { SlateSection } from "@/components/planner";
+import { RecurringSection, SlateSection } from "@/components/planner";
 import { ThemedText } from "@/components/themed-text";
 import { useTimeStore } from "@/lib/stores/timeStore";
 import { useAppStore } from "@/lib/stores/appStore";
@@ -51,6 +51,9 @@ export default function SlateScreen() {
             onAddToToday={(type, id) => planTaskForToday(id)}
             onAdd={handleOpenAddModal}
           />
+          <View style={styles.recurring}>
+            <RecurringSection tasks={allOpen} />
+          </View>
         </View>
       </ScrollView>
     </Screen>
@@ -66,4 +69,5 @@ const styles = StyleSheet.create({
   count: { marginTop: 6 },
   voice: { marginTop: 16 },
   content: { paddingHorizontal: 16 },
+  recurring: { marginTop: 24 },
 });
