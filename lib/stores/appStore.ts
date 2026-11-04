@@ -1,6 +1,7 @@
 import * as repo from "@/lib/logic/repo";
 
 import { addDays } from "@/lib/logic/dates";
+import { firstOccurrence, parseRule } from "@/lib/logic/repeat";
 import { calculateBaseStreaks } from "@/lib/logic/streaks";
 
 import { create } from "zustand";
@@ -153,7 +154,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   createTask: async (data) => {
     const today = get().getTodayDate();
-    const doDate = clampToToday(data.scheduledFor, today);
+    // A repeating task belongs on its first matching day, not in the Slate
+    const rule = parseRule(data.repeatRule);
+    const doDate = clampToToday(
+      data.scheduledFor ?? (rule ? firstOccurrence(rule, today) : undefined),
+      today
+    );
     const dueDate =
       dueForRepeat(data.repeatRule, data.dueDate, doDate) ?? undefined;
     const scheduledFor = planIfDue(doDate, dueDate, today);
@@ -187,6 +193,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     const repeat =
       data.repeatRule === undefined ? existing?.repeatRule : data.repeatRule;
+    const rule = parseRule(repeat);
+    if (rule && (scheduledFor === undefined ? existing?.scheduledFor : scheduledFor) == null) {
+      scheduledFor = firstOccurrence(rule, today);
+    }
     const dueDate = dueForRepeat(
       repeat,
       data.dueDate === undefined ? existing?.dueDate : data.dueDate,

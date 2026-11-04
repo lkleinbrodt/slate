@@ -73,6 +73,12 @@ export function nextOccurrence(
   }
 }
 
+/** The first day a new repeating task should show up: today if the rule fits today. */
+export function firstOccurrence(rule: RepeatRule, today: string): string {
+  if (rule.type === "every") return today;
+  return nextOccurrence(rule, addDays(today, -1));
+}
+
 function monthDate(month: dayjs.Dayjs, day: number): string {
   return month.date(Math.min(day, month.daysInMonth())).format("YYYY-MM-DD");
 }

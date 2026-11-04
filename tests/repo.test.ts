@@ -2,7 +2,7 @@ import assert from "assert";
 import Database from "better-sqlite3";
 
 import * as repo from "@/lib/logic/repo";
-import { type RepeatRule, nextOccurrence, parseRule, ruleLabel, serializeRule } from "@/lib/logic/repeat";
+import { type RepeatRule, firstOccurrence, nextOccurrence, parseRule, ruleLabel, serializeRule } from "@/lib/logic/repeat";
 import { calculateBaseStreaks } from "@/lib/logic/streaks";
 import { MIGRATIONS } from "@/lib/db/migrations";
 import { tasks, voiceSessions } from "@/lib/db/schema";
@@ -27,6 +27,7 @@ export async function run() {
   await testUndoRepeatingTaskRemovesNext();
   await testMissedRepeatingTaskIsOverdue();
   await testFixedDayRepeatRules();
+  testFirstOccurrence();
 }
 
 async function testTodayListUsesLogicalCompletionDay() {
@@ -254,4 +255,14 @@ async function testFixedDayRepeatRules() {
   const next = (await db.select().from(tasks)).find((x) => x.id !== t.id)!;
   assert.strictEqual(next.scheduledFor, "2024-07-11");
   assert.strictEqual(next.repeatRule, "weekdays:2,4");
+}
+
+function testFirstOccurrence() {
+  // 2024-07-09 is a Tuesday
+  const tueThu: RepeatRule = { type: "weekdays", days: [2, 4] };
+  assert.strictEqual(firstOccurrence(tueThu, "2024-07-09"), "2024-07-09");
+  assert.strictEqual(firstOccurrence(tueThu, "2024-07-10"), "2024-07-11");
+  assert.strictEqual(firstOccurrence({ type: "monthday", day: 30 }, "2024-07-10"), "2024-07-30");
+  assert.strictEqual(firstOccurrence({ type: "monthday", day: 30 }, "2024-07-30"), "2024-07-30");
+  assert.strictEqual(firstOccurrence({ type: "every", days: 2 }, "2024-07-10"), "2024-07-10");
 }
