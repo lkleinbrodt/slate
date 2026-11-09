@@ -365,6 +365,19 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
 
         {isTask && !isDoneTask && (
           <View style={styles.chips}>
+            {/* One-tap "do it today"; once set, the Do chip below shows "Do today" and clears it */}
+            {scheduledDate !== today && (
+              <Chip
+                size="md"
+                icon="sun"
+                tone="primary"
+                label="Today"
+                onPress={() => {
+                  haptic("selection");
+                  setScheduledDate(today);
+                }}
+              />
+            )}
             <Chip
               size="md"
               icon="calendar"
