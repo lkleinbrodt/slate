@@ -316,7 +316,10 @@ Behaviour worth knowing:
   hang-up tool would be the sturdier fix if that turns out to be common.
 - **Plan ready in the background**: if the plan lands while Slate isn't in the
   foreground, a "Your plan is ready" notification (with the summary) goes out, and the
-  review opens when he comes back.
+  review opens when he comes back (by tapping it or otherwise). Nothing is presented or
+  dismissed while Slate is in the background: the call screen closes once he's back, and
+  the review opens only after it has fully gone (`lib/voice/callScreen.ts`). Doing both in
+  the background left a black screen (2026-11-09).
 - `proposal.stats`: `endedBy` (`phrase` | `button` | `dropped`), `transcriptMs` (Threepio
   handing over the transcript) and `planMs` (the LLM). A test call with a small day took
   about 3.7 s to plan.

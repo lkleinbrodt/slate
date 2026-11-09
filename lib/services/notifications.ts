@@ -294,6 +294,8 @@ async function rescheduleAll(): Promise<void> {
   }
 }
 
+export const VOICE_PLAN_READY_ID = NOTIFICATION_IDS.VOICE_PLAN_READY;
+
 /** After a voice call, when the plan is made while Slate is in the background (the phone
  * in his pocket): say it's ready. Opening Slate shows the review. */
 export async function notifyVoicePlanReady(summary: string): Promise<void> {

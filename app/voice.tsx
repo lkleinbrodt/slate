@@ -1,12 +1,13 @@
-import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, AppState, ScrollView, StyleSheet, View } from "react-native";
 import React, { useEffect, useRef } from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Screen } from "@/components/ui/Screen";
 import { ThemedText } from "@/components/themed-text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { setCallScreenOpen } from "@/lib/voice/callScreen";
 import { useVoiceStore } from "@/lib/stores/voiceStore";
 
 // slate://voice: the plan-the-day call (docs/voice.md). Who you're talking to, the live
@@ -35,9 +36,35 @@ export default function VoiceScreen() {
   // before the store has the session, so only once it has been seen.
   const seen = useRef(false);
   if (session) seen.current = true;
+  const done = seen.current && (!session || status === "proposed");
   useEffect(() => {
-    if (seen.current && (!session || status === "proposed")) router.back();
-  }, [session, status, router]);
+    if (!done) return;
+    // Not while Slate is in the background (the call ended from his pocket): closing a
+    // full-screen modal there left a black screen on return. Close once he's back.
+    if (AppState.currentState === "active") {
+      router.back();
+      return;
+    }
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next !== "active") return;
+      sub.remove();
+      router.back();
+    });
+    return () => sub.remove();
+  }, [done, router]);
+
+  // Tell the watcher when this screen is fully gone, so the review sheet opens after it
+  const navigation = useNavigation();
+  useEffect(() => {
+    setCallScreenOpen(true);
+    const sub = navigation.addListener("transitionEnd" as never, (e: { data?: { closing?: boolean } }) => {
+      if (e.data?.closing) setCallScreenOpen(false);
+    });
+    return () => {
+      sub();
+      setCallScreenOpen(false);
+    };
+  }, [navigation]);
 
   const live = callPhase !== null;
   const planning = !live && (status === "calling" || status === "ended" || status === "planning");
