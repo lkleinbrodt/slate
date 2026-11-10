@@ -26,6 +26,8 @@ export interface EventDetails {
   startDate: Date;
   endDate: Date;
   notes?: string;
+  /** Minutes from the start; expo-calendar replaces the event's alerts with this list */
+  alarms?: { relativeOffset: number }[];
 }
 
 const SLATE_CALENDAR = "Slate";

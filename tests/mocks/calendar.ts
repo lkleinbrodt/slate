@@ -5,6 +5,8 @@ import type { CalendarAccess, CalendarEvent, EventDetails } from "@/lib/services
 export type { CalendarAccess, CalendarEvent, EventDetails };
 
 let nextId = 1;
+// Alerts per event id, as given to saveEvent
+export const alarms = new Map<string, EventDetails["alarms"]>();
 export const fake = {
   access: "granted" as CalendarAccess,
   // Slate's own calendar
@@ -15,6 +17,7 @@ export const fake = {
     this.access = "granted";
     this.slate.clear();
     this.others = [];
+    alarms.clear();
   },
 };
 
@@ -39,6 +42,7 @@ export const saveEvent = async (id: string | null, details: EventDetails) => {
     calendarTitle: "Slate",
     color: "#D2632F",
   });
+  alarms.set(eventId, details.alarms ?? []);
   return eventId;
 };
 

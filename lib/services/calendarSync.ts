@@ -43,6 +43,8 @@ async function writeTask(taskId: string) {
       startDate: dateAt(task.scheduledFor, slot.start),
       endDate: dateAt(task.scheduledFor, slot.end),
       notes: task.notes ?? undefined,
+      // An alert when it's time to start; a finished task doesn't need one
+      alarms: task.status === "done" ? [] : [{ relativeOffset: 0 }],
     });
     if (id !== task.calendarEventId) await repo.updateTask(task.id, { calendarEventId: id });
   } else if (task.calendarEventId) {

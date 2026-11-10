@@ -117,7 +117,10 @@ back to the Slate, editing the date, and rollover (carry-over and the due pull-i
   Slate keeps no copy. It reads every calendar except its own for Today's timeline and
   writes slots into a "Slate" calendar it creates (on the default calendar's account,
   so iCloud). `syncTask` writes after each store action that can change a slot, title
-  or status (done tasks get a ✓). `reconcile` runs on Today's open, a new day and each
+  or status (done tasks get a ✓). Each open slot's event has an alert at its start, the
+  task's reminder; a finished task's alert is removed. expo-calendar replaces an event's
+  alerts on every save, so iOS's default alerts never apply and one added by hand in
+  Calendar is lost on the next sync. `reconcile` runs on Today's open, a new day and each
   foreground: it pulls moves and deletions made in Calendar into tasks and removes
   events whose task lost its slot. Finished tasks and past days keep their blocks as a
   record. Without calendar access slots still work inside Slate.

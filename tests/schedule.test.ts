@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/connection";
 import { resetDatabase } from "./mocks/db-connection";
 import { resetStorage } from "./mocks/kv-store";
-import { fake } from "./mocks/calendar";
+import { alarms, fake } from "./mocks/calendar";
 import { tasks } from "@/lib/db/schema";
 import {
   DEFAULT_SCHEDULE,
@@ -139,6 +139,7 @@ async function testScheduleWritesEvent() {
   assert.strictEqual(event.title, "Budget");
   assert.strictEqual(minutesOnDay(event.startDate, MONDAY), h("15:10"));
   assert.strictEqual(minutesOnDay(event.endDate, MONDAY), h("16:40"));
+  assert.deepStrictEqual(alarms.get(event.id), [{ relativeOffset: 0 }], "alert at the start");
 
   // Rescheduling moves the same event
   await useAppStore.getState().scheduleTask(task.id, "18:00", 90);
@@ -192,10 +193,12 @@ async function testDoneTaskEventIsTicked() {
   await settle();
   const saved = await getTask(task.id);
   assert.strictEqual(fake.slate.get(saved!.calendarEventId!)!.title, "✓ Call Mom");
+  assert.deepStrictEqual(alarms.get(saved!.calendarEventId!), [], "no alert once it's done");
 
   await useAppStore.getState().undoCompleteTask(task.id);
   await settle();
   assert.strictEqual(fake.slate.get(saved!.calendarEventId!)!.title, "Call Mom");
+  assert.deepStrictEqual(alarms.get(saved!.calendarEventId!), [{ relativeOffset: 0 }]);
 }
 
 async function testReconcilePullsMovesAndDeletes() {
