@@ -14,6 +14,12 @@ export const tasks = sqliteTable("tasks", {
   repeatRule: text("repeat_rule"),
   // The instance spawned when this one was finished (removed again on undo)
   nextTaskId: text("next_task_id"),
+  // Minutes the task takes; null = the default length (lib/logic/schedule.ts)
+  durationMin: integer("duration_min"),
+  // HH:mm on the scheduled_for day; null = no time slot
+  startTime: text("start_time"),
+  // The event in the "Slate" calendar that mirrors the time slot
+  calendarEventId: text("calendar_event_id"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
   status: text("status", { enum: ["open", "done", "archived"] })

@@ -3,6 +3,8 @@ import { SheetDefinition, registerSheet } from "react-native-actions-sheet";
 import AddEditModal from "./components/AddEditModal";
 import DatePickerActionSheet from "./components/DatePickerModal";
 import DependencyPickerModal from "./components/DependencyPickerModal";
+import FitSheet from "./components/schedule/FitSheet";
+import ScheduleSheet from "./components/schedule/ScheduleSheet";
 import { DayDetailsModal } from "./components/history/DayDetailsModal";
 import ReviewSheet from "./components/voice/ReviewSheet";
 import StartSheet from "./components/voice/StartSheet";
@@ -14,6 +16,8 @@ registerSheet("dependency-picker-sheet", DependencyPickerModal);
 registerSheet("day-details-sheet", DayDetailsModal);
 registerSheet("voice-start", StartSheet);
 registerSheet("voice-review", ReviewSheet);
+registerSheet("schedule-sheet", ScheduleSheet);
+registerSheet("fit-sheet", FitSheet);
 
 // Extend the types for TypeScript support
 declare module "react-native-actions-sheet" {
@@ -53,6 +57,8 @@ declare module "react-native-actions-sheet" {
     }>;
     "voice-start": SheetDefinition;
     "voice-review": SheetDefinition;
+    "schedule-sheet": SheetDefinition<{ payload: { taskId: string } }>;
+    "fit-sheet": SheetDefinition;
   }
 }
 

@@ -189,7 +189,10 @@ Each step ends with something that works and is checked.
 5. **Tune.** A few real mornings, then adjust the instructions, the extraction prompt and
    the model from the saved sessions.
 6. **Calendar (last).** Read today's events into the snapshot, add event changes to the
-   proposal, write them to a "Slate" calendar. *Done when* the review shows tasks and
+   proposal, write them to a "Slate" calendar. (The calendar groundwork now exists outside voice: time
+   slots, the "Slate" calendar and today's events, in `lib/services/calendarSync.ts`;
+   see "Time slots and the calendar" in `docs/architecture.md`. What's left here is
+   putting events and slots into the snapshot and slot changes into the proposal.) *Done when* the review shows tasks and
    calendar blocks together and applying writes both (OTA).
 
 ## Open questions

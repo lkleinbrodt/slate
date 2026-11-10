@@ -130,6 +130,17 @@ export const MIGRATIONS: Migration[] = [
       ALTER TABLE tasks ADD COLUMN next_task_id TEXT;
     `,
   },
+  {
+    // Time slots (lib/logic/schedule.ts): a task planned for a day can also get a start
+    // time and a length. calendar_event_id is the event Slate wrote for it in the
+    // "Slate" calendar (lib/services/calendarSync.ts).
+    version: 5,
+    sql: `
+      ALTER TABLE tasks ADD COLUMN duration_min INTEGER;
+      ALTER TABLE tasks ADD COLUMN start_time TEXT;          -- HH:mm on scheduled_for
+      ALTER TABLE tasks ADD COLUMN calendar_event_id TEXT;
+    `,
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

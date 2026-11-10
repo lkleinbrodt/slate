@@ -28,6 +28,8 @@ const mocks = new Map([
   // Native voice pieces (Pipecat's WebRTC client, the Keychain); tests pass fakes to the voice store
   ["@/lib/voice/call", path.join(projectRoot, "tests/mocks/voice-call.ts")],
   ["@/lib/voice/secrets", path.join(projectRoot, "tests/mocks/voice-secrets.ts")],
+  // The iOS calendar; tests drive the fake through its `fake` export
+  ["@/lib/services/calendar", path.join(projectRoot, "tests/mocks/calendar.ts")],
 ]);
 
 const originalResolveFilename = Module._resolveFilename;

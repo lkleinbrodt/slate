@@ -55,6 +55,8 @@ export const createTask = async (data: {
   scheduledFor?: string;
   dependsOn?: string;
   repeatRule?: string;
+  durationMin?: number;
+  startTime?: string;
 }) => {
   const now = nowISO();
   const newTask = {
@@ -66,6 +68,9 @@ export const createTask = async (data: {
     dependsOnTaskId: data.dependsOn ?? null,
     repeatRule: data.repeatRule ?? null,
     nextTaskId: null,
+    durationMin: data.durationMin ?? null,
+    startTime: data.startTime ?? null,
+    calendarEventId: null,
     createdAt: now,
     updatedAt: now,
     status: "open" as const,
@@ -87,10 +92,15 @@ export const updateTask = async (
   return getTask(id);
 };
 
+// A time slot belongs to its day, so moving a task to another day drops it
 export const planTaskFor = (id: string, date: string | null) =>
-  updateTask(id, { scheduledFor: date });
+  updateTask(id, { scheduledFor: date, startTime: null });
 export const skipTaskForToday = (id: string, tomorrowDate: string) =>
-  updateTask(id, { scheduledFor: tomorrowDate });
+  updateTask(id, { scheduledFor: tomorrowDate, startTime: null });
+
+// Tasks with an event in the "Slate" calendar (lib/services/calendarSync.ts)
+export const listTasksWithEvents = () =>
+  db.select().from(tasks).where(sql`calendar_event_id IS NOT NULL`);
 // `date` is the app's logical day (respecting day start), not the UTC date.
 // A repeating task spawns its next instance, due that many days after `date`
 // (not after the day it was planned for, so a late or early finish shifts the
@@ -113,6 +123,7 @@ export const completeTask = async (id: string, date: string) => {
           scheduledFor: nextDate,
           dueDate: nextDate,
           repeatRule: task.repeatRule,
+          durationMin: task.durationMin,
           createdAt: now,
           updatedAt: now,
         })

@@ -5,6 +5,7 @@ import { firstOccurrence, parseRule } from "@/lib/logic/repeat";
 import { calculateBaseStreaks } from "@/lib/logic/streaks";
 
 import { create } from "zustand";
+import { syncTaskSoon } from "@/lib/services/calendarSync";
 import { useTimeStore } from "./timeStore";
 import { updateHabitRemindersIfNeeded } from "@/lib/services/notifications";
 
@@ -37,6 +38,9 @@ interface AppState {
     scheduledFor?: string;
     dependsOn?: string;
     repeatRule?: string;
+    durationMin?: number;
+    // HH:mm on the do date; ignored without one
+    startTime?: string;
   }) => Promise<Task>;
   createHabit: (data: { title: string; notes?: string }) => Promise<void>;
   // null clears a field; undefined leaves it unchanged
@@ -49,8 +53,15 @@ interface AppState {
       scheduledFor?: string | null;
       dependsOnTaskId?: string | null;
       repeatRule?: string | null;
+      durationMin?: number | null;
+      // Moving the do date drops the slot unless a new one is given
+      startTime?: string | null;
     }
   ) => Promise<void>;
+  // Set or clear a task's time slot on its do date (lib/logic/schedule.ts)
+  scheduleTask: (taskId: string, startTime: string | null, durationMin?: number) => Promise<void>;
+  // Several slots at once, from "Fit these in"
+  applySlots: (slots: { taskId: string; startTime: string; durationMin: number }[]) => Promise<void>;
   updateHabit: (
     id: string,
     data: {
@@ -167,8 +178,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       ...data,
       dueDate,
       scheduledFor: scheduledFor ?? undefined,
+      startTime: scheduledFor ? data.startTime : undefined,
     });
     await get().refreshData();
+    if (task.startTime) syncTaskSoon(task.id);
     return task;
   },
 
@@ -202,12 +215,34 @@ export const useAppStore = create<AppState>((set, get) => ({
       data.dueDate === undefined ? existing?.dueDate : data.dueDate,
       scheduledFor === undefined ? existing?.scheduledFor : scheduledFor
     );
+    const finalDate = scheduledFor === undefined ? existing?.scheduledFor : scheduledFor;
+    const startTime =
+      data.startTime === undefined && finalDate !== existing?.scheduledFor ? null : data.startTime;
     await repo.updateTask(id, {
       ...data,
       scheduledFor,
+      startTime: finalDate ? startTime : null,
       dueDate: data.dueDate === undefined && dueDate === existing?.dueDate ? undefined : dueDate,
     });
     await get().refreshData();
+    syncTaskSoon(id);
+  },
+
+  scheduleTask: async (taskId, startTime, durationMin) => {
+    await repo.updateTask(taskId, { startTime, durationMin });
+    await get().refreshData();
+    syncTaskSoon(taskId);
+  },
+
+  applySlots: async (slots) => {
+    for (const slot of slots) {
+      await repo.updateTask(slot.taskId, {
+        startTime: slot.startTime,
+        durationMin: slot.durationMin,
+      });
+    }
+    await get().refreshData();
+    slots.forEach((slot) => syncTaskSoon(slot.taskId));
   },
 
   updateHabit: async (id, data) => {
@@ -233,27 +268,32 @@ export const useAppStore = create<AppState>((set, get) => ({
   planTaskForToday: async (taskId) => {
     await repo.planTaskFor(taskId, get().getTodayDate());
     await get().refreshData();
+    syncTaskSoon(taskId);
   },
 
   sendTaskBackToSlate: async (taskId) => {
     await repo.planTaskFor(taskId, null);
     await get().refreshData();
+    syncTaskSoon(taskId);
   },
 
   skipTaskForToday: async (taskId) => {
     const tomorrow = addDays(get().getTodayDate(), 1);
     await repo.skipTaskForToday(taskId, tomorrow);
     await get().refreshData();
+    syncTaskSoon(taskId);
   },
 
   completeTask: async (taskId) => {
     await repo.completeTask(taskId, get().getTodayDate());
     await get().refreshData();
+    syncTaskSoon(taskId);
   },
 
   undoCompleteTask: async (taskId) => {
     await repo.undoCompleteTask(taskId);
     await get().refreshData();
+    syncTaskSoon(taskId);
   },
 
   toggleTask: (taskId: string) => {
@@ -280,7 +320,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       : repo.undoCompleteTask(taskId);
 
     promise
-      .then(() => get().refreshData())
+      .then(() => {
+        syncTaskSoon(taskId);
+        return get().refreshData();
+      })
       .catch((err) => {
         console.error("Task toggle failed", err);
         // Revert on error
@@ -332,6 +375,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   deleteTask: async (taskId) => {
     await repo.deleteTask(taskId);
     await get().refreshData();
+    syncTaskSoon(taskId);
   },
 
   deleteHabit: async (habitId) => {

@@ -5,7 +5,7 @@ import {
 } from "@/components/planner";
 import * as Haptics from "expo-haptics";
 
-import { ScrollView, StyleSheet, View } from "react-native";
+import { AppState, ScrollView, StyleSheet, View } from "react-native";
 import { useEffect, useRef } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
@@ -14,6 +14,8 @@ import { Screen } from "@/components/ui/Screen";
 import { SheetManager } from "react-native-actions-sheet";
 import { displayStreak } from "@/lib/logic/streaks";
 import { useAppStore } from "@/lib/stores/appStore";
+import { useCalendarStore } from "@/lib/stores/calendarStore";
+import { useTimeStore } from "@/lib/stores/timeStore";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTabBarSpace } from "@/components/TabBar";
 
@@ -34,6 +36,20 @@ export default function TodayScreen() {
     }, 0);
     return () => clearTimeout(timer);
   }, [add, router]);
+  // Calendar: pick up moves made there and today's events, on open, on a new day and
+  // whenever the app comes back to the front
+  const refreshCalendar = useCalendarStore((s) => s.refresh);
+  const currentDate = useTimeStore((s) => s.currentDate);
+  useEffect(() => {
+    refreshCalendar();
+  }, [currentDate, refreshCalendar]);
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") refreshCalendar();
+    });
+    return () => sub.remove();
+  }, [refreshCalendar]);
+
   const {
     todayTasks,
     activeHabits,

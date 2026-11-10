@@ -10,6 +10,7 @@ import { Chip } from "@/components/ui/Chip";
 import { Icon } from "@/components/ui/Icon";
 import { PressableScale, haptic } from "@/components/ui/PressableScale";
 import { ThemedText } from "@/components/themed-text";
+import { formatTime } from "@/components/TimePickerButton";
 import { formatRelativeDay } from "@/lib/utils/dateFormat";
 import {
   type RepeatRule,
@@ -20,6 +21,13 @@ import {
   serializeRule,
 } from "@/lib/logic/repeat";
 import { fromLocalDate } from "@/lib/logic/dates";
+import { DEFAULT_DURATION } from "@/lib/logic/schedule";
+import {
+  ScheduleOptions,
+  type SlotChoice,
+  resolveSlot,
+  useSuggestions,
+} from "@/components/schedule/ScheduleOptions";
 import { useAppStore } from "@/lib/stores/appStore";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -38,6 +46,10 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
   const [dueDate, setDueDate] = useState<string | null>(null);
   const [dependsOnTaskId, setDependsOnTaskId] = useState<string | null>(null);
   const [repeat, setRepeat] = useState<RepeatRule | null>(null);
+  // Time slot, offered for tasks done today (lib/logic/schedule.ts)
+  const [duration, setDuration] = useState(DEFAULT_DURATION);
+  const [slotChoice, setSlotChoice] = useState<SlotChoice>("next");
+  const suggestions = useSuggestions(duration, mode === "edit" ? itemId : undefined);
   // Done tasks only get title/notes/delete: moving their dates would rewrite history
   const [isDoneTask, setIsDoneTask] = useState(false);
   // Confirmation for the last item added. Shown inline because the sheet is a
@@ -73,6 +85,8 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
           setDependsOnTaskId(task.dependsOnTaskId || null);
           setRepeat(parseRule(task.repeatRule));
           setIsDoneTask(task.status === "done");
+          setDuration(task.durationMin ?? DEFAULT_DURATION);
+          setSlotChoice(task.startTime ? { at: task.startTime } : "none");
         }
       } else {
         const habit = getHabitById(itemId);
@@ -89,13 +103,22 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
       setDueDate(null);
       setDependsOnTaskId(null);
       setRepeat(null);
+      setDuration(DEFAULT_DURATION);
+      setSlotChoice("next");
       setItemType(initialType || "task");
     }
   }, [mode, itemId, initialType, getTaskById, getHabitById]);
 
-  const describeNewTask = (task: { title: string; scheduledFor: string | null }) => {
+  const describeNewTask = (task: {
+    title: string;
+    scheduledFor: string | null;
+    startTime: string | null;
+  }) => {
     const today = getTodayDate();
     if (!task.scheduledFor) return `Added "${task.title}" to the Slate`;
+    if (task.scheduledFor <= today && task.startTime) {
+      return `Added "${task.title}" at ${formatTime(task.startTime)}`;
+    }
     if (task.scheduledFor <= today) return `Added "${task.title}" to Today`;
     return `Added "${task.title}" for ${fromLocalDate(task.scheduledFor).format("ddd, MMM D")}`;
   };
@@ -109,10 +132,17 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
     if (isSavingRef.current) return;
     isSavingRef.current = true;
 
+    // The slot only applies to a task done today; elsewhere it's left alone (and moving
+    // the task to another day drops it)
+    const forToday = scheduledDate === getTodayDate();
+    const startTime = forToday ? resolveSlot(slotChoice, suggestions) : undefined;
+
     try {
       if (mode === "add") {
         if (itemType === "task") {
           const task = await createTask({
+            durationMin: forToday ? duration : undefined,
+            startTime: startTime ?? undefined,
             title: title.trim(),
             notes: notes.trim() || undefined,
             scheduledFor: scheduledDate || undefined,
@@ -136,6 +166,8 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
         setDueDate(null);
         setDependsOnTaskId(null);
         setRepeat(null);
+        setDuration(DEFAULT_DURATION);
+        setSlotChoice("next");
       } else if (mode === "edit" && itemId) {
         if (itemType === "task") {
           // Pass null (not undefined) so cleared fields are actually cleared
@@ -146,6 +178,7 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
             dueDate,
             dependsOnTaskId,
             repeatRule: repeat ? serializeRule(repeat) : null,
+            ...(forToday && { startTime, durationMin: duration }),
           });
         } else {
           await updateHabit(itemId, {
@@ -466,6 +499,16 @@ export default function AddEditModal({ sheetId, payload }: AddEditModalProps) {
               <Icon name="plus" size={16} color={colors.text} />
             </PressableScale>
           </View>
+        )}
+
+        {isTask && !isDoneTask && scheduledDate === today && (
+          <ScheduleOptions
+            duration={duration}
+            onDurationChange={setDuration}
+            choice={slotChoice}
+            onChoiceChange={setSlotChoice}
+            suggestions={suggestions}
+          />
         )}
 
         {!isTask && mode === "add" && (

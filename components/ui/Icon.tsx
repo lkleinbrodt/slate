@@ -30,6 +30,7 @@ const icons = {
   x: require("phosphor-react-native/lib/commonjs/icons/X").XIcon,
   trash: require("phosphor-react-native/lib/commonjs/icons/Trash").TrashIcon,
   bell: require("phosphor-react-native/lib/commonjs/icons/Bell").BellIcon,
+  briefcase: require("phosphor-react-native/lib/commonjs/icons/Briefcase").BriefcaseIcon,
   clock: require("phosphor-react-native/lib/commonjs/icons/Clock").ClockIcon,
   repeat: require("phosphor-react-native/lib/commonjs/icons/Repeat").RepeatIcon,
   checkCircle: require("phosphor-react-native/lib/commonjs/icons/CheckCircle").CheckCircleIcon,
