@@ -165,7 +165,9 @@ export const TaskItem: React.FC<TaskItemProps> = ({
     </View>
   );
 
-  if (isReadOnly || isDone || (!onSkipForToday && !onSendToSlate)) return row;
+  // Done rows keep the swipe wrapper (with nothing behind it) so ticking one doesn't
+  // remount the row mid-animation
+  if (isReadOnly || (!onSkipForToday && !onSendToSlate)) return row;
 
   return (
     <ReanimatedSwipeable
@@ -173,7 +175,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
       friction={1.6}
       rightThreshold={40}
       overshootRight={false}
-      renderRightActions={(progress) => (
+      renderRightActions={isDone ? undefined : (progress) => (
         <View style={styles.actions}>
           {onSkipForToday && (
             <SwipeAction
