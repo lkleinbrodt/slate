@@ -1,5 +1,4 @@
 import Animated, {
-  type SharedValue,
   interpolate,
   useAnimatedStyle,
   useSharedValue,
@@ -15,6 +14,7 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { Chip } from "@/components/ui/Chip";
 import { Icon } from "@/components/ui/Icon";
 import { SheetManager } from "react-native-actions-sheet";
+import { SwipeAction } from "@/components/ui/SwipeAction";
 import { TaskItemProps } from "./types";
 import { ThemedText } from "./themed-text";
 import { formatRelativeDay } from "@/lib/utils/dateFormat";
@@ -209,37 +209,6 @@ export function dueLabel(dueDate: string, today: string, isOverdue: boolean) {
   return `Due ${day === "Today" || day === "Tomorrow" ? day.toLowerCase() : day}`;
 }
 
-function SwipeAction({
-  progress,
-  icon,
-  label,
-  color,
-  fg,
-  onPress,
-}: {
-  progress: SharedValue<number>;
-  icon: "moonStars" | "tray";
-  label: string;
-  color: string;
-  fg: string;
-  onPress: () => void;
-}) {
-  const style = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.6, 1], [0, 0.6, 1]),
-    transform: [{ scale: interpolate(progress.value, [0, 1], [0.7, 1], "clamp") }],
-  }));
-  return (
-    <Pressable onPress={onPress} style={[styles.action, { backgroundColor: color }]}>
-      <Animated.View style={[styles.actionInner, style]}>
-        <Icon name={icon} size={20} color={fg} weight="duotone" duotoneOpacity={0.35} />
-        <ThemedText type="captionMedium" style={{ color: fg }}>
-          {label}
-        </ThemedText>
-      </Animated.View>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
@@ -288,10 +257,4 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: "row",
   },
-  action: {
-    width: 84,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  actionInner: { alignItems: "center", gap: 4 },
 });
