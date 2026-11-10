@@ -5,7 +5,6 @@ import Animated, {
   useAnimatedProps,
   useAnimatedStyle,
   useSharedValue,
-  withSequence,
   withSpring,
   withTiming,
 } from "react-native-reanimated";
@@ -57,10 +56,8 @@ export function Checkbox({
       duration: checked ? Motion.slow : Motion.fast,
     });
     if (checked) {
-      scale.value = withSequence(
-        withTiming(0.82, { duration: 90 }),
-        withSpring(1, Motion.springBouncy)
-      );
+      // The press already squashed it; one soft settle, not a second bounce
+      scale.value = withSpring(1, Motion.spring);
       ripple.value = 0;
       ripple.value = withTiming(1, { duration: 520 });
     }
@@ -109,7 +106,7 @@ export function Checkbox({
         if (!disabled) scale.value = withSpring(0.88, Motion.spring);
       }}
       onPressOut={() => {
-        if (!disabled) scale.value = withSpring(1, Motion.springBouncy);
+        if (!disabled) scale.value = withSpring(1, Motion.spring);
       }}
       hitSlop={12}
       disabled={disabled || !onPress}
