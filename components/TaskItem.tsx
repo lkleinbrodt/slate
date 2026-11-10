@@ -18,6 +18,7 @@ import { SwipeAction } from "@/components/ui/SwipeAction";
 import { TaskItemProps } from "./types";
 import { ThemedText } from "./themed-text";
 import { formatRelativeDay } from "@/lib/utils/dateFormat";
+import { formatDuration } from "@/lib/logic/schedule";
 import { parseRule, ruleLabel } from "@/lib/logic/repeat";
 import { haptic } from "@/components/ui/PressableScale";
 import { useAppStore } from "@/lib/stores/appStore";
@@ -66,7 +67,10 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 
   const openMenu = () => {
     haptic("selection");
+    // Time slots are for today's tasks only
+    const canSchedule = !isDone && !!task.scheduledFor && task.scheduledFor <= todayDate;
     const options = [
+      ...(canSchedule ? [task.startTime ? "Change time" : "Set a time"] : []),
       ...(!isDone && onSkipForToday ? ["Snooze until tomorrow"] : []),
       ...(!isDone && onSendToSlate ? ["Send back to the Slate"] : []),
       "Edit",
@@ -82,7 +86,9 @@ export const TaskItem: React.FC<TaskItemProps> = ({
       },
       (index) => {
         const choice = options[index];
-        if (choice === "Snooze until tomorrow") onSkipForToday?.(task.id);
+        if (choice === "Set a time" || choice === "Change time") {
+          SheetManager.show("schedule-sheet", { payload: { taskId: task.id } });
+        } else if (choice === "Snooze until tomorrow") onSkipForToday?.(task.id);
         else if (choice === "Send back to the Slate") onSendToSlate?.(task.id);
         else if (choice === "Edit") openEdit();
       }
@@ -96,8 +102,11 @@ export const TaskItem: React.FC<TaskItemProps> = ({
     setTimeout(() => action?.(task.id), 180);
   };
 
+  // Timed tasks show their length on the timeline; untimed ones here, if set
+  const showLength = !task.startTime && task.durationMin != null;
   const meta = (
     <View style={styles.meta}>
+      {showLength && <Chip icon="clock" label={formatDuration(task.durationMin!)} />}
       {task.dueDate && (
         <Chip
           icon="flag"
@@ -112,7 +121,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
       {!!task.notes && <Icon name="note" size={14} color="textTertiary" />}
     </View>
   );
-  const hasMeta = !!task.dueDate || !!repeat || (!!dependency && dependency.status === "open") || !!task.notes;
+  const hasMeta = showLength || !!task.dueDate || !!repeat || (!!dependency && dependency.status === "open") || !!task.notes;
 
   const row = (
     <View style={[styles.row, { backgroundColor: colors.surface }]}>

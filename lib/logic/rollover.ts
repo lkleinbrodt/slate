@@ -98,9 +98,10 @@ function finalizeDay(tx: Tx, day: string) {
       .run();
   }
 
-  // 4) Carry over unfinished tasks to the next day
+  // 4) Carry over unfinished tasks to the next day. Their time slot was for this
+  // day, so it goes (the calendar sync then removes the event).
   tx.update(tasks)
-    .set({ scheduledFor: addDays(day, 1) })
+    .set({ scheduledFor: addDays(day, 1), startTime: null })
     .where(and(eq(tasks.scheduledFor, day), eq(tasks.status, "open")))
     .run();
 }
@@ -112,7 +113,7 @@ function finalizeDay(tx: Tx, day: string) {
  */
 function pullInDueTasks(tx: Tx, day: string) {
   tx.update(tasks)
-    .set({ scheduledFor: day })
+    .set({ scheduledFor: day, startTime: null })
     .where(
       and(
         eq(tasks.status, "open"),

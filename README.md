@@ -14,6 +14,11 @@ A personal, local-first iOS to-do + habit app (Expo / React Native, SQLite on de
   - open tasks that are due or overdue are pulled into Today
   - yesterday is written to history
 - From Today you can **snooze** a task to tomorrow or **send it back to the Slate**.
+- **Time slots** – a task for today can get a start time and a length. Adding one to
+  Today puts it in the next free time; "Fit these in" places all the rest. Slate plans
+  only inside your plannable hours (8 AM–10 PM), never in the weekday work block (9–3;
+  tap it on Today to take the day off), and around your calendar's events. Slots show up
+  as events in a "Slate" calendar; moving or deleting one in Calendar updates the task.
 - **Habits** – things to do every day. They always appear in Today and track streaks.
   A **Perfect Day** is one where every habit was completed.
 - **History** – calendar of past days (habits/tasks completed, perfect days) and streaks.

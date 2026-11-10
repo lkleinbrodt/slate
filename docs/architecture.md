@@ -12,13 +12,16 @@ EAS (`runtimeVersion` policy `appVersion`).
 
 ```
 app/                 screens: (tabs)/today, slate, history, settings; index redirects to Today; _layout boots the app
-components/          UI; ui/ (design-system primitives), planner/ (Today + Slate sections), history/
+components/          UI; ui/ (design-system primitives), planner/ (Today + Slate sections), history/,
+                     schedule/ (time slot options, the "set a time" and "Fit these in" sheets)
 constants/theme.ts   design tokens: colors (light/dark), type, spacing, radii, shadows, motion
 sheets.tsx           action-sheet registry: add/edit, date picker, dependency picker, day details
 lib/db/              schema.ts (drizzle), migrations.ts, connection.ts
-lib/logic/           repo.ts (all queries), rollover.ts, streaks.ts, dates.ts
-lib/stores/          appStore (tasks/habits), timeStore (current day), settings, historyStore
-lib/services/        notifications.ts, widget.ts (writes the widget snapshot)
+lib/logic/           repo.ts (all queries), rollover.ts, streaks.ts, dates.ts, schedule.ts (time slots, pure)
+lib/stores/          appStore (tasks/habits), timeStore (current day), settings, historyStore,
+                     calendarStore (calendar access, today's events)
+lib/services/        notifications.ts, widget.ts (writes the widget snapshot),
+                     calendar.ts (expo-calendar), calendarSync.ts (slots <-> the "Slate" calendar)
 targets/widget/      iOS widget extension (SwiftUI), via @bacons/apple-targets
 tests/               logic tests; scripts/run-tests.js is a tiny TS runner with module mocks
 ```
@@ -43,7 +46,7 @@ faint paper grain (`components/ui/Screen`).
 
 | Table | Purpose |
 |---|---|
-| `tasks` | `status` open/done/archived (delete = archive). `scheduled_for` = do date, `due_date`, `completed_at` (UTC timestamp), `completed_date` (logical day, see below), `depends_on_task_id` (informational link only) |
+| `tasks` | `status` open/done/archived (delete = archive). `scheduled_for` = do date, `due_date`, `completed_at` (UTC timestamp), `completed_date` (logical day, see below), `depends_on_task_id` (informational link only), `start_time` (HH:mm on the do date) / `duration_min` / `calendar_event_id` (time slots, below) |
 | `habits` | `is_active` (delete = deactivate) |
 | `habit_completions` | one row per habit per day completed; the live state for today |
 | `habit_history` / `task_history` | per-day record written by rollover; what History reads for past days |
@@ -93,6 +96,32 @@ one. Tests run the same migrations against better-sqlite3.
 - **Past do dates** are clamped to today on create/edit; rollover never revisits past days.
 - **Streaks** = consecutive completed days in `habit_history` ending yesterday, +1
   if completed today (today isn't in history until it rolls over).
+
+## Time slots and the calendar
+
+A task for today can have a slot: `start_time` on its do date plus `duration_min` (null
+= 30). A slot belongs to its day, so anything that moves the do date clears it: snooze,
+back to the Slate, editing the date, and rollover (carry-over and the due pull-in).
+
+- **Suggestions** (`lib/logic/schedule.ts`, pure): free gaps are the plannable window
+  (default 08:00–22:00) minus the work block, calendar events, other tasks' slots and
+  the time already past, rounded to 5 minutes. The work block is 09:00–15:00 on weekdays
+  unless today is marked off (`schedule_work_day_off`, set by tapping the block on
+  Today). Landon's work calendar can't be read (Outlook, locked to 365), so the block
+  stands in for it. These rules only limit suggestions: "Pick a time…" can go anywhere.
+- **Adding a task for today** offers "How long" and "When today" (next free slot by
+  default, one in a later gap, pick a time, or no time). "Set a time" in a task's menu
+  opens the same choices. "Fit these in" places every task without a slot, overdue and
+  due first then oldest, each in the earliest gap that fits, for review.
+- **Calendar** (`lib/services/calendarSync.ts`): iOS Calendar is the record of events;
+  Slate keeps no copy. It reads every calendar except its own for Today's timeline and
+  writes slots into a "Slate" calendar it creates (on the default calendar's account,
+  so iCloud). `syncTask` writes after each store action that can change a slot, title
+  or status (done tasks get a ✓). `reconcile` runs on Today's open, a new day and each
+  foreground: it pulls moves and deletions made in Calendar into tasks and removes
+  events whose task lost its slot. Finished tasks and past days keep their blocks as a
+  record. Without calendar access slots still work inside Slate.
+- Tests use a fake of `lib/services/calendar.ts` (`tests/mocks/calendar.ts`).
 
 ## Notifications
 
