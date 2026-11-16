@@ -62,7 +62,7 @@ export function ScheduleOptions({
   // Says why a suggestion is where it is: right after something, or the start of the evening
   const reason = (slot: Interval) => {
     if (work && slot.start === work.end) return "Right after work";
-    const before = events.find((e) => !e.allDay && e.end <= slot.start && slot.start - e.end <= 10);
+    const before = events.find((e) => !e.allDay && e.busy && e.end <= slot.start && slot.start - e.end <= 10);
     if (before) return `After ${before.title}`;
     if (slot.start <= now + 5) return "Next free time";
     return slot.start < 12 * 60 ? "This morning" : slot.start < 17 * 60 ? "This afternoon" : "This evening";

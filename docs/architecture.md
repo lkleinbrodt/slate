@@ -132,6 +132,12 @@ back to the Slate, editing the date, and rollover (carry-over and the due pull-i
   foreground: it pulls moves and deletions made in Calendar into tasks and removes
   events whose task lost its slot. Finished tasks and past days keep their blocks as a
   record. Without calendar access slots still work inside Slate.
+- **Calendar modes** (Settings → Schedule, per calendar; `calendar_modes` setting, JSON by
+  calendar id, only non-defaults stored): **Busy** (default, also for calendars added
+  later) blocks time; **Just to see** shows its events dashed on Today and in "Fit these
+  in" but Slate plans over them (e.g. "Erin's Classes", someone else's schedule kept for
+  reference); **Hidden** leaves them out. `DayEvent.busy` carries it; only busy events go
+  into the free gaps.
 - Tests use a fake of `lib/services/calendar.ts` (`tests/mocks/calendar.ts`).
 
 ## Notifications

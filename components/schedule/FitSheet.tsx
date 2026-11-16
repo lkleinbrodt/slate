@@ -58,7 +58,15 @@ export default function FitSheet({ sheetId }: SheetProps<"fit-sheet">) {
     ...(work && work.end > now ? [{ kind: "work" as const, id: "work", title: "Work", ...work }] : []),
     ...events
       .filter((e) => !e.allDay && e.end > now)
-      .map((e) => ({ kind: "event" as const, id: e.id, title: e.title, start: e.start, end: e.end, color: e.color })),
+      .map((e) => ({
+        kind: "event" as const,
+        id: e.id,
+        title: e.title,
+        start: e.start,
+        end: e.end,
+        color: e.color,
+        free: !e.busy,
+      })),
     ...todayTasks.flatMap((t) => {
       const slot = taskInterval(t);
       return slot && t.status === "open" && slot.end > now

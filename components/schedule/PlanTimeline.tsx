@@ -35,6 +35,8 @@ export interface FixedBlock {
   start: number;
   end: number;
   color?: string;
+  /** An event from a "Just to see" calendar: dashed, and tasks can go over it */
+  free?: boolean;
 }
 
 /** A task this plan places; these can be dragged */
@@ -380,9 +382,11 @@ function FixedView({
   const look =
     block.kind === "work"
       ? { backgroundColor: colors.surfaceSunken, borderColor: "transparent" }
-      : block.kind === "event"
-        ? { backgroundColor: colors.surface, borderColor: colors.borderStrong, borderStyle: "dashed" as const }
-        : { backgroundColor: colors.surfaceElevated, borderColor: colors.border };
+      : block.kind === "event" && block.free
+        ? { backgroundColor: "transparent", borderColor: colors.borderStrong, borderStyle: "dashed" as const }
+        : block.kind === "event"
+          ? { backgroundColor: colors.surface, borderColor: colors.borderStrong }
+          : { backgroundColor: colors.surfaceElevated, borderColor: colors.border };
   return (
     <View
       pointerEvents="none"
@@ -392,15 +396,20 @@ function FixedView({
         { top: yOf(block.start, rangeStart), left, width, height, paddingVertical: roomy ? 5 : 1 },
       ]}
     >
-      {block.kind === "event" && <View style={[styles.bar, { backgroundColor: block.color ?? colors.borderStrong }]} />}
+      {block.kind === "event" && (
+        <View
+          style={[styles.bar, { backgroundColor: block.color ?? colors.borderStrong, opacity: block.free ? 0.5 : 1 }]}
+        />
+      )}
       {block.kind === "work" && <Icon name="briefcase" size={14} color="textTertiary" weight="duotone" />}
       <View style={styles.flex}>
-        <ThemedText type="caption" tone="textSecondary" numberOfLines={1}>
+        <ThemedText type="caption" tone={block.free ? "textTertiary" : "textSecondary"} numberOfLines={1}>
           {block.title}
         </ThemedText>
         {roomy && block.kind !== "work" && (
           <ThemedText type="caption" tone="textTertiary" numberOfLines={1} style={styles.small}>
             {formatRange(block.start, block.end)}
+            {block.free ? " · just to see" : ""}
           </ThemedText>
         )}
       </View>

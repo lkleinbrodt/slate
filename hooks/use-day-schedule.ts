@@ -52,7 +52,8 @@ export function useDaySchedule() {
    * tasks about to be placed */
   const gapsFor = useCallback(
     (exclude: string[] = []): Interval[] => {
-      const busy: Interval[] = events.filter((e) => !e.allDay);
+      // Events from "Just to see" calendars don't block time
+      const busy: Interval[] = events.filter((e) => !e.allDay && e.busy);
       for (const t of todayTasks) {
         const slot = taskInterval(t);
         if (slot && !exclude.includes(t.id)) busy.push(slot);
