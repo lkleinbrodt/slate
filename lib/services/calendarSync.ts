@@ -108,6 +108,28 @@ export function reconcile(today: string): Promise<boolean> {
   });
 }
 
+/**
+ * How Slate treats each of your calendars. "busy" (the default, also for calendars added
+ * later): its events block time, so Slate plans around them. "visible": shown on Today,
+ * dashed, but Slate plans over them (someone else's schedule you keep for reference).
+ * "hidden": left out entirely.
+ */
+export type CalendarMode = "busy" | "visible" | "hidden";
+/** By calendar id; calendars not in it are "busy" */
+export type CalendarModes = Record<string, CalendarMode>;
+
+export const CALENDAR_MODES_SETTING = "calendar_modes";
+
+export function parseCalendarModes(raw: string | null): CalendarModes {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 /** Today's events from your own calendars, as minutes on the day */
 export interface DayEvent {
   id: string;
@@ -115,22 +137,28 @@ export interface DayEvent {
   start: number;
   end: number;
   allDay: boolean;
+  calendarId: string;
   calendarTitle: string;
   color: string;
+  /** false for a "visible" calendar: shown, but free to plan over */
+  busy: boolean;
 }
 
-export async function loadDayEvents(date: string): Promise<DayEvent[]> {
+export async function loadDayEvents(date: string, modes: CalendarModes = {}): Promise<DayEvent[]> {
   if (!(await cal.hasAccess())) return [];
   const events = await cal.listEvents(dateAt(date, 0), dateAt(date, 24 * 60));
   return events
+    .filter((e) => modes[e.calendarId] !== "hidden")
     .map((e) => ({
       id: e.id,
       title: e.title,
       start: e.allDay ? 0 : minutesOnDay(e.startDate, date),
       end: e.allDay ? 24 * 60 : minutesOnDay(e.endDate, date),
       allDay: e.allDay,
+      calendarId: e.calendarId,
       calendarTitle: e.calendarTitle,
       color: e.color,
+      busy: modes[e.calendarId] !== "visible",
     }))
     .filter((e) => e.allDay || e.end > e.start)
     .sort((a, b) => a.start - b.start);

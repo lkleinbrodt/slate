@@ -274,17 +274,27 @@ function WorkBlock({ dayOff, today }: { dayOff: boolean; today: string }) {
   );
 }
 
+/** Solid for an event that keeps you busy; dashed for one from a "Just to see" calendar,
+ * which Slate plans over */
 function EventBlock({ event }: { event: DayEvent }) {
   const { colors } = useTheme();
   return (
-    <View style={[styles.event, { borderColor: colors.borderStrong }]}>
-      <View style={[styles.bar, { backgroundColor: event.color }]} />
+    <View
+      style={[
+        styles.event,
+        event.busy
+          ? { borderColor: colors.borderStrong, backgroundColor: colors.surface }
+          : { borderColor: colors.borderStrong, borderStyle: "dashed" },
+      ]}
+    >
+      <View style={[styles.bar, { backgroundColor: event.color, opacity: event.busy ? 1 : 0.5 }]} />
       <View style={styles.flex}>
-        <ThemedText type="callout" tone="textSecondary" numberOfLines={1}>
+        <ThemedText type="callout" tone={event.busy ? "textSecondary" : "textTertiary"} numberOfLines={1}>
           {event.title}
         </ThemedText>
         <ThemedText type="caption" tone="textTertiary" numberOfLines={1}>
           {event.calendarTitle} · {formatDuration(event.end - event.start)}
+          {event.busy ? "" : " · just to see"}
         </ThemedText>
       </View>
     </View>
@@ -345,7 +355,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     borderWidth: 1,
-    borderStyle: "dashed",
     borderRadius: Radius.lg,
     paddingHorizontal: 12,
     paddingVertical: 8,

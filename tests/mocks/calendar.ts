@@ -1,8 +1,8 @@
 // In-memory stand-in for lib/services/calendar.ts (expo-calendar). Tests reach in
 // through `fake` to grant access, add events, and move or delete Slate's blocks.
-import type { CalendarAccess, CalendarEvent, EventDetails } from "@/lib/services/calendar";
+import type { CalendarAccess, CalendarEvent, CalendarInfo, EventDetails } from "@/lib/services/calendar";
 
-export type { CalendarAccess, CalendarEvent, EventDetails };
+export type { CalendarAccess, CalendarEvent, CalendarInfo, EventDetails };
 
 let nextId = 1;
 // Alerts per event id, as given to saveEvent
@@ -13,7 +13,10 @@ export const fake = {
   slate: new Map<string, CalendarEvent>(),
   // Everything else on the phone
   others: [] as CalendarEvent[],
+  // The phone's other calendars, for Settings
+  calendars: [] as CalendarInfo[],
   reset() {
+    this.calendars = [];
     this.access = "granted";
     this.slate.clear();
     this.others = [];
@@ -27,6 +30,8 @@ export const hasAccess = async () => fake.access === "granted";
 
 export const listEvents = async (start: Date, end: Date) =>
   fake.others.filter((e) => e.startDate < end && e.endDate > start);
+
+export const listCalendars = async () => fake.calendars;
 
 export const getEvent = async (id: string) => fake.slate.get(id) ?? null;
 

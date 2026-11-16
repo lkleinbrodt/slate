@@ -56,6 +56,23 @@ export async function hasAccess(): Promise<boolean> {
   return (access ?? (await getAccess())) === "granted";
 }
 
+/** A calendar on the phone other than Slate's own */
+export interface CalendarInfo {
+  id: string;
+  title: string;
+  color: string;
+  /** The account it belongs to: iCloud, Gmail, ... */
+  account: string;
+}
+
+export async function listCalendars(): Promise<CalendarInfo[]> {
+  const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+  const slateId = await findSlateCalendar(calendars);
+  return calendars
+    .filter((c) => c.id !== slateId)
+    .map((c) => ({ id: c.id, title: c.title, color: c.color, account: c.source?.name ?? "" }));
+}
+
 /** Events from every calendar except Slate's own, overlapping [start, end) */
 export async function listEvents(start: Date, end: Date): Promise<CalendarEvent[]> {
   const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);

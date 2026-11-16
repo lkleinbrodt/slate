@@ -1,18 +1,32 @@
 import { create } from "zustand";
 
 import * as cal from "@/lib/services/calendar";
-import { type DayEvent, loadDayEvents, reconcile, syncTask } from "@/lib/services/calendarSync";
+import * as repo from "@/lib/logic/repo";
+import {
+  CALENDAR_MODES_SETTING,
+  type CalendarMode,
+  type CalendarModes,
+  type DayEvent,
+  loadDayEvents,
+  parseCalendarModes,
+  reconcile,
+  syncTask,
+} from "@/lib/services/calendarSync";
 import { useAppStore } from "./appStore";
 import { useTimeStore } from "./timeStore";
 
 interface CalendarState {
   access: cal.CalendarAccess | null;
-  // Today's events from your own calendars (not Slate's)
+  // Today's events from your own calendars (not Slate's, not hidden ones)
   events: DayEvent[];
   eventsDate: string | null;
+  // Your calendars, for Settings, and how Slate treats each (calendarSync.CalendarMode)
+  calendars: cal.CalendarInfo[];
+  modes: CalendarModes;
   /** Pull Calendar changes into tasks, then reload today's events */
   refresh: () => Promise<void>;
   requestAccess: () => Promise<void>;
+  setCalendarMode: (calendarId: string, mode: CalendarMode) => Promise<void>;
 }
 
 // Overlapping refreshes (mount + foreground) share one run
@@ -22,6 +36,8 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
   access: null,
   events: [],
   eventsDate: null,
+  calendars: [],
+  modes: {},
 
   refresh: () => {
     inFlight ??= (async () => {
@@ -33,8 +49,13 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
           set({ events: [], eventsDate: today });
           return;
         }
+        const modes = parseCalendarModes(await repo.getSetting(CALENDAR_MODES_SETTING));
         if (await reconcile(today)) await useAppStore.getState().refreshData();
-        set({ events: await loadDayEvents(today), eventsDate: today });
+        const [events, calendars] = await Promise.all([
+          loadDayEvents(today, modes),
+          cal.listCalendars(),
+        ]);
+        set({ events, eventsDate: today, calendars, modes });
       } catch (err) {
         console.error("Calendar refresh failed", err);
       } finally {
@@ -54,5 +75,16 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       }
       await get().refresh();
     }
+  },
+
+  setCalendarMode: async (calendarId, mode) => {
+    const modes = { ...get().modes };
+    // "busy" is the default; don't store it, so the setting only lists exceptions
+    if (mode === "busy") delete modes[calendarId];
+    else modes[calendarId] = mode;
+    set({ modes });
+    await repo.setSetting(CALENDAR_MODES_SETTING, JSON.stringify(modes));
+    const today = useTimeStore.getState().getCurrentDate();
+    set({ events: await loadDayEvents(today, modes), eventsDate: today });
   },
 }));

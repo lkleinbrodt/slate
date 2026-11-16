@@ -17,7 +17,7 @@ import {
   toMinutes,
   workBlock,
 } from "@/lib/logic/schedule";
-import { loadDayEvents, reconcile, syncTask } from "@/lib/services/calendarSync";
+import { loadDayEvents, parseCalendarModes, reconcile, syncTask } from "@/lib/services/calendarSync";
 import { processRollover, storage } from "@/lib/logic/rollover";
 import { useAppStore } from "@/lib/stores/appStore";
 import { useTimeStore } from "@/lib/stores/timeStore";
@@ -45,6 +45,7 @@ export async function run() {
   await testRolloverDropsSlotAndReconcileRemovesEvent();
   await testNoAccessKeepsSlotsInSlate();
   await testDayEventsExcludeSlateCalendar();
+  await testCalendarModes();
 }
 
 function setToday(date: string) {
@@ -355,4 +356,33 @@ async function testDayEventsExcludeSlateCalendar() {
       ["Late show", h("23:00"), 24 * 60],
     ]
   );
+}
+
+// A "Just to see" calendar (someone else's schedule) shows but doesn't block time;
+// a hidden one is left out; calendars not listed block time as before
+async function testCalendarModes() {
+  setToday(SATURDAY);
+  const at = (hhmm: string) => dateAt(SATURDAY, h(hhmm));
+  const ev = (id: string, calendarId: string, from: string, to: string) => ({
+    id, title: id, allDay: false, calendarId, calendarTitle: calendarId, color: "#5B7FA8",
+    startDate: at(from), endDate: at(to),
+  });
+  fake.others = [
+    ev("dentist", "home", "10:00", "11:00"),
+    ev("class", "erin", "12:00", "15:00"),
+    ev("secret", "old", "16:00", "17:00"),
+  ];
+  const modes = parseCalendarModes(JSON.stringify({ erin: "visible", old: "hidden" }));
+  const events = await loadDayEvents(SATURDAY, modes);
+  assert.deepStrictEqual(events.map((e) => [e.title, e.busy]), [["dentist", true], ["class", false]]);
+
+  const busy = events.filter((e) => e.busy);
+  const gaps = freeGaps(busy, DEFAULT_SCHEDULE, workBlock(SATURDAY, DEFAULT_SCHEDULE));
+  assert.deepStrictEqual(gaps, [
+    { start: h("08:00"), end: h("10:00") },
+    { start: h("11:00"), end: h("22:00") },
+  ], "Erin's class time stays free to plan");
+
+  assert.deepStrictEqual(parseCalendarModes(null), {});
+  assert.deepStrictEqual(parseCalendarModes("not json"), {});
 }
