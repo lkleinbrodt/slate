@@ -169,3 +169,72 @@ export function planOrder(
   }
   return a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0;
 }
+
+export interface PlacedSlot {
+  id: string;
+  start: number;
+  end: number;
+}
+
+/**
+ * Drops one planned task at `start` and pushes the others out of its way, like dragging
+ * an event in a calendar app. The moved task goes exactly where it's dropped (anywhere,
+ * like a time picked by hand). Every other task keeps its place unless it now overlaps
+ * the moved task or one pushed before it; then it slides to the earliest free time at or
+ * after its old start, around events, work and the plannable window (`gaps`: the free
+ * gaps with none of the planned tasks in them). Tasks are pushed in their old order, so
+ * dropping 5–6 on 4–5 swaps the two. A task pushed past the end of the day comes back
+ * in `unplaced`.
+ *
+ * Always pass the arrangement from before the drag started, so moving back undoes pushes.
+ */
+export function reflowPlan(
+  plan: PlacedSlot[],
+  movedId: string,
+  start: number,
+  gaps: Interval[]
+): { placed: PlacedSlot[]; unplaced: string[] } {
+  const moved = plan.find((p) => p.id === movedId);
+  if (!moved) return { placed: plan, unplaced: [] };
+  const dropped = { id: movedId, start, end: start + (moved.end - moved.start) };
+  const taken: Interval[] = [dropped];
+  const placed: PlacedSlot[] = [dropped];
+  const unplaced: string[] = [];
+  const overlaps = (a: Interval) => taken.some((b) => a.start < b.end && b.start < a.end);
+
+  const others = plan.filter((p) => p.id !== movedId).sort((a, b) => a.start - b.start);
+  for (const p of others) {
+    if (!overlaps(p)) {
+      placed.push(p);
+      taken.push(p);
+      continue;
+    }
+    const length = p.end - p.start;
+    const at = subtract(gaps, taken)
+      .map((g) => ({ at: roundUp(Math.max(g.start, p.start)), end: g.end }))
+      .find((g) => g.at + length <= g.end)?.at;
+    if (at === undefined) {
+      unplaced.push(p.id);
+      continue;
+    }
+    const slot = { id: p.id, start: at, end: at + length };
+    placed.push(slot);
+    taken.push(slot);
+  }
+  return { placed: placed.sort((a, b) => a.start - b.start), unplaced };
+}
+
+/** `gaps` with every `busy` interval cut out */
+function subtract(gaps: Interval[], busy: Interval[]): Interval[] {
+  let out = gaps.map((g) => ({ ...g }));
+  for (const b of busy) {
+    out = out.flatMap((g) => {
+      if (b.end <= g.start || b.start >= g.end) return [g];
+      const parts: Interval[] = [];
+      if (b.start > g.start) parts.push({ start: g.start, end: b.start });
+      if (b.end < g.end) parts.push({ start: b.end, end: g.end });
+      return parts;
+    });
+  }
+  return out.filter((g) => g.end > g.start);
+}

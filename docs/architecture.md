@@ -112,7 +112,15 @@ back to the Slate, editing the date, and rollover (carry-over and the due pull-i
 - **Adding a task for today** offers "How long" and "When today" (next free slot by
   default, one in a later gap, pick a time, or no time). "Set a time" in a task's menu
   opens the same choices. "Fit these in" places every task without a slot, overdue and
-  due first then oldest, each in the earliest gap that fits, for review.
+  due first then oldest, each in the earliest gap that fits, for review on a timeline
+  (`components/schedule/PlanTimeline.tsx`). Hold a task and drag it to move it (quarter
+  hours, anywhere up to midnight; the timeline scrolls at its edges and grows as you go).
+  The others are pushed out of its way as you drag (`reflowPlan`): any that now overlap
+  slide to the next free time at or after their old start, in order, so dropping 5–6 on
+  4–5 swaps them; one pushed past the plannable window drops to "Doesn't fit today".
+  Previews always start from the arrangement before the drag, so dragging back undoes
+  pushes. Plan blocks render in a fixed order: moving a view among its siblings
+  mid-drag cancels the touch.
 - **Calendar** (`lib/services/calendarSync.ts`): iOS Calendar is the record of events;
   Slate keeps no copy. It reads every calendar except its own for Today's timeline and
   writes slots into a "Slate" calendar it creates (on the default calendar's account,

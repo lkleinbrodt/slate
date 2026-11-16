@@ -12,6 +12,7 @@ import {
   freeGaps,
   minutesOnDay,
   planTasks,
+  reflowPlan,
   suggestSlots,
   toMinutes,
   workBlock,
@@ -33,6 +34,9 @@ export async function run() {
   testGapsStartAfterNow();
   testSuggestionsComeFromDifferentGaps();
   testPlanFillsGapsInOrder();
+  testReflowPushesLaterTasksDown();
+  testReflowSwapsAndUndoes();
+  testReflowGoesAroundEventsAndOutOfDay();
   testWallClockConversions();
   await testScheduleWritesEvent();
   await testMovingDayClearsSlotAndEvent();
@@ -114,6 +118,70 @@ function testPlanFillsGapsInOrder() {
     { id: "b", start: h("15:00"), end: h("15:30") },
     { id: "c", start: h("08:45"), end: h("09:00") },
   ], "d fits nowhere and is left out");
+}
+
+function testReflowPushesLaterTasksDown() {
+  const gaps = [{ start: h("15:00"), end: h("22:00") }];
+  const plan = [
+    { id: "a", start: h("15:00"), end: h("16:00") },
+    { id: "b", start: h("16:00"), end: h("17:00") },
+    { id: "c", start: h("17:00"), end: h("18:00") },
+    { id: "d", start: h("20:00"), end: h("20:30") },
+  ];
+  // a dropped on 17:00: c is pushed to 18–19, b (no overlap now) stays, d is clear
+  const { placed, unplaced } = reflowPlan(plan, "a", h("17:00"), gaps);
+  assert.deepStrictEqual(placed, [
+    { id: "b", start: h("16:00"), end: h("17:00") },
+    { id: "a", start: h("17:00"), end: h("18:00") },
+    { id: "c", start: h("18:00"), end: h("19:00") },
+    { id: "d", start: h("20:00"), end: h("20:30") },
+  ]);
+  assert.deepStrictEqual(unplaced, []);
+
+  // Dropped on 16:30, half over b and c: both slide after it, in order, and push d
+  const cascade = reflowPlan(plan, "a", h("16:30"), gaps).placed;
+  assert.deepStrictEqual(cascade.map((p) => [p.id, p.start]), [
+    ["a", h("16:30")],
+    ["b", h("17:30")],
+    ["c", h("18:30")],
+    ["d", h("20:00")],
+  ]);
+}
+
+function testReflowSwapsAndUndoes() {
+  const gaps = [{ start: h("08:00"), end: h("22:00") }];
+  const plan = [
+    { id: "a", start: h("16:00"), end: h("17:00") },
+    { id: "b", start: h("17:00"), end: h("18:00") },
+  ];
+  // b dropped on a's place: a takes b's old place
+  assert.deepStrictEqual(reflowPlan(plan, "b", h("16:00"), gaps).placed, [
+    { id: "b", start: h("16:00"), end: h("17:00") },
+    { id: "a", start: h("17:00"), end: h("18:00") },
+  ]);
+  // Back where it started: nothing moved
+  assert.deepStrictEqual(reflowPlan(plan, "b", h("17:00"), gaps).placed, plan);
+  // Anywhere, even outside the gaps (like a time picked by hand)
+  assert.strictEqual(reflowPlan(plan, "b", h("06:00"), gaps).placed[0].start, h("06:00"));
+}
+
+function testReflowGoesAroundEventsAndOutOfDay() {
+  // An event 18:00–19:00 and the window ending at 21:00
+  const gaps = [
+    { start: h("16:00"), end: h("18:00") },
+    { start: h("19:00"), end: h("21:00") },
+  ];
+  const plan = [
+    { id: "a", start: h("16:00"), end: h("16:30") },
+    { id: "b", start: h("17:00"), end: h("18:00") },
+    { id: "c", start: h("19:00"), end: h("21:00") },
+  ];
+  const { placed, unplaced } = reflowPlan(plan, "a", h("17:15"), gaps);
+  assert.deepStrictEqual(placed.map((p) => [p.id, p.start]), [
+    ["a", h("17:15")],
+    ["b", h("19:00")],
+  ], "b skips the event; c can't fit before the window ends");
+  assert.deepStrictEqual(unplaced, ["c"]);
 }
 
 function testWallClockConversions() {
