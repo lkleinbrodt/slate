@@ -15,7 +15,8 @@ A personal, local-first iOS to-do + habit app (Expo / React Native, SQLite on de
   - yesterday is written to history
 - From Today you can **snooze** a task to tomorrow or **send it back to the Slate**.
 - **Time slots** – a task for today can get a start time and a length. Adding one to
-  Today puts it in the next free time; "Fit these in" places all the rest. Slate plans
+  Today puts it in the next free time; "Fit these in" places all the rest, on a timeline
+  where you can hold and drag a task to move it (the others get pushed out of its way). Slate plans
   only inside your plannable hours (8 AM–10 PM), never in the weekday work block (9–3;
   tap it on Today to take the day off), and around your calendar's events. Slots show up
   as events in a "Slate" calendar, with an alert when it's time to start; moving or

@@ -6,7 +6,7 @@ import { PressableScale } from "@/components/ui/PressableScale";
 import { Radius } from "@/constants/theme";
 import { ThemedText } from "@/components/themed-text";
 import { TimePickerModal } from "@/components/TimePickerModal";
-import { formatTime } from "@/components/TimePickerButton";
+import { formatRange } from "@/components/TimePickerButton";
 import {
   DURATION_CHOICES,
   type Interval,
@@ -34,14 +34,6 @@ export function resolveSlot(choice: SlotChoice, suggestions: Interval[]): string
 export function useSuggestions(duration: number, taskId?: string) {
   const { gapsFor } = useDaySchedule();
   return suggestSlots(duration, gapsFor(taskId ? [taskId] : []));
-}
-
-/** "3:10 – 4:40 PM" */
-export function formatRange(start: number, end: number) {
-  const a = formatTime(toHHmm(start));
-  const b = formatTime(toHHmm(Math.min(end, 24 * 60 - 1)));
-  // Drop the first AM/PM when both match
-  return a.slice(-2) === b.slice(-2) ? `${a.slice(0, -3)} – ${b}` : `${a} – ${b}`;
 }
 
 interface ScheduleOptionsProps {

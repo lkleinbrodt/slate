@@ -4,6 +4,7 @@ import { Radius } from "@/constants/theme";
 import React from "react";
 import { StyleSheet } from "react-native";
 import { ThemedText } from "./themed-text";
+import { toHHmm } from "@/lib/logic/schedule";
 import { useTheme } from "@/hooks/use-theme";
 
 /** "07:30" -> "7:30 AM" */
@@ -12,6 +13,14 @@ export function formatTime(time: string) {
   const suffix = h < 12 ? "AM" : "PM";
   const hour = h % 12 === 0 ? 12 : h % 12;
   return `${hour}:${String(m).padStart(2, "0")} ${suffix}`;
+}
+
+/** "3:10 – 4:40 PM" */
+export function formatRange(start: number, end: number) {
+  const a = formatTime(toHHmm(start));
+  const b = formatTime(toHHmm(Math.min(end, 24 * 60 - 1)));
+  // Drop the first AM/PM when both match
+  return a.slice(-2) === b.slice(-2) ? `${a.slice(0, -3)} – ${b}` : `${a} – ${b}`;
 }
 
 interface TimePickerButtonProps {
