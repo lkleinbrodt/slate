@@ -75,7 +75,23 @@ const LIFT_MS = 220;
 const EDGE = 56;
 const MAX_SPEED = 9;
 
-const yOf = (minute: number, rangeStart: number) => PAD + (minute - rangeStart) * PX;
+// Runs on the UI thread too (drag styles and handlers), so it must be a worklet: calling a
+// plain function there crashes a release build the moment a task is lifted
+const yOf = (minute: number, rangeStart: number) => {
+  "worklet";
+  return PAD + (minute - rangeStart) * PX;
+};
+
+// Haptics run on the JS thread; worklets hand off to these rather than capturing the module
+const hapticTick = () => {
+  Haptics.selectionAsync();
+};
+const hapticLift = () => {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+};
+const hapticDrop = () => {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+};
 const heightOf = (b: { start: number; end: number }) => Math.max((b.end - b.start) * PX - 2, MIN_HEIGHT);
 
 /**
@@ -272,7 +288,7 @@ function DraggableBlock({
     (now, before) => {
       if (now !== null && before !== null && before !== undefined && now !== before) {
         scheduleOnRN(onPreview, now);
-        scheduleOnRN(Haptics.selectionAsync);
+        scheduleOnRN(hapticTick);
       }
     }
   );
@@ -288,7 +304,7 @@ function DraggableBlock({
       held.value = true;
       dragActive.value = true;
       scheduleOnRN(onLift);
-      scheduleOnRN(Haptics.impactAsync, Haptics.ImpactFeedbackStyle.Medium);
+      scheduleOnRN(hapticLift);
     })
     .onUpdate((e) => {
       dy.value = e.translationY;
@@ -302,7 +318,7 @@ function DraggableBlock({
       held.value = false;
       dragActive.value = false;
       scheduleOnRN(onDrop, start);
-      scheduleOnRN(Haptics.impactAsync, Haptics.ImpactFeedbackStyle.Light);
+      scheduleOnRN(hapticDrop);
     });
 
   const style = useAnimatedStyle(() => ({
