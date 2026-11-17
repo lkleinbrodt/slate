@@ -2,6 +2,8 @@ import * as repo from "@/lib/logic/repo";
 
 import { calculateBaseStreaks, displayStreak } from "@/lib/logic/streaks";
 
+import { type Interval, type ScheduleSettings, freeGaps, taskInterval } from "@/lib/logic/schedule";
+
 import { addDays } from "@/lib/logic/dates";
 
 // What a plan-the-day call knows about the day, read once when the call starts. The same
@@ -25,6 +27,32 @@ export interface PlanTask {
   done: boolean;
   /** On Today because it was planned for yesterday and not finished. */
   carriedOver: boolean;
+  /** Its slot on today, HH:mm, or null. Optional: snapshots saved before time slots lack it. */
+  startTime?: string | null;
+  /** How long it takes, in minutes, or null (not set). */
+  durationMin?: number | null;
+}
+
+/** Something on his calendar today, in minutes after midnight. */
+export interface PlanEvent {
+  title: string;
+  start: number;
+  end: number;
+  /** false for a "Just to see" calendar: shown, but free to plan over */
+  busy: boolean;
+}
+
+/** Today's shape for times (lib/logic/schedule.ts), read when the call starts. */
+export interface PlanSchedule {
+  /** Minutes after midnight when the call started */
+  now: number;
+  /** The work block, or null on a day without one */
+  work: Interval | null;
+  /** Timed events from his calendars (not Slate's own), busy or just to see */
+  events: PlanEvent[];
+  /** Where Slate would put things: the plannable window minus work, busy events, today's
+   * slots and the time already past */
+  free: Interval[];
 }
 
 /** An open task whose due date has passed. Named in the overview, so it's kept whole. */
@@ -56,9 +84,19 @@ export interface DaySnapshot {
   /** Titles of the most urgent unplanned tasks, up to MAX_UNPLANNED_SHOWN. */
   unplannedTitles: string[];
   habits: PlanHabit[];
+  /** Missing when the call couldn't read it, and on snapshots saved before time slots. */
+  schedule?: PlanSchedule;
 }
 
-export async function buildDaySnapshot(date: string): Promise<DaySnapshot> {
+/** What the snapshot needs beyond the database to describe today's times. */
+export interface DayShape {
+  now: number;
+  settings: ScheduleSettings;
+  work: Interval | null;
+  events: { title: string; start: number; end: number; allDay: boolean; busy: boolean }[];
+}
+
+export async function buildDaySnapshot(date: string, shape?: DayShape): Promise<DaySnapshot> {
   const yesterday = addDays(date, -1);
   const [todayTasks, openTasks, activeHabits, completions, yesterdayTasks] = await Promise.all([
     repo.listTodayTasks(date),
@@ -88,13 +126,15 @@ export async function buildDaySnapshot(date: string): Promise<DaySnapshot> {
     dueDate: t.dueDate,
     done: t.status === "done",
     carriedOver: t.status === "open" && unfinishedYesterday.has(t.id),
+    startTime: t.startTime,
+    durationMin: t.durationMin,
   });
   const done = new Set(completions.map((c) => c.habitId));
 
   return {
     date,
-    // Open first, so the list reads as what's left
-    today: [...todayTasks].sort((a, b) => Number(a.status === "done") - Number(b.status === "done")).map(toPlanTask),
+    // Open first, so the list reads as what's left; timed ones in time order, then the rest
+    today: [...todayTasks].sort(byTodayOrder).map(toPlanTask),
     slate: slate.map(toPlanTask),
     slateOmitted: rest.length - slate.length,
     overdue: openTasks
@@ -108,7 +148,27 @@ export async function buildDaySnapshot(date: string): Promise<DaySnapshot> {
       doneToday: done.has(h.id),
       streak: displayStreak(streaks[h.id] ?? 0, done.has(h.id)),
     })),
+    ...(shape ? { schedule: daySchedule(shape, todayTasks) } : {}),
   };
+}
+
+function daySchedule(shape: DayShape, todayTasks: repo.Task[]): PlanSchedule {
+  const events = shape.events
+    .filter((e) => !e.allDay)
+    .map((e) => ({ title: e.title, start: e.start, end: e.end, busy: e.busy }));
+  const busy: Interval[] = events.filter((e) => e.busy);
+  for (const t of todayTasks) {
+    const slot = t.status === "open" ? taskInterval(t) : null;
+    if (slot) busy.push(slot);
+  }
+  return { now: shape.now, work: shape.work, events, free: freeGaps(busy, shape.settings, shape.work, shape.now) };
+}
+
+function byTodayOrder(a: repo.Task, b: repo.Task): number {
+  return (
+    Number(a.status === "done") - Number(b.status === "done") ||
+    compareDates(a.startTime, b.startTime)
+  );
 }
 
 /** Due soonest first (overdue at the top), then planned soonest, then newest. */

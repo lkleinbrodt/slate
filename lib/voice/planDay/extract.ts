@@ -1,4 +1,5 @@
 import { type DaySnapshot, type PlanTask, tasksByRef } from "./snapshot";
+import { DEFAULT_DURATION, toHHmm, toMinutes } from "@/lib/logic/schedule";
 import { USER_NAME } from "./instructions";
 
 import type { CallMessage } from "@/lib/voice/threepio";
@@ -19,7 +20,19 @@ export type Change = { reason: string } & (
   | { kind: "set_due"; taskId: string; title: string; due: string | null }
   | { kind: "complete"; taskId: string; title: string }
   | { kind: "delete"; taskId: string; title: string }
-  | { kind: "create"; title: string; notes: string | null; due: string | null; today: boolean }
+  /** A time on today (which puts the task on today) and/or how long it takes; at least one is set */
+  | { kind: "set_time"; taskId: string; title: string; start: string | null; duration: number | null }
+  | { kind: "clear_time"; taskId: string; title: string }
+  | {
+      kind: "create";
+      title: string;
+      notes: string | null;
+      due: string | null;
+      today: boolean;
+      /** HH:mm on today, only with `today`. Optional: proposals saved before times lack them. */
+      start?: string | null;
+      duration?: number | null;
+    }
 );
 
 export interface Proposal {
@@ -36,7 +49,10 @@ export class ExtractionError extends Error {
   }
 }
 
-const KINDS = ["plan_today", "send_to_slate", "snooze", "set_due", "complete", "delete", "create"] as const;
+const KINDS = ["plan_today", "send_to_slate", "snooze", "set_due", "complete", "delete", "set_time", "clear_time", "create"] as const;
+
+/** Longest length a task can be given, in minutes */
+const MAX_DURATION = 12 * 60;
 
 /** One flat shape for every kind (unused fields null): simpler for models than a union. */
 export const PROPOSAL_SCHEMA = {
@@ -50,7 +66,7 @@ export const PROPOSAL_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["kind", "task", "title", "notes", "due", "until", "today", "reason"],
+        required: ["kind", "task", "title", "notes", "due", "until", "today", "start", "duration", "reason"],
         properties: {
           kind: { type: "string", enum: [...KINDS] },
           task: { type: ["string", "null"], description: "The ref of an existing task (t1, t2, …); null for create." },
@@ -59,6 +75,8 @@ export const PROPOSAL_SCHEMA = {
           due: { type: ["string", "null"], description: "create and set_due: due date YYYY-MM-DD, or null." },
           until: { type: ["string", "null"], description: "snooze only: the day to plan it for, YYYY-MM-DD." },
           today: { type: ["boolean", "null"], description: "create only: whether it goes on today." },
+          start: { type: ["string", "null"], description: "set_time and create: the time today he'll do it, HH:mm 24-hour, or null." },
+          duration: { type: ["integer", "null"], description: "set_time and create: how long it takes in minutes, or null." },
           reason: { type: "string", description: "A few words on why, from what he said." },
         },
       },
@@ -80,14 +98,20 @@ export function buildExtractionPrompt(snapshot: DaySnapshot, transcript: CallMes
     "- set_due: set or clear an existing task's due date.",
     "- complete: he says it's already done.",
     "- delete: he's not doing it at all, or it no longer matters. Only when he says so plainly; putting it off is a snooze or send_to_slate.",
-    "- create: a new task he mentioned (title, notes, due, today). Never create a task that's already in the list; use its ref.",
+    "- set_time: when today he'll do a task (start) and/or how long it takes (duration). A start puts the task on today, so it needs no plan_today. Leave start null if he only said how long, and duration null if he only said when.",
+    "- clear_time: take the set time off a task on today, keeping it on today.",
+    "- create: a new task he mentioned (title, notes, due, today, and start and duration if he gave them; a start only goes with today: true). Never create a task that's already in the list; use its ref.",
     "",
     `Refer to existing tasks by ref (t1, t2, …) only. Dates are YYYY-MM-DD; today is ${date} (${dayjs(date).format("dddd")}). Work out days like "Friday" or "next week" from that. Titles are short and plain, like his own. Habits aren't tasks: leave them out.`,
+    "",
+    `Times are HH:mm, 24-hour, always today. He means waking hours, later than the time the call started unless he says otherwise: "at 3" is 15:00; "at 9" is 09:00 in the morning but 21:00 once 9 AM has passed. If he places a task by something on his calendar ("right after the dentist"), use that event's end time. Durations are whole minutes: "an hour and a half" is 90. Only set a time or length he gave or agreed to. If he said "from 2 to 4", that's start 14:00, duration 120.`,
   ].join("\n");
 
   const describe = (t: PlanTask) => {
     const bits = [
       t.done ? "done today" : null,
+      t.startTime ? `at ${t.startTime}` : null,
+      t.durationMin ? `takes ${t.durationMin} min` : null,
       t.dueDate ? `due ${t.dueDate}` : null,
       t.doDate && t.doDate > date ? `planned for ${t.doDate}` : null,
       t.carriedOver ? "carried over from yesterday" : null,
@@ -99,9 +123,23 @@ export function buildExtractionPrompt(snapshot: DaySnapshot, transcript: CallMes
     .map((m) => `${m.role === "user" ? USER_NAME : "Assistant"}: ${m.text}${m.interrupted ? " [cut off]" : ""}`)
     .join("\n");
 
+  const schedule = snapshot.schedule;
+  const range = (a: number, b: number) => `${toHHmm(a)}-${toHHmm(Math.min(b, 24 * 60))}`;
+  const day = schedule
+    ? [
+        `When the call started it was ${toHHmm(schedule.now)}.`,
+        "His calendar today:",
+        ...(schedule.work ? [`${range(schedule.work.start, schedule.work.end)} work`] : []),
+        ...schedule.events.map((e) => `${range(e.start, e.end)} ${e.title}`),
+        ...(schedule.work || schedule.events.length ? [] : ["(nothing)"]),
+        "",
+      ]
+    : [];
+
   const user = [
     `Today: ${dayjs(date).format("dddd, MMMM D")} (${date})`,
     "",
+    ...day,
     "On today:",
     lines(snapshot.today),
     "",
@@ -175,7 +213,21 @@ export function validateProposal(raw: unknown, snapshot: DaySnapshot): Proposal 
         due = null;
       }
       const notes = typeof c.notes === "string" && c.notes.trim() ? c.notes.trim() : null;
-      keep(`new:${normalize(title)}`, { kind: "create", title, notes, due, today: c.today === true, reason });
+      const today = c.today === true;
+      let duration = parseDuration(c.duration);
+      if (duration === undefined) {
+        dropped.push({ change: c, why: `length ${String(c.duration)} isn't a sensible number of minutes; kept the task without it` });
+        duration = null;
+      }
+      let start = parseStart(c.start);
+      if (start && !today) {
+        dropped.push({ change: c, why: "a start time needs it on today; kept the task without it" });
+        start = null;
+      } else if (start === undefined || (start && !fitsDay(start, duration))) {
+        dropped.push({ change: c, why: `start ${String(c.start)} isn't a time today; kept the task without it` });
+        start = null;
+      }
+      keep(`new:${normalize(title)}`, { kind: "create", title, notes, due, today, start, duration, reason });
       return null;
     }
 
@@ -218,6 +270,24 @@ export function validateProposal(raw: unknown, snapshot: DaySnapshot): Proposal 
         keep(`${task.ref}:due`, { kind: "set_due", ...base, due });
         return null;
       }
+      case "set_time": {
+        if (task.done) return "already done";
+        const start = parseStart(c.start);
+        const duration = parseDuration(c.duration);
+        if (start === undefined) return `start ${String(c.start)} isn't a time`;
+        if (duration === undefined) return `length ${String(c.duration)} isn't a sensible number of minutes`;
+        if (start === null && duration === null) return "no time or length";
+        if (start && !fitsDay(start, duration ?? task.durationMin ?? null)) return `${start} runs past midnight`;
+        const sameStart = start === null || (scheduled && start === task.startTime);
+        if (sameStart && (duration === null || duration === task.durationMin)) return "time unchanged";
+        keep(`${task.ref}:time`, { kind: "set_time", ...base, start, duration });
+        return null;
+      }
+      case "clear_time":
+        if (task.done) return "already done";
+        if (!scheduled || !task.startTime) return "has no time today";
+        keep(`${task.ref}:time`, { kind: "clear_time", ...base });
+        return null;
     }
     return "unknown kind";
   }
@@ -226,7 +296,7 @@ export function validateProposal(raw: unknown, snapshot: DaySnapshot): Proposal 
   for (const [key, change] of kept) {
     if (change.kind === "complete" || change.kind === "delete") {
       const ref = key.split(":")[0];
-      for (const other of [`${ref}:schedule`, `${ref}:due`]) {
+      for (const other of [`${ref}:schedule`, `${ref}:due`, `${ref}:time`]) {
         const c = kept.get(other);
         if (c) {
           kept.delete(other);
@@ -236,7 +306,50 @@ export function validateProposal(raw: unknown, snapshot: DaySnapshot): Proposal 
     }
   }
 
+  // Times belong to today: they don't mix with moving a task off it
+  for (const [key, change] of kept) {
+    if (change.kind !== "set_time" && change.kind !== "clear_time") continue;
+    const ref = key.split(":")[0];
+    const move = kept.get(`${ref}:schedule`);
+    if (move?.kind === "plan_today" && change.kind === "set_time" && change.start) {
+      // The time puts it on today; one line in the review is enough
+      kept.delete(`${ref}:schedule`);
+      dropped.push({ change: move, why: "the time puts it on today" });
+    } else if (move && move.kind !== "plan_today") {
+      if (change.kind === "set_time" && change.duration !== null) {
+        // The length still holds wherever it goes
+        kept.set(key, { ...change, start: null });
+        if (change.start) dropped.push({ change, why: "it's leaving today; kept its length, not its time" });
+      } else {
+        kept.delete(key);
+        dropped.push({ change, why: "it's leaving today" });
+      }
+    }
+  }
+
   return { summary: raw.summary.trim(), changes: [...kept.values()], dropped };
+}
+
+/** HH:mm, null for none, undefined for something that isn't a time. "9:30" becomes "09:30". */
+function parseStart(v: unknown): string | null | undefined {
+  if (v === null || v === undefined) return null;
+  if (typeof v !== "string") return undefined;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(v.trim());
+  if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) return undefined;
+  return `${m[1].padStart(2, "0")}:${m[2]}`;
+}
+
+/** Whole minutes, null for none, undefined for something that isn't a sensible length. */
+function parseDuration(v: unknown): number | null | undefined {
+  if (v === null || v === undefined) return null;
+  if (typeof v !== "number" || !Number.isFinite(v)) return undefined;
+  const minutes = Math.round(v);
+  return minutes >= 5 && minutes <= MAX_DURATION ? minutes : undefined;
+}
+
+/** Whether a slot starting at `start` ends by midnight. */
+function fitsDay(start: string, duration: number | null): boolean {
+  return toMinutes(start) + (duration ?? DEFAULT_DURATION) <= 24 * 60;
 }
 
 function isObject(v: unknown): v is Raw {
