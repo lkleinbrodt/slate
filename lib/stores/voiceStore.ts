@@ -5,10 +5,12 @@ import { type CallEvents, VoiceCall } from "@/lib/voice/call";
 import { type CallMessage, type SessionRequest, type ThreepioClient, ThreepioError, type VoiceProvider, threepioClient } from "@/lib/voice/threepio";
 import { type Change, type Proposal, extractPlan } from "@/lib/voice/planDay/extract";
 import { GREETING_PROMPT, buildInstructions, endsCall } from "@/lib/voice/planDay/instructions";
-import { type DaySnapshot, buildDaySnapshot } from "@/lib/voice/planDay/snapshot";
+import { type DayShape, type DaySnapshot, buildDaySnapshot } from "@/lib/voice/planDay/snapshot";
+import { minutesOnDay, workBlock } from "@/lib/logic/schedule";
 
 import { create } from "zustand";
 import { getOpenRouterKey } from "@/lib/voice/secrets";
+import { useCalendarStore } from "./calendarStore";
 import { useSettingsStore } from "./settings";
 import { useTimeStore } from "./timeStore";
 
@@ -59,6 +61,21 @@ export interface VoiceDeps {
   extract: typeof extractPlan;
   sleep: (ms: number) => Promise<void>;
   now: () => number;
+  /** Today's times for the call: now, the work block, calendar events. */
+  dayShape: (date: string) => Promise<DayShape>;
+}
+
+async function readDayShape(date: string): Promise<DayShape> {
+  // Today's events are usually loaded already (Today's open, each foreground)
+  if (useCalendarStore.getState().eventsDate !== date) await useCalendarStore.getState().refresh();
+  const { events, eventsDate } = useCalendarStore.getState();
+  const { schedule, workDayOff } = useSettingsStore.getState();
+  return {
+    now: minutesOnDay(new Date(), date),
+    settings: schedule,
+    work: workBlock(date, schedule, workDayOff === date),
+    events: eventsDate === date ? events : [],
+  };
 }
 
 const defaultDeps: VoiceDeps = {
@@ -68,6 +85,7 @@ const defaultDeps: VoiceDeps = {
   extract: extractPlan,
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   now: () => Date.now(),
+  dayShape: readDayShape,
 };
 
 let deps = defaultDeps;
@@ -221,7 +239,12 @@ export const useVoiceStore = create<VoiceState>((set, get) => {
       let snapshot: DaySnapshot;
       let row: repo.VoiceSession;
       try {
-        snapshot = await buildDaySnapshot(date);
+        // Without the calendar the call still works, just without times
+        const shape = await deps.dayShape(date).catch((e) => {
+          console.warn("Voice: couldn't read today's schedule", e);
+          return undefined;
+        });
+        snapshot = await buildDaySnapshot(date, shape);
         row = await repo.createVoiceSession({ mode: "plan_day", date, character, snapshot });
       } catch (e) {
         // No session to hold the error, so the call screen shows this one

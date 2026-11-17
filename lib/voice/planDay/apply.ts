@@ -13,8 +13,11 @@ export interface ApplyResult {
 }
 
 // New tasks first, then done or deleted, then where tasks go, then due dates (a due date of today or
-// earlier pulls a task onto Today, as it does when edited by hand).
-const ORDER: Change["kind"][] = ["create", "complete", "delete", "plan_today", "send_to_slate", "snooze", "set_due"];
+// earlier pulls a task onto Today, as it does when edited by hand), then times, last because moving
+// a task's day clears its time.
+const ORDER: Change["kind"][] = [
+  "create", "complete", "delete", "plan_today", "send_to_slate", "snooze", "set_due", "set_time", "clear_time",
+];
 
 export async function applyChanges(changes: Change[]): Promise<ApplyResult> {
   const store = useAppStore.getState();
@@ -30,6 +33,8 @@ export async function applyChanges(changes: Change[]): Promise<ApplyResult> {
           notes: change.notes ?? undefined,
           dueDate: change.due ?? undefined,
           scheduledFor: change.today ? today : undefined,
+          startTime: change.today ? (change.start ?? undefined) : undefined,
+          durationMin: change.duration ?? undefined,
         });
       } else {
         const task = await repo.getTask(change.taskId);
@@ -55,6 +60,18 @@ export async function applyChanges(changes: Change[]): Promise<ApplyResult> {
             break;
           case "set_due":
             await store.updateTask(task.id, { dueDate: change.due });
+            break;
+          case "set_time": {
+            const today = store.getTodayDate();
+            await store.updateTask(task.id, {
+              // A time is on today, so it brings the task onto today
+              ...(change.start ? { scheduledFor: today, startTime: change.start } : {}),
+              ...(change.duration !== null ? { durationMin: change.duration } : {}),
+            });
+            break;
+          }
+          case "clear_time":
+            await store.scheduleTask(task.id, null);
             break;
         }
       }

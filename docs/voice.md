@@ -2,7 +2,7 @@
 
 Plan: 2026-10-31. Steps 1–3 are built and work on the phone. **Step 4 is done** (JS,
 2026-10-31; see "Step 4: built" at the end): a real call planned the day on the phone.
-**Step 5 (tune) is next.** A second way to use Slate: talk it through with a character
+**Step 5 (tune) is next; step 6 (times on the calendar) is built.** A second way to use Slate: talk it through with a character
 instead of tapping. The first, and for now only, voice mode is **plan the day**.
 
 ## The idea
@@ -10,7 +10,7 @@ instead of tapping. The first, and for now only, voice mode is **plan the day**.
 Each morning Landon picks tasks from the Slate for Today. With voice, he calls a character
 (Elle, Jarvis, …) for a few minutes and talks the day through. When he hangs up, Slate turns
 the conversation into proposed changes, he reviews them, and Slate applies the ones he keeps.
-Later, the same call also plans his calendar.
+The same call can also put times on today's tasks, which land on his calendar.
 
 **Slate owns the outcome; Threepio owns the voice.** Threepio (`~/Projects/threepio`, a
 service on chewy, tailnet only) runs the conversation: speech recognition, the LLM, the
@@ -80,7 +80,11 @@ type Change = { reason: string } & (            // reason: a short why, shown in
   | { kind: "plan_today"; task: Ref }           // do date → today
   | { kind: "send_to_slate"; task: Ref }        // clear the do date
   | { kind: "snooze"; task: Ref; until: Day }   // do date → a later day
-  | { kind: "create"; title: string; notes?: string; due?: Day; today: boolean }
+  | { kind: "create"; title: string; notes?: string; due?: Day; today: boolean;
+      start?: HHmm; duration?: Minutes }        // a start only with today
+  | { kind: "set_time"; task: Ref; start: HHmm | null; duration: Minutes | null }
+                                                // a start puts it on today
+  | { kind: "clear_time"; task: Ref }           // stays on today, no set time
   | { kind: "set_due"; task: Ref; due: Day | null }
   | { kind: "complete"; task: Ref }             // he says it's already done
   | { kind: "delete"; task: Ref }               // he's not doing it: archive it
@@ -188,12 +192,9 @@ Each step ends with something that works and is checked.
    2026-10-31 (PRs #24–#27); done the same day: a real call on the phone planned the day.
 5. **Tune.** A few real mornings, then adjust the instructions, the extraction prompt and
    the model from the saved sessions.
-6. **Calendar (last).** Read today's events into the snapshot, add event changes to the
-   proposal, write them to a "Slate" calendar. (The calendar groundwork now exists outside voice: time
-   slots, the "Slate" calendar and today's events, in `lib/services/calendarSync.ts`;
-   see "Time slots and the calendar" in `docs/architecture.md`. What's left here is
-   putting events and slots into the snapshot and slot changes into the proposal.) *Done when* the review shows tasks and
-   calendar blocks together and applying writes both (OTA).
+6. ✅ **Calendar.** Built 2026-11-17 (JS, OTA): see "Times" below. Slots go to the
+   "Slate" calendar through the usual store actions, so the review's time lines and the
+   task lines are one list and Apply writes both.
 
 ## Open questions
 
@@ -328,4 +329,25 @@ Behaviour worth knowing:
   about 3.7 s to plan.
 - Idea, not built: keep talking while the plan is made, and have her say when it's
   ready. That needs Threepio to take a message from the app mid-call.
+
+## Times (step 6)
+
+He can say when he'll do a task and how long it takes ("taxes at 3, about an hour").
+
+- **Snapshot**: each task carries `startTime` / `durationMin`, and `schedule` holds the
+  day's shape when the call starts: `now`, the work block, timed calendar events (busy or
+  "just to see"; all-day ones left out) and the free gaps Slate's own suggestions would
+  use (`freeGaps`, `lib/logic/schedule.ts`). `VoiceDeps.dayShape` reads it (calendar store,
+  schedule settings); if it fails the call starts anyway, without times. Old snapshots
+  have neither field, and everything copes.
+- **Call**: a "His day" section (now, work, events, free stretches, all spoken: "3 to
+  4 PM"); today's tasks show their times. She offers to put times on today's tasks once
+  they're picked, lets him skip it, and flags a clash with an event, work or another slot.
+- **Extraction**: `set_time` (start and/or duration), `clear_time`, and `start` /
+  `duration` on `create`. HH:mm 24-hour; "at 9" after 9 AM means 21:00. Checks: real
+  times, 5 min to 12 h, ending by midnight, not unchanged. A start on a Slate task puts it
+  on today (a matching `plan_today` is folded in); a start on a task being snoozed or sent
+  back is dropped but its length kept; done or deleted drops it.
+- **Apply**: times go last (moving a day clears a slot). `set_time` with a start sets the
+  do date to today too; a length alone just sets `durationMin`.
 

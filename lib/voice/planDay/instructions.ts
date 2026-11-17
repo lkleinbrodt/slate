@@ -1,4 +1,5 @@
-import type { DaySnapshot, PlanHabit, PlanTask } from "./snapshot";
+import type { DaySnapshot, PlanHabit, PlanSchedule, PlanTask } from "./snapshot";
+import { toMinutes } from "@/lib/logic/schedule";
 
 import dayjs from "dayjs";
 
@@ -36,7 +37,9 @@ export function buildInstructions(snapshot: DaySnapshot): string {
       "How to run it:",
       "- Open with the overview below, read out loud as the greeting asks. After that, don't read the lists out again: bring up what matters, like anything overdue, due soon or carried over, and ask.",
       "- When he mentions something new to do, make sure you know whether it's for today and when it's due, if he hasn't said.",
-      "- Help him keep the day realistic. If it's getting long, say so.",
+      "- Tasks on today can have a time and a length, and Slate puts them on his calendar. Once he's picked today's tasks, offer to put times on them: when he'll do each one and roughly how long it takes. Follow his lead; a task with no set time is fine, and so is a length without a time.",
+      "- When he gives a time, check it against his day below. If it clashes with an event, work, or another task's time, say so and let him decide. When he asks when something could go, suggest a free time from the list.",
+      "- Help him keep the day realistic. If it's getting long, or the times don't add up, say so.",
       "- Before he goes, sum up the plan in a sentence or two so he can correct it.",
     ].join("\n"),
     overview(snapshot, openToday),
@@ -46,6 +49,7 @@ export function buildInstructions(snapshot: DaySnapshot): string {
       `- Only after he clearly says yes, say a short goodbye that ends with exactly "${HANG_UP_PHRASE}"`,
       "- Never say those words at any other time, not even if he says goodbye or thanks you: ask first. If he's unsure or adds something, keep going.",
     ].join("\n"),
+    snapshot.schedule ? dayShape(snapshot.schedule) : null,
     list("Already on today", openToday, date) ?? "Nothing is on today yet.",
     list("Done today", doneToday, date),
     list("Due within a week, not on today", due, date),
@@ -65,7 +69,7 @@ function overview(snapshot: DaySnapshot, openToday: PlanTask[]): string {
       ].join("\n")
     : "Overdue: none.";
   const scheduled = openToday.length
-    ? openToday.map((t, i) => `${i + 1}. ${t.title}`).join("\n")
+    ? openToday.map((t, i) => `${i + 1}. ${t.title}${t.startTime ? `, at ${spokenTime(t.startTime)}` : ""}`).join("\n")
     : "Nothing is scheduled for today yet.";
   const more = unplannedCount - unplannedTitles.length;
   const unplanned = unplannedTitles.length
@@ -86,11 +90,29 @@ function list(title: string, tasks: PlanTask[], today: string, omitted = 0): str
 
 function describe(t: PlanTask, today: string): string {
   const parts: string[] = [];
+  if (t.startTime && t.durationMin) {
+    const start = toMinutes(t.startTime);
+    parts.push(`from ${spokenRange(start, start + t.durationMin)}`);
+  } else if (t.startTime) parts.push(`at ${spokenTime(t.startTime)}`);
+  else if (t.durationMin) parts.push(`takes ${spokenDuration(t.durationMin)}, no set time`);
   if (t.dueDate) parts.push(t.dueDate < today ? `overdue, was due ${spokenDay(t.dueDate, today)}` : `due ${spokenDay(t.dueDate, today)}`);
   if (t.doDate && t.doDate > today) parts.push(`planned for ${spokenDay(t.doDate, today)}`);
   if (t.carriedOver) parts.push("carried over from yesterday");
   const notes = t.notes?.trim() ? ` (note: ${t.notes.trim().replace(/\s+/g, " ")})` : "";
   return `${t.title}${parts.length ? `, ${parts.join(", ")}` : ""}${notes}`;
+}
+
+/** His day for times: now, work, calendar, and the free stretches Slate would use. */
+function dayShape(s: PlanSchedule): string {
+  const lines = [`His day (it's ${spokenTime(s.now)} now):`];
+  if (s.work) lines.push(`- Work: ${spokenRange(s.work.start, s.work.end)}. He's at work then.`);
+  for (const e of s.events) {
+    lines.push(`- ${spokenRange(e.start, e.end)}: ${e.title}${e.busy ? "" : " (someone else's, just for reference: he's free then)"}`);
+  }
+  if (!s.work && !s.events.length) lines.push("- Nothing on his calendar.");
+  const free = s.free.map((g) => spokenRange(g.start, g.end));
+  lines.push(free.length ? `Free for tasks: ${free.join(", ")}.` : "No free time left today in the hours Slate plans.");
+  return lines.join("\n");
 }
 
 function habits(items: PlanHabit[]): string | null {
@@ -111,4 +133,34 @@ export function spokenDay(date: string, today: string): string {
   if (days > 1 && days < 7) return dayjs(date).format("dddd");
   if (days < -1 && days > -7) return `last ${dayjs(date).format("dddd")}`;
   return dayjs(date).format("dddd, MMMM D");
+}
+
+/** "3 PM", "3:30 PM", "noon", "midnight", from HH:mm or minutes after midnight. */
+export function spokenTime(time: string | number): string {
+  const minutes = typeof time === "number" ? time : toMinutes(time);
+  const h = Math.floor(minutes / 60) % 24;
+  const m = minutes % 60;
+  if (m === 0 && h === 12) return "noon";
+  if (m === 0 && h === 0) return "midnight";
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}${m ? `:${String(m).padStart(2, "0")}` : ""} ${h < 12 ? "AM" : "PM"}`;
+}
+
+/** "3 to 4 PM", "11 AM to 12:30 PM" */
+export function spokenRange(start: number, end: number): string {
+  const a = spokenTime(start);
+  const b = spokenTime(end);
+  const suffix = (t: string) => t.match(/ (AM|PM)$/)?.[1];
+  // "3 to 4 PM" rather than "3 PM to 4 PM"
+  return suffix(a) && suffix(a) === suffix(b) ? `${a.replace(/ (AM|PM)$/, "")} to ${b}` : `${a} to ${b}`;
+}
+
+/** "45 minutes", "an hour", "1 hour 30 minutes", "2 hours" */
+export function spokenDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  const mins = m ? `${m} minute${m === 1 ? "" : "s"}` : "";
+  if (!h) return mins;
+  const hours = h === 1 ? (m ? "1 hour" : "an hour") : `${h} hours`;
+  return m ? `${hours} ${mins}` : hours;
 }

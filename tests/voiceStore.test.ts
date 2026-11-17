@@ -11,6 +11,7 @@ import { DEFAULT_PLAN_MODEL, type Change, type extractPlan } from "@/lib/voice/p
 import { NO_KEY_ERROR, type VoiceDeps, resetVoiceStore, setVoiceDeps, useVoiceStore } from "@/lib/stores/voiceStore";
 import { useAppStore } from "@/lib/stores/appStore";
 import { useTimeStore } from "@/lib/stores/timeStore";
+import { DEFAULT_SCHEDULE } from "@/lib/logic/schedule";
 import { resetDatabase } from "./mocks/db-connection";
 import { insertTask } from "./helpers";
 
@@ -39,6 +40,7 @@ export async function run() {
   await testResumeWithoutCallId();
   await testHerPhraseHangsUp();
   await testInterruptedPhraseKeepsTalking();
+  await testCallStartsWithoutTheCalendar();
   setVoiceDeps(null);
 }
 
@@ -127,6 +129,13 @@ async function setUp(overrides: Partial<VoiceDeps> = {}) {
       ];
       return { summary: "Taxes today.", changes, dropped: [], costUsd: 0.01 };
     },
+    // Today's times: 9 AM, a dentist at 4
+    dayShape: async () => ({
+      now: 9 * 60,
+      settings: DEFAULT_SCHEDULE,
+      work: null,
+      events: [{ title: "Dentist", start: 16 * 60, end: 17 * 60, allDay: false, busy: true }],
+    }),
     ...overrides,
   });
 }
@@ -173,6 +182,8 @@ async function testCallToPlanToApply() {
   assert.strictEqual(request.local_date, TODAY);
   assert.deepStrictEqual(request.metadata, { session_id: started.id });
   assert.match(request.instructions, /Taxes, overdue/);
+  // She knows the day's times, and so does the plan afterwards (same snapshot)
+  assert.match(request.instructions, /His day \(it's 9 AM now\):\n- 4 to 5 PM: Dentist/);
 
   fakes.events.onPhase?.("live");
   fakes.events.onCallId?.("c1");
@@ -432,3 +443,15 @@ async function testInterruptedPhraseKeepsTalking() {
   assert.strictEqual(useVoiceStore.getState().callPhase, "live");
 }
 
+
+async function testCallStartsWithoutTheCalendar() {
+  await setUp({
+    dayShape: async () => {
+      throw new Error("no calendar");
+    },
+  });
+  await useVoiceStore.getState().startCall("elle");
+  assert.strictEqual(useVoiceStore.getState().startError, null);
+  assert.strictEqual(fakes.requests.length, 1);
+  assert.doesNotMatch(fakes.requests[0].instructions, /His day/);
+}
