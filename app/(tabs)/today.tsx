@@ -5,7 +5,8 @@ import {
 } from "@/components/planner";
 import * as Haptics from "expo-haptics";
 
-import { AppState, ScrollView, StyleSheet, View } from "react-native";
+import { AppState, StyleSheet, View } from "react-native";
+import Animated, { useAnimatedRef, useSharedValue } from "react-native-reanimated";
 import { useEffect, useRef, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
@@ -29,6 +30,14 @@ export default function TodayScreen() {
   // SheetProvider, whose listeners attach in effects that run after this one.
   // A timed task is held and dragged: the page must not scroll under the finger
   const [dragging, setDragging] = useState(false);
+  // The page, so a task dragged toward the calendar can scroll it
+  const pageRef = useAnimatedRef<Animated.ScrollView>();
+  const pageMax = useSharedValue(0);
+  const pageSize = useRef({ content: 0, view: 0 });
+  const measurePage = (part: "content" | "view", h: number) => {
+    pageSize.current[part] = h;
+    pageMax.value = Math.max(0, pageSize.current.content - pageSize.current.view);
+  };
   const { add } = useLocalSearchParams<{ add?: string }>();
   useEffect(() => {
     if (!add) return;
@@ -94,7 +103,10 @@ export default function TodayScreen() {
 
   return (
     <Screen>
-      <ScrollView
+      <Animated.ScrollView
+        ref={pageRef}
+        onContentSizeChange={(_, h) => measurePage("content", h)}
+        onLayout={(e) => measurePage("view", e.nativeEvent.layout.height)}
         scrollEnabled={!dragging}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingTop: insets.top, paddingBottom: bottomSpace }}
@@ -122,9 +134,10 @@ export default function TodayScreen() {
             onSkipForToday={skipTaskForToday}
             onSendToSlate={sendTaskBackToSlate}
             onDragActive={setDragging}
+            page={{ ref: pageRef, max: pageMax }}
           />
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
     </Screen>
   );
 }
