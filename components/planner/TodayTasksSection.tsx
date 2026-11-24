@@ -16,6 +16,7 @@ import { ActionSheetIOS, Pressable, StyleSheet, View, useWindowDimensions } from
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { scheduleOnRN } from "react-native-worklets";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTabBarSpace } from "@/components/TabBar";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -43,8 +44,10 @@ const SETTLE_MS = 650;
 const rowLayout = LinearTransition.duration(260);
 /** Hold this long before a task without a time lifts, so a quick swipe still scrolls */
 const LIFT_MS = 220;
-/** Finger this close to the screen's top or bottom scrolls the page */
+/** Finger this close to the top of the screen or the tab bar scrolls the page */
 const PAGE_EDGE = 90;
+/** The tab bar space includes this much breathing room above the bar itself */
+const BAR_GAP = 24;
 const PAGE_SPEED = 10;
 
 interface TodayTasksSectionProps {
@@ -77,6 +80,8 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
   const updateTask = useAppStore((s) => s.updateTask);
   const insets = useSafeAreaInsets();
   const { height: screenHeight } = useWindowDimensions();
+  // The floating tab bar covers the bottom of the screen
+  const obscured = { top: insets.top, bottom: useTabBarSpace() - BAR_GAP };
 
   // Dragging a task without a time onto the calendar. The row stays put; a copy follows
   // the finger until it's over the calendar, which then shows where it would land.
@@ -93,15 +98,13 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
   // in the middle once
   const armed = useSharedValue(false);
   useEffect(() => {
-    zones.value = { top: insets.top + PAGE_EDGE, bottom: screenHeight - PAGE_EDGE - 60 };
-  }, [insets.top, screenHeight, zones]);
+    zones.value = { top: obscured.top + PAGE_EDGE, bottom: screenHeight - obscured.bottom - PAGE_EDGE };
+  }, [obscured.top, obscured.bottom, screenHeight, zones]);
 
-  useFrameCallback(() => {
+  // Only runs while a task is carried, so the idle screen doesn't wake the UI thread
+  const frame = useFrameCallback(() => {
     const y = fingerY.value;
-    if (y < 0) {
-      armed.value = false;
-      return;
-    }
+    if (y < 0) return;
     const box = measure(sectionRef);
     if (box) sectionTop.value = box.pageY;
     // Over the calendar, it scrolls itself; elsewhere near an edge, the page scrolls
@@ -115,7 +118,7 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
     if (!speed) return;
     const next = Math.max(0, Math.min(page.max.value, pageY.value + speed));
     if (next !== pageY.value) scrollTo(pageRef, 0, next, false);
-  });
+  }, false);
 
   const ghostStyle = useAnimatedStyle(() => ({
     top: fingerY.value - sectionTop.value - 26,
@@ -123,10 +126,13 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
   }));
 
   const lift = (task: Task) => {
+    armed.value = false;
+    frame.setActive(true);
     setCarried(task);
     onDragActive?.(true);
   };
   const land = (id: string, minute: number) => {
+    frame.setActive(false);
     setCarried(null);
     onDragActive?.(false);
     if (minute >= 0) updateTask(id, { startTime: toHHmm(minute) });
@@ -199,7 +205,10 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
     done: t.status === "done",
     ...taskInterval(t)!,
   }));
-  const hasCalendar = fixed.length > 0 || plan.length > 0;
+  const canFit = untimed.some((t) => t.status === "open");
+  // The calendar shows whenever there's something on it, or a task that could go on it
+  // (so a task can always be dragged onto it, even on an empty day)
+  const hasCalendar = fixed.length > 0 || plan.length > 0 || canFit;
   const hasUntimed = tasks.length === 0 || untimed.length > 0;
   const windowStart = toMinutes(schedule.windowStart);
 
@@ -259,7 +268,6 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
   };
 
   const allDay = events.filter((e) => e.allDay);
-  const canFit = untimed.some((t) => t.status === "open");
 
   const taskRow = (task: Task) => (
     <TaskItem
@@ -356,6 +364,8 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
             onPress={openTaskMenu}
             onPressFixed={(b) => b.kind === "work" && openWorkMenu()}
             onDragActive={onDragActive}
+            obscured={obscured}
+            refocusOnResume
             onDrop={(id, start) => updateTask(id, { startTime: toHHmm(start) })}
             incoming={
               carried && {
@@ -448,10 +458,11 @@ function DraggableRow({
     .onUpdate((e) => {
       fingerY.value = e.absoluteY;
     })
-    .onFinalize(() => {
+    .onFinalize((_e, success) => {
       if (!held.value) return;
       held.value = false;
-      const minute = dropAt.value;
+      // A cancelled drag (a call, the app backgrounded) doesn't drop
+      const minute = success ? dropAt.value : -1;
       fingerY.value = -1;
       dropAt.value = -1;
       scheduleOnRN(onLand, task.id, minute);

@@ -121,6 +121,13 @@ back to the Slate, editing the date, and rollover (carry-over and the due pull-i
   Previews always start from the arrangement before the drag, so dragging back undoes
   pushes. Plan blocks render in a fixed order: moving a view among its siblings
   mid-drag cancels the touch.
+- **Today's calendar** is the same timeline below the tasks without a time, shown
+  whenever it has something on it or an open task could be dragged onto it (hold a row
+  in "No time yet" and carry it there). Today doesn't reflow: a dropped task can overlap
+  and takes a lane. It goes back to the current hour when the app returns from the
+  background. Edge scrolling uses the visible part of the screen (not under the tab bar),
+  and the frame callbacks behind it run only during a drag. A cancelled drag doesn't move
+  anything.
 - **Calendar** (`lib/services/calendarSync.ts`): iOS Calendar is the record of events;
   Slate keeps no copy. It reads every calendar except its own for Today's timeline and
   writes slots into a "Slate" calendar it creates (on the default calendar's account,

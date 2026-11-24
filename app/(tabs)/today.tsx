@@ -25,9 +25,6 @@ export default function TodayScreen() {
   const bottomSpace = useTabBarSpace();
   const router = useRouter();
 
-  // slate://add (app/add.tsx) lands here with ?add=1: open the add sheet once.
-  // Wait a tick: on a cold start Today can mount in the same commit as the
-  // SheetProvider, whose listeners attach in effects that run after this one.
   // A timed task is held and dragged: the page must not scroll under the finger
   const [dragging, setDragging] = useState(false);
   // The page, so a task dragged toward the calendar can scroll it
@@ -38,6 +35,9 @@ export default function TodayScreen() {
     pageSize.current[part] = h;
     pageMax.value = Math.max(0, pageSize.current.content - pageSize.current.view);
   };
+  // slate://add (app/add.tsx) lands here with ?add=1: open the add sheet once.
+  // Wait a tick: on a cold start Today can mount in the same commit as the
+  // SheetProvider, whose listeners attach in effects that run after this one.
   const { add } = useLocalSearchParams<{ add?: string }>();
   useEffect(() => {
     if (!add) return;
