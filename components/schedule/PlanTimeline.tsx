@@ -84,6 +84,11 @@ interface PlanTimelineProps {
   /** Scroll back to `focus` when the app returns from the background (Today, so it
    * opens on the current hour rather than wherever it was left) */
   refocusOnResume?: boolean;
+  /** A carried task starts at this minute wherever the finger is, and moves with it from
+   * there (Today's zoom-in: a task starts at its time, or now). The timeline opens
+   * scrolled so the minute sits `offset` points below its top, under the finger, when
+   * it can. Wins over `focus`. */
+  anchor?: { minute: number; offset: number };
 }
 
 /**
@@ -163,6 +168,7 @@ export function PlanTimeline({
   incoming,
   obscured,
   refocusOnResume,
+  anchor,
 }: PlanTimelineProps) {
   const { colors, scheme } = useTheme();
   const { height: screenHeight } = useWindowDimensions();
@@ -196,7 +202,15 @@ export function PlanTimeline({
   const earliest = Math.max(earliestProp ?? Math.ceil(Math.max(now, 0) / 5) * 5, rangeStart);
   // Where it opens: a little above `focus`, once
   const focusY = (minute: number) => Math.max(0, yOf(Math.max(minute, rangeStart), rangeStart) - PAD - 20);
-  const [initialY] = useState(() => (focus === undefined ? 0 : focusY(focus)));
+  const [initialY] = useState(() => {
+    if (anchor) {
+      // The inverse of where a dragged-in block lands: it hangs from the finger by its
+      // first quarter hour
+      const y = yOf(Math.max(anchor.minute, rangeStart), rangeStart) + (SNAP * PX) / 2 - anchor.offset;
+      return Math.max(0, Math.min(contentHeight - viewHeight, y));
+    }
+    return focus === undefined ? 0 : focusY(focus);
+  });
   const refocus = useRef(() => {});
   refocus.current = () => {
     if (focus !== undefined && !dragging) scrollRef.current?.scrollTo({ y: focusY(focus), animated: false });
@@ -223,6 +237,13 @@ export function PlanTimeline({
   const inY = incoming?.y ?? noY;
   const inMinute = incoming?.minute ?? noMinute;
   const bounds = useSharedValue({ start: 0, end: DAY, length: 30 });
+  // A carried task's edge scrolling waits until the finger has left the edge zone once,
+  // or moved well into it, so one picked up near an edge doesn't set it off
+  const carry = useSharedValue({ startY: -1, scroll: 0, armed: false });
+  const anchorMinute = useSharedValue(anchor?.minute ?? -1);
+  useEffect(() => {
+    anchorMinute.value = anchor?.minute ?? -1;
+  }, [anchor?.minute, anchorMinute]);
   const [preview, setPreview] = useState<number | null>(null);
   const incomingLength = incoming?.length ?? 30;
   const lastPreview = useRef<number | null>(null);
@@ -253,7 +274,9 @@ export function PlanTimeline({
   // Only runs during a drag, so the idle screen doesn't wake the UI thread every frame.
   const frame = useFrameCallback(() => {
     const fy = inY.value;
-    if (fy >= 0) {
+    if (fy < 0) {
+      if (carry.value.startY >= 0) carry.value = { startY: -1, scroll: 0, armed: false };
+    } else {
       const box = measure(scrollRef);
       if (!box) return;
       const view = clip(box.pageY, box.height, screen.value);
@@ -261,11 +284,25 @@ export function PlanTimeline({
         inMinute.value = -1;
         return;
       }
-      // The block hangs from the finger by its first quarter hour
+      const inZone = fy < view.pageY + EDGE || fy > view.pageY + view.height - EDGE;
+      if (carry.value.startY < 0) carry.value = { startY: fy, scroll: scrollY.value, armed: !inZone };
+      else if (!carry.value.armed && (!inZone || Math.abs(fy - carry.value.startY) > 24))
+        carry.value = { ...carry.value, armed: true };
       const { start, end, length } = bounds.value;
-      const raw = start + (fy - box.pageY + scrollY.value - PAD - (SNAP * PX) / 2) / PX;
-      const snapped = Math.round(raw / SNAP) * SNAP;
+      let snapped: number;
+      const from = anchorMinute.value;
+      if (from >= 0) {
+        // From its starting minute, by how far the finger (and the timeline) has gone; a
+        // nudge of a few minutes keeps it
+        const moved = (fy - carry.value.startY + scrollY.value - carry.value.scroll) / PX;
+        snapped = Math.abs(moved) < SNAP / 2 ? from : Math.round((from + moved) / SNAP) * SNAP;
+      } else {
+        // The block hangs from the finger by its first quarter hour
+        const raw = start + (fy - box.pageY + scrollY.value - PAD - (SNAP * PX) / 2) / PX;
+        snapped = Math.round(raw / SNAP) * SNAP;
+      }
       inMinute.value = Math.max(start, Math.min(end - length, snapped));
+      if (!carry.value.armed) return;
       let speed = 0;
       if (fy < view.pageY + EDGE) speed = -Math.min(1, (view.pageY + EDGE - fy) / EDGE) * MAX_SPEED;
       else if (fy > view.pageY + view.height - EDGE)

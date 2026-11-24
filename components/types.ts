@@ -9,6 +9,9 @@ export interface TaskItemProps {
   onSkipForToday?: (taskId: string) => void;
   onSendToSlate?: (taskId: string) => void;
   isReadOnly?: boolean;
+  /** Minutes after midnight today: a task with a time that's over and still open shows
+   * as missed. Leave out where "now" doesn't apply (History). */
+  now?: number;
 }
 
 export interface HabitItemProps {

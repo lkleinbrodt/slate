@@ -18,7 +18,8 @@ import { SwipeAction } from "@/components/ui/SwipeAction";
 import { TaskItemProps } from "./types";
 import { ThemedText } from "./themed-text";
 import { formatRelativeDay } from "@/lib/utils/dateFormat";
-import { formatDuration } from "@/lib/logic/schedule";
+import { formatDuration, taskInterval } from "@/lib/logic/schedule";
+import { formatRange } from "@/components/TimePickerButton";
 import { parseRule, ruleLabel } from "@/lib/logic/repeat";
 import { haptic } from "@/components/ui/PressableScale";
 import { useAppStore } from "@/lib/stores/appStore";
@@ -32,6 +33,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   onSkipForToday,
   onSendToSlate,
   isReadOnly = false,
+  now,
 }) => {
   const { colors, isDark } = useTheme();
   const todayDate = useTimeStore((s) => s.currentDate);
@@ -102,10 +104,20 @@ export const TaskItem: React.FC<TaskItemProps> = ({
     setTimeout(() => action?.(task.id), 180);
   };
 
-  // Timed tasks show their length on the timeline; untimed ones here, if set
-  const showLength = !task.startTime && task.durationMin != null;
+  // A task with a time shows it (with its length); one without, its length if set
+  const slot = taskInterval(task);
+  const missed =
+    !!slot && now !== undefined && !isDone && task.scheduledFor === todayDate && slot.end <= now;
+  const showLength = !slot && task.durationMin != null;
   const meta = (
     <View style={styles.meta}>
+      {slot && (
+        <Chip
+          icon="clock"
+          tone={missed ? "error" : isDone ? "neutral" : "primary"}
+          label={missed ? `Missed · ${formatRange(slot.start, slot.end)}` : formatRange(slot.start, slot.end)}
+        />
+      )}
       {showLength && <Chip icon="clock" label={formatDuration(task.durationMin!)} />}
       {task.dueDate && (
         <Chip
@@ -121,7 +133,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
       {!!task.notes && <Icon name="note" size={14} color="textTertiary" />}
     </View>
   );
-  const hasMeta = showLength || !!task.dueDate || !!repeat || (!!dependency && dependency.status === "open") || !!task.notes;
+  const hasMeta = !!slot || showLength || !!task.dueDate || !!repeat || (!!dependency && dependency.status === "open") || !!task.notes;
 
   const row = (
     <View style={[styles.row, { backgroundColor: colors.surface }]}>
