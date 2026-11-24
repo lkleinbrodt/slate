@@ -20,6 +20,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 
+import { Checkbox } from "@/components/ui/Checkbox";
 import { Icon } from "@/components/ui/Icon";
 import { ThemedText } from "@/components/themed-text";
 import { formatRange, formatTime } from "@/components/TimePickerButton";
@@ -35,16 +36,18 @@ export interface FixedBlock {
   start: number;
   end: number;
   color?: string;
-  /** An event from a "Just to see" calendar: dashed, and tasks can go over it */
+  /** An event from a "Just to see" calendar (or a day off): dashed, tasks can go over it */
   free?: boolean;
 }
 
-/** A task this plan places; these can be dragged */
+/** A task on the timeline; these can be dragged */
 export interface PlanBlock {
   id: string;
   title: string;
   start: number;
   end: number;
+  /** Ticked off: struck through, and it stays where it is */
+  done?: boolean;
 }
 
 interface PlanTimelineProps {
@@ -53,10 +56,26 @@ interface PlanTimelineProps {
   /** Minutes after midnight; nothing can be dropped before it */
   now: number;
   /** While dragging: the task's start under the finger (snapped), each time it changes */
-  onPreview: (id: string, start: number | null) => void;
+  onPreview?: (id: string, start: number | null) => void;
   /** Finger lifted: put the task at `start` */
   onDrop: (id: string, start: number) => void;
-  onRemove: (id: string) => void;
+  /** Shows a ✕ on each task (the fit sheet's "leave it without a time") */
+  onRemove?: (id: string) => void;
+  /** Today's calendar: tasks are real ones, with a check and a tap, drawn solid */
+  onToggle?: (id: string) => void;
+  onPress?: (id: string) => void;
+  /** A work block or event was tapped */
+  onPressFixed?: (block: FixedBlock) => void;
+  /** A task is held or let go: the page around the timeline should stop or resume scrolling */
+  onDragActive?: (active: boolean) => void;
+  /** Earliest minute a task can be dropped at (default: now) */
+  earliest?: number;
+  /** The timeline always covers at least this stretch of the day */
+  minRange?: { start: number; end: number };
+  /** Scroll so this minute is at the top when it first appears */
+  focus?: number;
+  /** Tallest the timeline gets, as a share of the screen (default half) */
+  maxHeight?: number;
 }
 
 /** Vertical scale: 1.4 points per minute, 84 per hour. A 30 minute task is 42 tall,
@@ -100,7 +119,22 @@ const heightOf = (b: { start: number; end: number }) => Math.max((b.end - b.star
  * sheet works that out in `onPreview`), and the timeline scrolls and grows down to
  * midnight when you drag near its edge.
  */
-export function PlanTimeline({ fixed, plan, now, onPreview, onDrop, onRemove }: PlanTimelineProps) {
+export function PlanTimeline({
+  fixed,
+  plan,
+  now,
+  onPreview,
+  onDrop,
+  onRemove,
+  onToggle,
+  onPress,
+  onPressFixed,
+  onDragActive,
+  earliest: earliestProp,
+  minRange,
+  focus,
+  maxHeight = 0.5,
+}: PlanTimelineProps) {
   const { colors } = useTheme();
   const { height: screenHeight } = useWindowDimensions();
   const [width, setWidth] = useState(0);
@@ -116,12 +150,18 @@ export function PlanTimeline({ fixed, plan, now, onPreview, onDrop, onRemove }: 
   // The visible stretch of day: from the hour now is in, to an hour past the last thing,
   // and an hour past wherever a task is being dragged (so you can always go further)
   const everything = [...fixed, ...plan];
-  const rangeStart = Math.floor(Math.min(now, ...everything.map((b) => b.start)) / 60) * 60;
-  const lastEnd = Math.max(now + 60, ...everything.map((b) => b.end));
-  const rangeEnd = Math.min(DAY, Math.ceil(lastEnd / 60) * 60 + 60);
+  const rangeStart =
+    Math.floor(Math.min(now, minRange?.start ?? DAY, ...everything.map((b) => b.start)) / 60) * 60;
+  const lastEnd = Math.max(now + 60, minRange?.end ?? 0, ...everything.map((b) => b.end));
+  const rangeEnd = Math.min(DAY, Math.ceil(lastEnd / 60) * 60 + (minRange ? 0 : 60));
   const contentHeight = yOf(rangeEnd, rangeStart) + PAD;
-  const viewHeight = Math.min(contentHeight, Math.round(screenHeight * 0.5));
-  const earliest = Math.ceil(Math.max(now, 0) / 5) * 5;
+  const viewHeight = Math.min(contentHeight, Math.round(screenHeight * maxHeight));
+  const earliest = Math.max(earliestProp ?? Math.ceil(Math.max(now, 0) / 5) * 5, rangeStart);
+  // Where it opens: a little above `focus`, once
+  const [initialY] = useState(() =>
+    focus === undefined ? 0 : Math.max(0, yOf(Math.max(focus, rangeStart), rangeStart) - PAD - 20)
+  );
+  const solid = !!onToggle;
 
   useEffect(() => {
     maxScroll.value = Math.max(0, contentHeight - viewHeight);
@@ -142,7 +182,10 @@ export function PlanTimeline({ fixed, plan, now, onPreview, onDrop, onRemove }: 
 
   const lanes = layoutLanes(
     [
-      ...fixed.map((b) => ({ key: `${b.kind}-${b.id}`, start: b.start, end: b.end })),
+      // The work block is a backdrop: tasks put in it still get the full width
+      ...fixed
+        .filter((b) => b.kind !== "work")
+        .map((b) => ({ key: `${b.kind}-${b.id}`, start: b.start, end: b.end })),
       // The task being dragged floats over everything at full width
       ...plan.filter((b) => b.id !== dragging).map((b) => ({ key: `plan-${b.id}`, start: b.start, end: b.end })),
     ]
@@ -162,6 +205,7 @@ export function PlanTimeline({ fixed, plan, now, onPreview, onDrop, onRemove }: 
       ref={scrollRef}
       style={[styles.scroll, { height: viewHeight, borderColor: colors.border }]}
       contentContainerStyle={{ height: contentHeight }}
+      contentOffset={{ x: 0, y: initialY }}
       scrollEnabled={!dragging}
       showsVerticalScrollIndicator={false}
       onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
@@ -176,7 +220,13 @@ export function PlanTimeline({ fixed, plan, now, onPreview, onDrop, onRemove }: 
       ))}
 
       {fixed.map((b) => (
-        <FixedView key={`${b.kind}-${b.id}`} block={b} rangeStart={rangeStart} {...place(`${b.kind}-${b.id}`)} />
+        <FixedView
+          key={`${b.kind}-${b.id}`}
+          block={b}
+          rangeStart={rangeStart}
+          onPress={onPressFixed ? () => onPressFixed(b) : undefined}
+          {...place(`${b.kind}-${b.id}`)}
+        />
       ))}
 
       {now > rangeStart && now < rangeEnd && (
@@ -194,6 +244,8 @@ export function PlanTimeline({ fixed, plan, now, onPreview, onDrop, onRemove }: 
             block={b}
             rangeStart={rangeStart}
             earliest={earliest}
+            latest={rangeEnd}
+            solid={solid}
             {...(b.id === dragging ? { left: GUTTER, width: blockWidth } : place(`plan-${b.id}`))}
             lifted={b.id === dragging}
             scrollRef={scrollRef}
@@ -201,14 +253,20 @@ export function PlanTimeline({ fixed, plan, now, onPreview, onDrop, onRemove }: 
             fingerY={fingerY}
             dragActive={dragActive}
             viewport={viewport}
-            onLift={() => setDragging(b.id)}
-            onPreview={(start) => onPreview(b.id, start)}
+            onLift={() => {
+              setDragging(b.id);
+              onDragActive?.(true);
+            }}
+            onPreview={(start) => onPreview?.(b.id, start)}
             onDrop={(start) => {
               setDragging(null);
-              onPreview(b.id, null);
+              onDragActive?.(false);
+              onPreview?.(b.id, null);
               onDrop(b.id, start);
             }}
-            onRemove={() => onRemove(b.id)}
+            onRemove={onRemove ? () => onRemove(b.id) : undefined}
+            onToggle={onToggle ? () => onToggle(b.id) : undefined}
+            onPress={onPress ? () => onPress(b.id) : undefined}
           />
         ))}
     </Animated.ScrollView>
@@ -219,6 +277,10 @@ interface DraggableBlockProps {
   block: PlanBlock;
   rangeStart: number;
   earliest: number;
+  /** Minute the timeline ends: a task can't be dropped past it */
+  latest: number;
+  /** A real task (Today) rather than a proposal (the fit sheet) */
+  solid: boolean;
   left: number;
   width: number;
   lifted: boolean;
@@ -230,13 +292,17 @@ interface DraggableBlockProps {
   onLift: () => void;
   onPreview: (start: number) => void;
   onDrop: (start: number) => void;
-  onRemove: () => void;
+  onRemove?: () => void;
+  onToggle?: () => void;
+  onPress?: () => void;
 }
 
 function DraggableBlock({
   block,
   rangeStart,
   earliest,
+  latest,
+  solid,
   left,
   width,
   lifted,
@@ -249,6 +315,8 @@ function DraggableBlock({
   onPreview,
   onDrop,
   onRemove,
+  onToggle,
+  onPress,
 }: DraggableBlockProps) {
   const { colors, scheme } = useTheme();
   const length = block.end - block.start;
@@ -280,7 +348,7 @@ function DraggableBlock({
     const moved = (dy.value + scrollY.value - origin.value.scroll) / PX;
     const raw = origin.value.start + moved;
     const snapped = Math.abs(moved) < SNAP / 2 ? origin.value.start : Math.round(raw / SNAP) * SNAP;
-    return Math.max(earliest, Math.min(DAY - length, snapped));
+    return Math.max(earliest, Math.min(latest - length, snapped));
   });
 
   useAnimatedReaction(
@@ -294,6 +362,7 @@ function DraggableBlock({
   );
 
   const pan = Gesture.Pan()
+    .enabled(!block.done)
     .activateAfterLongPress(LIFT_MS)
     .onStart((e) => {
       const view = measure(scrollRef);
@@ -338,9 +407,9 @@ function DraggableBlock({
           styles.plan,
           {
             height,
-            backgroundColor: colors.primarySoft,
-            borderColor: colors.primary,
-            borderStyle: lifted ? "solid" : "dashed",
+            backgroundColor: solid ? colors.surface : colors.primarySoft,
+            borderColor: solid ? (lifted ? colors.primary : colors.borderStrong) : colors.primary,
+            borderStyle: lifted || solid ? "solid" : "dashed",
             paddingVertical: roomy ? 5 : 1,
             zIndex: lifted ? 20 : 2,
           },
@@ -354,11 +423,23 @@ function DraggableBlock({
         accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
         onAccessibilityAction={(e) => {
           const step = e.nativeEvent.actionName === "increment" ? SNAP : -SNAP;
-          onDrop(Math.max(earliest, Math.min(DAY - length, block.start + step)));
+          if (!block.done) onDrop(Math.max(earliest, Math.min(latest - length, block.start + step)));
         }}
       >
-        <View style={styles.flex}>
-          <ThemedText type={roomy ? "calloutMedium" : "captionMedium"} numberOfLines={1}>
+        {onToggle && (
+          <Checkbox
+            checked={!!block.done}
+            onPress={onToggle}
+            size={22}
+            accessibilityLabel={`Complete ${block.title}`}
+          />
+        )}
+        <Pressable onPress={onPress} disabled={!onPress} style={styles.flex}>
+          <ThemedText
+            type={roomy ? "calloutMedium" : "captionMedium"}
+            numberOfLines={1}
+            style={block.done ? styles.done : undefined}
+          >
             {block.title}
           </ThemedText>
           {roomy && (
@@ -366,8 +447,8 @@ function DraggableBlock({
               {formatRange(block.start, block.end)} · {formatDuration(length)}
             </ThemedText>
           )}
-        </View>
-        {!lifted && (
+        </Pressable>
+        {onRemove && !lifted && (
           <Pressable
             onPress={onRemove}
             hitSlop={10}
@@ -386,17 +467,21 @@ function FixedView({
   rangeStart,
   left,
   width,
+  onPress,
 }: {
   block: FixedBlock;
   rangeStart: number;
   left: number;
   width: number;
+  onPress?: () => void;
 }) {
   const { colors } = useTheme();
   const height = heightOf(block);
   const roomy = height >= 40;
   const look =
-    block.kind === "work"
+    block.kind === "work" && block.free
+      ? { backgroundColor: "transparent", borderColor: colors.borderStrong, borderStyle: "dashed" as const }
+      : block.kind === "work"
       ? { backgroundColor: colors.surfaceSunken, borderColor: "transparent" }
       : block.kind === "event" && block.free
         ? { backgroundColor: "transparent", borderColor: colors.borderStrong, borderStyle: "dashed" as const }
@@ -404,8 +489,9 @@ function FixedView({
           ? { backgroundColor: colors.surface, borderColor: colors.borderStrong }
           : { backgroundColor: colors.surfaceElevated, borderColor: colors.border };
   return (
-    <View
-      pointerEvents="none"
+    <Pressable
+      onPress={onPress}
+      pointerEvents={onPress ? "auto" : "none"}
       style={[
         styles.block,
         look,
@@ -429,7 +515,7 @@ function FixedView({
           </ThemedText>
         )}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -469,6 +555,7 @@ function hourLabel(minutes: number) {
 const styles = StyleSheet.create({
   scroll: { borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth },
   flex: { flex: 1 },
+  done: { textDecorationLine: "line-through", opacity: 0.5 },
   small: { fontSize: 11, lineHeight: 14 },
   hour: { position: "absolute", left: 0, right: RIGHT, flexDirection: "row", alignItems: "center", height: 14, marginTop: -7 },
   hourLabel: { width: GUTTER - 8, textAlign: "right", marginRight: 6, fontSize: 11, lineHeight: 14 },
