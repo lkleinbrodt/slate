@@ -6,7 +6,7 @@ import {
 import * as Haptics from "expo-haptics";
 
 import { AppState, ScrollView, StyleSheet, View } from "react-native";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { PlanWithVoiceButton } from "@/components/voice/PlanWithVoiceButton";
@@ -27,6 +27,8 @@ export default function TodayScreen() {
   // slate://add (app/add.tsx) lands here with ?add=1: open the add sheet once.
   // Wait a tick: on a cold start Today can mount in the same commit as the
   // SheetProvider, whose listeners attach in effects that run after this one.
+  // A timed task is held and dragged: the page must not scroll under the finger
+  const [dragging, setDragging] = useState(false);
   const { add } = useLocalSearchParams<{ add?: string }>();
   useEffect(() => {
     if (!add) return;
@@ -93,6 +95,7 @@ export default function TodayScreen() {
   return (
     <Screen>
       <ScrollView
+        scrollEnabled={!dragging}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingTop: insets.top, paddingBottom: bottomSpace }}
       >
@@ -118,6 +121,7 @@ export default function TodayScreen() {
             onToggle={(taskId) => toggleTask(taskId)}
             onSkipForToday={skipTaskForToday}
             onSendToSlate={sendTaskBackToSlate}
+            onDragActive={setDragging}
           />
         </View>
       </ScrollView>
