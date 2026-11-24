@@ -76,6 +76,20 @@ interface PlanTimelineProps {
   focus?: number;
   /** Tallest the timeline gets, as a share of the screen (default half) */
   maxHeight?: number;
+  /** A task without a time being dragged in from outside (Today's "No time yet") */
+  incoming?: IncomingDrag | null;
+}
+
+/**
+ * A drag that starts outside the timeline. The dragger writes the finger's page Y to `y`
+ * (-1 when no drag); the timeline writes the snapped start under the finger to `minute`
+ * (-1 when the finger isn't over it), draws a preview there, and scrolls at its edges.
+ */
+export interface IncomingDrag {
+  title: string;
+  length: number;
+  y: SharedValue<number>;
+  minute: SharedValue<number>;
 }
 
 /** Vertical scale: 1.4 points per minute, 84 per hour. A 30 minute task is 42 tall,
@@ -134,8 +148,9 @@ export function PlanTimeline({
   minRange,
   focus,
   maxHeight = 0.5,
+  incoming,
 }: PlanTimelineProps) {
-  const { colors } = useTheme();
+  const { colors, scheme } = useTheme();
   const { height: screenHeight } = useWindowDimensions();
   const [width, setWidth] = useState(0);
   const [dragging, setDragging] = useState<string | null>(null);
@@ -167,8 +182,49 @@ export function PlanTimeline({
     maxScroll.value = Math.max(0, contentHeight - viewHeight);
   }, [contentHeight, viewHeight, maxScroll]);
 
+  // A task dragged in from outside: where it would land, read on the UI thread each frame
+  const noY = useSharedValue(-1);
+  const noMinute = useSharedValue(-1);
+  const inY = incoming?.y ?? noY;
+  const inMinute = incoming?.minute ?? noMinute;
+  const bounds = useSharedValue({ start: 0, end: DAY, length: 30 });
+  const [preview, setPreview] = useState<number | null>(null);
+  useEffect(() => {
+    bounds.value = { start: Math.max(rangeStart, earliest), end: rangeEnd, length: incoming?.length ?? 30 };
+  }, [rangeStart, rangeEnd, earliest, incoming?.length, bounds]);
+  useAnimatedReaction(
+    () => inMinute.value,
+    (m, before) => {
+      if (m === before) return;
+      scheduleOnRN(setPreview, m >= 0 ? m : null);
+      if (m >= 0) scheduleOnRN(hapticTick);
+    }
+  );
+
   // Scroll while a task is held near the top or bottom edge, faster the closer it is
   useFrameCallback(() => {
+    const fy = inY.value;
+    if (fy >= 0) {
+      const view = measure(scrollRef);
+      if (!view) return;
+      if (fy < view.pageY || fy > view.pageY + view.height) {
+        inMinute.value = -1;
+        return;
+      }
+      // The block hangs from the finger by its first quarter hour
+      const { start, end, length } = bounds.value;
+      const raw = start + (fy - view.pageY + scrollY.value - PAD - (SNAP * PX) / 2) / PX;
+      const snapped = Math.round(raw / SNAP) * SNAP;
+      inMinute.value = Math.max(start, Math.min(end - length, snapped));
+      let speed = 0;
+      if (fy < view.pageY + EDGE) speed = -Math.min(1, (view.pageY + EDGE - fy) / EDGE) * MAX_SPEED;
+      else if (fy > view.pageY + view.height - EDGE)
+        speed = Math.min(1, (fy - (view.pageY + view.height - EDGE)) / EDGE) * MAX_SPEED;
+      if (!speed) return;
+      const next = Math.max(0, Math.min(maxScroll.value, scrollY.value + speed));
+      if (next !== scrollY.value) scrollTo(scrollRef, 0, next, false);
+      return;
+    }
     if (!dragActive.value) return;
     const { top, height } = viewport.value;
     const y = fingerY.value;
@@ -228,6 +284,35 @@ export function PlanTimeline({
           {...place(`${b.kind}-${b.id}`)}
         />
       ))}
+
+      {incoming && preview !== null && width > 0 && (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.block,
+            styles.plan,
+            shadow(scheme, 3),
+            {
+              top: yOf(preview, rangeStart),
+              left: GUTTER,
+              width: blockWidth,
+              height: heightOf({ start: preview, end: preview + incoming.length }),
+              backgroundColor: colors.primarySoft,
+              borderColor: colors.primary,
+              zIndex: 20,
+            },
+          ]}
+        >
+          <View style={styles.flex}>
+            <ThemedText type="calloutMedium" numberOfLines={1}>
+              {incoming.title}
+            </ThemedText>
+            <ThemedText type="caption" numberOfLines={1} style={{ color: colors.primary }}>
+              {formatRange(preview, preview + incoming.length)}
+            </ThemedText>
+          </View>
+        </View>
+      )}
 
       {now > rangeStart && now < rangeEnd && (
         <View style={[styles.now, { top: yOf(now, rangeStart) - 1, left: GUTTER - 4 }]} pointerEvents="none">

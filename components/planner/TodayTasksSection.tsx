@@ -1,19 +1,35 @@
-import Animated, { LinearTransition } from "react-native-reanimated";
-import { ActionSheetIOS, Pressable, StyleSheet, View } from "react-native";
+import * as Haptics from "expo-haptics";
+import Animated, {
+  type AnimatedRef,
+  LinearTransition,
+  type SharedValue,
+  measure,
+  scrollTo,
+  useAnimatedRef,
+  useAnimatedStyle,
+  useFrameCallback,
+  useScrollOffset,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
+import { ActionSheetIOS, Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { scheduleOnRN } from "react-native-worklets";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
-import React, { useEffect, useReducer, useRef } from "react";
-import { Radius } from "@/constants/theme";
+import React, { useEffect, useReducer, useRef, useState } from "react";
+import { Radius, shadow } from "@/constants/theme";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { SheetManager } from "react-native-actions-sheet";
 import type { Task } from "@/components/types";
 import { TaskItem } from "@/components/TaskItem";
 import { ThemedText } from "@/components/themed-text";
 import { type FixedBlock, type PlanBlock, PlanTimeline } from "@/components/schedule/PlanTimeline";
-import { taskInterval, toHHmm, toMinutes, workBlock } from "@/lib/logic/schedule";
+import { DEFAULT_DURATION, taskInterval, toHHmm, toMinutes, workBlock } from "@/lib/logic/schedule";
 import { useAppStore } from "@/lib/stores/appStore";
 import { useCalendarStore } from "@/lib/stores/calendarStore";
 import { useDaySchedule } from "@/hooks/use-day-schedule";
@@ -25,6 +41,11 @@ import { useTheme } from "@/hooks/use-theme";
 // play, then sinks to the bottom in one smooth move (no spring: that jiggled every row)
 const SETTLE_MS = 650;
 const rowLayout = LinearTransition.duration(260);
+/** Hold this long before a task without a time lifts, so a quick swipe still scrolls */
+const LIFT_MS = 220;
+/** Finger this close to the screen's top or bottom scrolls the page */
+const PAGE_EDGE = 90;
+const PAGE_SPEED = 10;
 
 interface TodayTasksSectionProps {
   tasks: Task[];
@@ -33,12 +54,16 @@ interface TodayTasksSectionProps {
   onSendToSlate?: (taskId: string) => void;
   /** A task is being held and dragged: the page should stop scrolling */
   onDragActive?: (active: boolean) => void;
+  /** The page's scroll view and how far it scrolls: dragging a task near the screen's
+   * edge scrolls it, to reach the calendar */
+  page?: { ref: AnimatedRef<Animated.ScrollView>; max: SharedValue<number> };
 }
 
 /**
- * Today's tasks. Those with a time sit on a calendar of their own, with the work block
- * and your calendar's events: hold one and drag it to move it, and the calendar scrolls
- * when you reach its edge. The rest are below, under "No time yet", with "Fit these in".
+ * Today's tasks. Those without a time come first, with "Fit these in". Below them, those
+ * with a time sit on a calendar of their own, with the work block and your calendar's
+ * events: hold one and drag it to move it; the calendar scrolls at its edges. Hold a
+ * task without a time and drag it onto the calendar to give it one.
  */
 export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
   tasks,
@@ -46,9 +71,66 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
   onSkipForToday,
   onSendToSlate,
   onDragActive,
+  page,
 }) => {
-  const { colors, isDark } = useTheme();
+  const { colors, isDark, scheme } = useTheme();
   const updateTask = useAppStore((s) => s.updateTask);
+  const insets = useSafeAreaInsets();
+  const { height: screenHeight } = useWindowDimensions();
+
+  // Dragging a task without a time onto the calendar. The row stays put; a copy follows
+  // the finger until it's over the calendar, which then shows where it would land.
+  const [carried, setCarried] = useState<Task | null>(null);
+  const fingerY = useSharedValue(-1);
+  const dropAt = useSharedValue(-1);
+  const sectionRef = useAnimatedRef<Animated.View>();
+  const sectionTop = useSharedValue(0);
+  const noPage = useAnimatedRef<Animated.ScrollView>();
+  const pageRef = page?.ref ?? noPage;
+  const pageY = useScrollOffset(pageRef);
+  const zones = useSharedValue({ top: 0, bottom: 0 });
+  // A drag that starts near an edge doesn't scroll the page until the finger has been
+  // in the middle once
+  const armed = useSharedValue(false);
+  useEffect(() => {
+    zones.value = { top: insets.top + PAGE_EDGE, bottom: screenHeight - PAGE_EDGE - 60 };
+  }, [insets.top, screenHeight, zones]);
+
+  useFrameCallback(() => {
+    const y = fingerY.value;
+    if (y < 0) {
+      armed.value = false;
+      return;
+    }
+    const box = measure(sectionRef);
+    if (box) sectionTop.value = box.pageY;
+    // Over the calendar, it scrolls itself; elsewhere near an edge, the page scrolls
+    if (!page || dropAt.value >= 0) return;
+    const { top, bottom } = zones.value;
+    if (y >= top && y <= bottom) armed.value = true;
+    if (!armed.value) return;
+    let speed = 0;
+    if (y > bottom) speed = Math.min(1, (y - bottom) / PAGE_EDGE) * PAGE_SPEED;
+    else if (y < top) speed = -Math.min(1, (top - y) / PAGE_EDGE) * PAGE_SPEED;
+    if (!speed) return;
+    const next = Math.max(0, Math.min(page.max.value, pageY.value + speed));
+    if (next !== pageY.value) scrollTo(pageRef, 0, next, false);
+  });
+
+  const ghostStyle = useAnimatedStyle(() => ({
+    top: fingerY.value - sectionTop.value - 26,
+    opacity: withTiming(fingerY.value >= 0 && dropAt.value < 0 ? 1 : 0, { duration: 120 }),
+  }));
+
+  const lift = (task: Task) => {
+    setCarried(task);
+    onDragActive?.(true);
+  };
+  const land = (id: string, minute: number) => {
+    setCarried(null);
+    onDragActive?.(false);
+    if (minute >= 0) updateTask(id, { startTime: toHHmm(minute) });
+  };
   const setWorkDayOff = useSettingsStore((s) => s.setWorkDayOff);
   const router = useRouter();
   const { today, work, dayOff, events, now, schedule } = useDaySchedule();
@@ -118,6 +200,7 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
     ...taskInterval(t)!,
   }));
   const hasCalendar = fixed.length > 0 || plan.length > 0;
+  const hasUntimed = tasks.length === 0 || untimed.length > 0;
   const windowStart = toMinutes(schedule.windowStart);
 
   const toggle = (id: string) => {
@@ -189,55 +272,11 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
   );
 
   return (
-    <View>
+    <Animated.View ref={sectionRef}>
       <SectionHeader
         title="Tasks"
         detail={tasks.length ? `${completedCount} of ${tasks.length}` : undefined}
       />
-
-      {allDay.length > 0 && (
-        <View style={styles.allDay}>
-          {allDay.map((e) => (
-            <View key={e.id} style={[styles.allDayChip, { borderColor: colors.borderStrong }]}>
-              <View style={[styles.dot, { backgroundColor: e.color }]} />
-              <ThemedText type="caption" tone="textSecondary" numberOfLines={1}>
-                {e.title}
-              </ThemedText>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {hasCalendar && (
-        <PlanTimeline
-          fixed={fixed}
-          plan={plan}
-          now={now}
-          earliest={0}
-          minRange={{ start: windowStart, end: toMinutes(schedule.windowEnd) }}
-          focus={now > windowStart ? now - 60 : windowStart}
-          maxHeight={0.55}
-          onToggle={toggle}
-          onPress={openTaskMenu}
-          onPressFixed={(b) => b.kind === "work" && openWorkMenu()}
-          onDragActive={onDragActive}
-          onDrop={(id, start) => updateTask(id, { startTime: toHHmm(start) })}
-        />
-      )}
-
-      {access === "undetermined" && (
-        <Pressable
-          onPress={requestAccess}
-          style={[styles.access, { borderColor: colors.borderStrong }]}
-          accessibilityRole="button"
-        >
-          <Icon name="calendarDots" size={18} color="primary" />
-          <ThemedText type="callout" tone="textSecondary" style={styles.flex}>
-            Show your calendar here, and put tasks with a time in it
-          </ThemedText>
-          <Icon name="caretRight" size={16} color="textTertiary" />
-        </Pressable>
-      )}
 
       {tasks.length === 0 ? (
         <Card variant="sunken">
@@ -253,7 +292,7 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
         </Card>
       ) : (
         untimed.length > 0 && (
-          <View style={hasCalendar ? styles.untimed : undefined}>
+          <View>
             {hasCalendar && (
               <ThemedText type="eyebrow" tone="textTertiary" style={styles.untimedLabel}>
                 No time yet
@@ -263,7 +302,16 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
               {sortedUntimed.map((task, i) => (
                 <Animated.View key={task.id} layout={rowLayout}>
                   {i > 0 && <View style={[styles.divider, { backgroundColor: colors.border }]} />}
-                  {taskRow(task)}
+                  <DraggableRow
+                    task={task}
+                    enabled={hasCalendar && task.status === "open"}
+                    fingerY={fingerY}
+                    dropAt={dropAt}
+                    onLift={lift}
+                    onLand={land}
+                  >
+                    {taskRow(task)}
+                  </DraggableRow>
                 </Animated.View>
               ))}
             </Card>
@@ -280,9 +328,144 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
           </View>
         )
       )}
-    </View>
+
+      {allDay.length > 0 && (
+        <View style={[styles.allDay, hasUntimed && styles.below]}>
+          {allDay.map((e) => (
+            <View key={e.id} style={[styles.allDayChip, { borderColor: colors.borderStrong }]}>
+              <View style={[styles.dot, { backgroundColor: e.color }]} />
+              <ThemedText type="caption" tone="textSecondary" numberOfLines={1}>
+                {e.title}
+              </ThemedText>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {hasCalendar && (
+        <View style={!allDay.length && hasUntimed ? styles.below : undefined}>
+          <PlanTimeline
+            fixed={fixed}
+            plan={plan}
+            now={now}
+            earliest={0}
+            minRange={{ start: windowStart, end: toMinutes(schedule.windowEnd) }}
+            focus={now > windowStart ? now - 60 : windowStart}
+            maxHeight={0.4}
+            onToggle={toggle}
+            onPress={openTaskMenu}
+            onPressFixed={(b) => b.kind === "work" && openWorkMenu()}
+            onDragActive={onDragActive}
+            onDrop={(id, start) => updateTask(id, { startTime: toHHmm(start) })}
+            incoming={
+              carried && {
+                title: carried.title,
+                length: carried.durationMin ?? DEFAULT_DURATION,
+                y: fingerY,
+                minute: dropAt,
+              }
+            }
+          />
+        </View>
+      )}
+
+      {access === "undetermined" && (
+        <Pressable
+          onPress={requestAccess}
+          style={[styles.access, { borderColor: colors.borderStrong }]}
+          accessibilityRole="button"
+        >
+          <Icon name="calendarDots" size={18} color="primary" />
+          <ThemedText type="callout" tone="textSecondary" style={styles.flex}>
+            Show your calendar here, and put tasks with a time in it
+          </ThemedText>
+          <Icon name="caretRight" size={16} color="textTertiary" />
+        </Pressable>
+      )}
+
+      {carried && (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.ghost,
+            { backgroundColor: colors.surface, borderColor: colors.primary },
+            shadow(scheme, 3),
+            ghostStyle,
+          ]}
+        >
+          <ThemedText type="bodyMedium" numberOfLines={1}>
+            {carried.title}
+          </ThemedText>
+          <ThemedText type="caption" tone="textTertiary">
+            Drop it on the calendar
+          </ThemedText>
+        </Animated.View>
+      )}
+    </Animated.View>
   );
 };
+
+const hapticLift = () => {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+};
+const hapticDrop = () => {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+};
+
+/**
+ * A task without a time that can be held and carried onto the calendar. The row itself
+ * stays (dimmed); the section draws the copy that follows the finger, and the calendar
+ * reports in `dropAt` the start under it.
+ */
+function DraggableRow({
+  task,
+  enabled,
+  fingerY,
+  dropAt,
+  onLift,
+  onLand,
+  children,
+}: {
+  task: Task;
+  enabled: boolean;
+  fingerY: SharedValue<number>;
+  dropAt: SharedValue<number>;
+  onLift: (task: Task) => void;
+  onLand: (id: string, minute: number) => void;
+  children: React.ReactNode;
+}) {
+  const held = useSharedValue(false);
+  const pan = Gesture.Pan()
+    .enabled(enabled)
+    .activateAfterLongPress(LIFT_MS)
+    .onStart((e) => {
+      held.value = true;
+      dropAt.value = -1;
+      fingerY.value = e.absoluteY;
+      scheduleOnRN(onLift, task);
+      scheduleOnRN(hapticLift);
+    })
+    .onUpdate((e) => {
+      fingerY.value = e.absoluteY;
+    })
+    .onFinalize(() => {
+      if (!held.value) return;
+      held.value = false;
+      const minute = dropAt.value;
+      fingerY.value = -1;
+      dropAt.value = -1;
+      scheduleOnRN(onLand, task.id, minute);
+      if (minute >= 0) scheduleOnRN(hapticDrop);
+    });
+  const style = useAnimatedStyle(() => ({
+    opacity: withTiming(held.value ? 0.4 : 1, { duration: 120 }),
+  }));
+  return (
+    <GestureDetector gesture={pan}>
+      <Animated.View style={style}>{children}</Animated.View>
+    </GestureDetector>
+  );
+}
 
 const styles = StyleSheet.create({
   divider: { height: StyleSheet.hairlineWidth, marginLeft: 58 },
@@ -311,7 +494,17 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginTop: 10,
   },
-  untimed: { marginTop: 18 },
+  below: { marginTop: 18 },
+  ghost: {
+    position: "absolute",
+    left: 24,
+    right: 24,
+    borderWidth: 1.5,
+    borderRadius: Radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    zIndex: 30,
+  },
   untimedLabel: { marginLeft: 4, marginBottom: 8 },
   fit: { alignSelf: "flex-start", marginTop: 10 },
 });
