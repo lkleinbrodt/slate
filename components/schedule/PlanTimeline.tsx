@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
-import React, { useEffect, useState } from "react";
-import { Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { AppState, Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   FadeIn,
@@ -78,6 +78,17 @@ interface PlanTimelineProps {
   maxHeight?: number;
   /** A task without a time being dragged in from outside (Today's "No time yet") */
   incoming?: IncomingDrag | null;
+  /** Screen edges covered by other UI (the floating tab bar): dragging scrolls the
+   * timeline when the finger nears the edge of what's visible, not of what's hidden */
+  obscured?: { top: number; bottom: number };
+  /** Scroll back to `focus` when the app returns from the background (Today, so it
+   * opens on the current hour rather than wherever it was left) */
+  refocusOnResume?: boolean;
+  /** A carried task starts at this minute wherever the finger is, and moves with it from
+   * there (Today's zoom-in: a task starts at its time, or now). The timeline opens
+   * scrolled so the minute sits `offset` points below its top, under the finger, when
+   * it can. Wins over `focus`. */
+  anchor?: { minute: number; offset: number };
 }
 
 /**
@@ -125,6 +136,12 @@ const hapticLift = () => {
 const hapticDrop = () => {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 };
+/** The part of a view (page Y and height) that's on the visible screen */
+const clip = (pageY: number, height: number, screen: { top: number; bottom: number }) => {
+  "worklet";
+  const top = Math.max(pageY, screen.top);
+  return { pageY: top, height: Math.max(0, Math.min(pageY + height, screen.bottom) - top) };
+};
 const heightOf = (b: { start: number; end: number }) => Math.max((b.end - b.start) * PX - 2, MIN_HEIGHT);
 
 /**
@@ -149,6 +166,9 @@ export function PlanTimeline({
   focus,
   maxHeight = 0.5,
   incoming,
+  obscured,
+  refocusOnResume,
+  anchor,
 }: PlanTimelineProps) {
   const { colors, scheme } = useTheme();
   const { height: screenHeight } = useWindowDimensions();
@@ -161,21 +181,50 @@ export function PlanTimeline({
   const dragActive = useSharedValue(false);
   const viewport = useSharedValue({ top: 0, height: 0 });
   const maxScroll = useSharedValue(0);
+  // Where the visible screen ends, for the edge zones
+  const screen = useSharedValue({ top: 0, bottom: screenHeight });
+  useEffect(() => {
+    screen.value = { top: obscured?.top ?? 0, bottom: screenHeight - (obscured?.bottom ?? 0) };
+  }, [obscured?.top, obscured?.bottom, screenHeight, screen]);
+  // How far down a drag has reached: the timeline grows to an hour past it, so a task
+  // can always go later, up to midnight
+  const [reach, setReach] = useState(0);
 
   // The visible stretch of day: from the hour now is in, to an hour past the last thing,
   // and an hour past wherever a task is being dragged (so you can always go further)
   const everything = [...fixed, ...plan];
   const rangeStart =
     Math.floor(Math.min(now, minRange?.start ?? DAY, ...everything.map((b) => b.start)) / 60) * 60;
-  const lastEnd = Math.max(now + 60, minRange?.end ?? 0, ...everything.map((b) => b.end));
+  const lastEnd = Math.max(now + 60, minRange?.end ?? 0, reach, ...everything.map((b) => b.end));
   const rangeEnd = Math.min(DAY, Math.ceil(lastEnd / 60) * 60 + (minRange ? 0 : 60));
   const contentHeight = yOf(rangeEnd, rangeStart) + PAD;
   const viewHeight = Math.min(contentHeight, Math.round(screenHeight * maxHeight));
   const earliest = Math.max(earliestProp ?? Math.ceil(Math.max(now, 0) / 5) * 5, rangeStart);
   // Where it opens: a little above `focus`, once
-  const [initialY] = useState(() =>
-    focus === undefined ? 0 : Math.max(0, yOf(Math.max(focus, rangeStart), rangeStart) - PAD - 20)
-  );
+  const focusY = (minute: number) => Math.max(0, yOf(Math.max(minute, rangeStart), rangeStart) - PAD - 20);
+  const [initialY] = useState(() => {
+    if (anchor) {
+      // The inverse of where a dragged-in block lands: it hangs from the finger by its
+      // first quarter hour
+      const y = yOf(Math.max(anchor.minute, rangeStart), rangeStart) + (SNAP * PX) / 2 - anchor.offset;
+      return Math.max(0, Math.min(contentHeight - viewHeight, y));
+    }
+    return focus === undefined ? 0 : focusY(focus);
+  });
+  const refocus = useRef(() => {});
+  refocus.current = () => {
+    if (focus !== undefined && !dragging) scrollRef.current?.scrollTo({ y: focusY(focus), animated: false });
+  };
+  useEffect(() => {
+    if (!refocusOnResume) return;
+    let last = AppState.currentState;
+    const sub = AppState.addEventListener("change", (state) => {
+      // Only back from the background: pulling down Control Center doesn't count
+      if (state === "active" && last === "background") refocus.current();
+      last = state;
+    });
+    return () => sub.remove();
+  }, [refocusOnResume]);
   const solid = !!onToggle;
 
   useEffect(() => {
@@ -188,7 +237,27 @@ export function PlanTimeline({
   const inY = incoming?.y ?? noY;
   const inMinute = incoming?.minute ?? noMinute;
   const bounds = useSharedValue({ start: 0, end: DAY, length: 30 });
+  // A carried task's edge scrolling waits until the finger has left the edge zone once,
+  // or moved well into it, so one picked up near an edge doesn't set it off
+  const carry = useSharedValue({ startY: -1, scroll: 0, armed: false });
+  const anchorMinute = useSharedValue(anchor?.minute ?? -1);
+  useEffect(() => {
+    anchorMinute.value = anchor?.minute ?? -1;
+  }, [anchor?.minute, anchorMinute]);
   const [preview, setPreview] = useState<number | null>(null);
+  const incomingLength = incoming?.length ?? 30;
+  const lastPreview = useRef<number | null>(null);
+  const showPreview = (m: number | null) => {
+    setPreview(m);
+    if (m !== null) {
+      lastPreview.current = m;
+      setReach(m + incomingLength + 60);
+    } else if (lastPreview.current !== null) {
+      // Dropped, or off the timeline: keep room for where it was, no more
+      setReach(lastPreview.current + incomingLength);
+      lastPreview.current = null;
+    }
+  };
   useEffect(() => {
     bounds.value = { start: Math.max(rangeStart, earliest), end: rangeEnd, length: incoming?.length ?? 30 };
   }, [rangeStart, rangeEnd, earliest, incoming?.length, bounds]);
@@ -196,26 +265,44 @@ export function PlanTimeline({
     () => inMinute.value,
     (m, before) => {
       if (m === before) return;
-      scheduleOnRN(setPreview, m >= 0 ? m : null);
+      scheduleOnRN(showPreview, m >= 0 ? m : null);
       if (m >= 0) scheduleOnRN(hapticTick);
     }
   );
 
-  // Scroll while a task is held near the top or bottom edge, faster the closer it is
-  useFrameCallback(() => {
+  // Scroll while a task is held near the top or bottom edge, faster the closer it is.
+  // Only runs during a drag, so the idle screen doesn't wake the UI thread every frame.
+  const frame = useFrameCallback(() => {
     const fy = inY.value;
-    if (fy >= 0) {
-      const view = measure(scrollRef);
-      if (!view) return;
+    if (fy < 0) {
+      if (carry.value.startY >= 0) carry.value = { startY: -1, scroll: 0, armed: false };
+    } else {
+      const box = measure(scrollRef);
+      if (!box) return;
+      const view = clip(box.pageY, box.height, screen.value);
       if (fy < view.pageY || fy > view.pageY + view.height) {
         inMinute.value = -1;
         return;
       }
-      // The block hangs from the finger by its first quarter hour
+      const inZone = fy < view.pageY + EDGE || fy > view.pageY + view.height - EDGE;
+      if (carry.value.startY < 0) carry.value = { startY: fy, scroll: scrollY.value, armed: !inZone };
+      else if (!carry.value.armed && (!inZone || Math.abs(fy - carry.value.startY) > 24))
+        carry.value = { ...carry.value, armed: true };
       const { start, end, length } = bounds.value;
-      const raw = start + (fy - view.pageY + scrollY.value - PAD - (SNAP * PX) / 2) / PX;
-      const snapped = Math.round(raw / SNAP) * SNAP;
+      let snapped: number;
+      const from = anchorMinute.value;
+      if (from >= 0) {
+        // From its starting minute, by how far the finger (and the timeline) has gone; a
+        // nudge of a few minutes keeps it
+        const moved = (fy - carry.value.startY + scrollY.value - carry.value.scroll) / PX;
+        snapped = Math.abs(moved) < SNAP / 2 ? from : Math.round((from + moved) / SNAP) * SNAP;
+      } else {
+        // The block hangs from the finger by its first quarter hour
+        const raw = start + (fy - box.pageY + scrollY.value - PAD - (SNAP * PX) / 2) / PX;
+        snapped = Math.round(raw / SNAP) * SNAP;
+      }
       inMinute.value = Math.max(start, Math.min(end - length, snapped));
+      if (!carry.value.armed) return;
       let speed = 0;
       if (fy < view.pageY + EDGE) speed = -Math.min(1, (view.pageY + EDGE - fy) / EDGE) * MAX_SPEED;
       else if (fy > view.pageY + view.height - EDGE)
@@ -226,7 +313,7 @@ export function PlanTimeline({
       return;
     }
     if (!dragActive.value) return;
-    const { top, height } = viewport.value;
+    const { pageY: top, height } = clip(viewport.value.top, viewport.value.height, screen.value);
     const y = fingerY.value;
     let speed = 0;
     if (y < top + EDGE) speed = -Math.min(1, (top + EDGE - y) / EDGE) * MAX_SPEED;
@@ -234,7 +321,11 @@ export function PlanTimeline({
     if (!speed) return;
     const next = Math.max(0, Math.min(maxScroll.value, scrollY.value + speed));
     if (next !== scrollY.value) scrollTo(scrollRef, 0, next, false);
-  });
+  }, false);
+  const carrying = !!incoming;
+  useEffect(() => {
+    frame.setActive(!!dragging || carrying);
+  }, [dragging, carrying, frame]);
 
   const lanes = layoutLanes(
     [
@@ -342,8 +433,12 @@ export function PlanTimeline({
               setDragging(b.id);
               onDragActive?.(true);
             }}
-            onPreview={(start) => onPreview?.(b.id, start)}
+            onPreview={(start) => {
+              setReach(start + (b.end - b.start) + 60);
+              onPreview?.(b.id, start);
+            }}
             onDrop={(start) => {
+              setReach(start + (b.end - b.start));
               setDragging(null);
               onDragActive?.(false);
               onPreview?.(b.id, null);
@@ -464,9 +559,10 @@ function DraggableBlock({
       dy.value = e.translationY;
       fingerY.value = e.absoluteY;
     })
-    .onFinalize(() => {
+    .onFinalize((_e, success) => {
       if (!held.value) return;
-      const start = target.value;
+      // Cancelled (a call, the app backgrounded): back where it was
+      const start = success ? target.value : origin.value.start;
       // Settle where it was dropped right away, so the re-render doesn't jump
       topY.value = yOf(start, rangeStart);
       held.value = false;

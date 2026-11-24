@@ -92,6 +92,22 @@ regenerate with `CI=1 npx expo prebuild -p ios --clean` first (full recipe in
 - The yellow "Open debugger to view warnings" toast can cover the tab bar and the sheet's
   button; dismiss it with its X before tapping underneath.
 
+## Sharing the Mac with other sessions
+
+- Another project's Metro may hold port 8081 and another session may be driving the
+  `iPhone 17 Pro` simulator. Then `preview_start` gives Metro another port (8082 once);
+  use the dedicated **`Slate iPhone 17 Pro`** simulator
+  (`C692EAA4-2D15-4147-9826-35BE2D9E21EC`, created for this) and point the Debug build at
+  the port before launching:
+  `xcrun simctl spawn <udid> defaults write com.lkleinbrodt.slate RCT_jsLocation localhost:8082`.
+  A fresh simulator has no data: load the demo data first.
+- Fast Refresh didn't pick up an edit once; relaunching (`control` → `launch`) did.
+- **Drags**: `touch_path` with a ~450 ms hold first does a hold-and-drag (a plain `swipe`
+  can also count as a hold and move a task by accident). 84 points = 1 hour on the
+  calendar. Screenshots only come after the gesture ends; to see a mid-drag state, run
+  `sleep 4.5; xcrun simctl io <udid> screenshot <scratchpad>/x.png` in the background,
+  then a `touch_path` that holds for several seconds.
+
 ## Seen once, not confirmed (treat as hypotheses; promote or delete after the next run)
 
 - An "Apple Account Verification" system prompt appeared on the first launch; "Not Now"
