@@ -1,20 +1,31 @@
-import Animated, { LinearTransition } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+  LinearTransition,
+  useAnimatedReaction,
+  useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 import { ActionSheetIOS, Pressable, StyleSheet, View } from "react-native";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
-import React, { useEffect, useReducer, useRef } from "react";
-import { Radius } from "@/constants/theme";
+import React, { useEffect, useReducer, useRef, useState } from "react";
+import { Radius, shadow } from "@/constants/theme";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { SheetManager } from "react-native-actions-sheet";
 import type { Task } from "@/components/types";
 import { TaskItem } from "@/components/TaskItem";
 import { ThemedText } from "@/components/themed-text";
-import { formatTime } from "@/components/TimePickerButton";
+import { formatRange, formatTime } from "@/components/TimePickerButton";
 import { formatDuration, taskInterval, toHHmm, workBlock } from "@/lib/logic/schedule";
 import type { DayEvent } from "@/lib/services/calendarSync";
+import { useAppStore } from "@/lib/stores/appStore";
 import { useCalendarStore } from "@/lib/stores/calendarStore";
 import { useDaySchedule } from "@/hooks/use-day-schedule";
 import { useRouter } from "expo-router";
@@ -31,6 +42,8 @@ interface TodayTasksSectionProps {
   onToggle: (taskId: string, completed: boolean) => void;
   onSkipForToday?: (taskId: string) => void;
   onSendToSlate?: (taskId: string) => void;
+  /** A task is being held and dragged: the page should stop scrolling */
+  onDragActive?: (active: boolean) => void;
 }
 
 type TimelineItem =
@@ -50,6 +63,7 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
   onToggle,
   onSkipForToday,
   onSendToSlate,
+  onDragActive,
 }) => {
   const { colors } = useTheme();
   const router = useRouter();
@@ -158,9 +172,11 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
                   {item.kind === "work" && <WorkBlock dayOff={dayOff} today={today} />}
                   {item.kind === "event" && <EventBlock event={item.event} />}
                   {item.kind === "task" && (
-                    <Card padded={false} clip>
-                      {taskRow(item.task)}
-                    </Card>
+                    <DraggableTask task={item.task} start={item.start} end={item.end} onDragActive={onDragActive}>
+                      <Card padded={false} clip>
+                        {taskRow(item.task)}
+                      </Card>
+                    </DraggableTask>
                   )}
                 </View>
               </View>
@@ -230,6 +246,119 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
     </View>
   );
 };
+
+/** Points of movement per minute, as in the "Fit these in" timeline: 15 minutes is 21 points */
+const PX = 1.4;
+const SNAP = 15;
+const LIFT_MS = 220;
+const DAY = 24 * 60;
+
+const hapticTick = () => {
+  Haptics.selectionAsync();
+};
+const hapticLift = () => {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+};
+const hapticDrop = () => {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+};
+
+/**
+ * A task with a time: hold it, then drag up or down to move it earlier or later. It
+ * follows the finger, snaps to quarter hours, and a chip shows the time it would get;
+ * letting go saves it and the timeline re-sorts. Open tasks only.
+ */
+function DraggableTask({
+  task,
+  start,
+  end,
+  onDragActive,
+  children,
+}: {
+  task: Task;
+  start: number;
+  end: number;
+  onDragActive?: (active: boolean) => void;
+  children: React.ReactNode;
+}) {
+  const { colors, scheme } = useTheme();
+  const updateTask = useAppStore((s) => s.updateTask);
+  const length = end - start;
+  const [chip, setChip] = useState<number | null>(null);
+
+  const held = useSharedValue(false);
+  const dy = useSharedValue(0);
+
+  // Once the new time is saved the row has moved in the list: drop the finger offset
+  useEffect(() => {
+    dy.value = 0;
+  }, [start, dy]);
+
+  const target = useDerivedValue(() => {
+    const moved = dy.value / PX;
+    const snapped = Math.abs(moved) < SNAP / 2 ? start : Math.round((start + moved) / SNAP) * SNAP;
+    return Math.max(0, Math.min(DAY - length, snapped));
+  });
+
+  useAnimatedReaction(
+    () => (held.value ? target.value : null),
+    (now, before) => {
+      if (now === null) return;
+      scheduleOnRN(setChip, now);
+      if (before !== null && before !== undefined && now !== before) scheduleOnRN(hapticTick);
+    }
+  );
+
+  const lift = () => onDragActive?.(true);
+  const commit = (minute: number) => {
+    setChip(null);
+    onDragActive?.(false);
+    if (minute !== start) updateTask(task.id, { startTime: toHHmm(minute) });
+  };
+
+  const pan = Gesture.Pan()
+    .enabled(task.status === "open")
+    .activateAfterLongPress(LIFT_MS)
+    .onStart(() => {
+      dy.value = 0;
+      held.value = true;
+      scheduleOnRN(lift);
+      scheduleOnRN(hapticLift);
+    })
+    .onUpdate((e) => {
+      dy.value = e.translationY;
+    })
+    .onFinalize(() => {
+      if (!held.value) return;
+      const minute = target.value;
+      held.value = false;
+      // Settle on the snapped spot until the saved time re-sorts the list
+      if (minute === start) dy.value = withTiming(0, { duration: 140 });
+      else dy.value = (minute - start) * PX;
+      scheduleOnRN(commit, minute);
+      scheduleOnRN(hapticDrop);
+    });
+
+  const style = useAnimatedStyle(() => ({
+    transform: [{ translateY: dy.value }, { scale: withTiming(held.value ? 1.03 : 1, { duration: 140 }) }],
+    zIndex: held.value ? 20 : 0,
+  }));
+
+  return (
+    <GestureDetector gesture={pan}>
+      <Animated.View style={[style, chip !== null && shadow(scheme, 3)]}>
+        {children}
+        {chip !== null && (
+          <View pointerEvents="none" style={[styles.chip, { backgroundColor: colors.primary }]}>
+            <ThemedText type="captionMedium" style={{ color: colors.onPrimary }}>
+              {formatRange(chip, chip + length)}
+            </ThemedText>
+          </View>
+        )}
+      </Animated.View>
+    </GestureDetector>
+  );
+}
 
 function WorkBlock({ dayOff, today }: { dayOff: boolean; today: string }) {
   const { colors, isDark } = useTheme();
@@ -377,5 +506,13 @@ const styles = StyleSheet.create({
   },
   untimed: { marginTop: 18 },
   untimedLabel: { marginLeft: 4, marginBottom: 8 },
+  chip: {
+    position: "absolute",
+    right: 10,
+    top: -10,
+    borderRadius: Radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
   fit: { alignSelf: "flex-start", marginTop: 10 },
 });
