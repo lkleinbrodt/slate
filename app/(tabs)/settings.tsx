@@ -36,8 +36,6 @@ export default function SettingsScreen() {
   const bottomSpace = useTabBarSpace();
 
   const {
-    loading,
-    loadSettings,
     dayStart,
     planYourDayEnabled,
     planYourDayTime,
@@ -58,17 +56,13 @@ export default function SettingsScreen() {
   // Mounted per open so the picker starts from the current value
   const [editingTime, setEditingTime] = useState<TimeField | null>(null);
 
+  // Settings are already loaded by _layout before any tab renders. Permission can change
+  // in iOS Settings while the app is backgrounded, so re-check it here.
   useEffect(() => {
-    loadSettings();
-    // Check permission status on mount
     getNotificationPermissionStatus().then((status) => {
       setNotificationPermissionStatus(status);
     });
-  }, [loadSettings, setNotificationPermissionStatus]);
-
-  if (loading) {
-    return <Screen />;
-  }
+  }, [setNotificationPermissionStatus]);
 
   const granted = notificationPermissionStatus === "granted";
 

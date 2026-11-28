@@ -1,14 +1,5 @@
 import * as repo from "@/lib/logic/repo";
 
-import {
-  habitHistory,
-  HabitHistory,
-  taskHistory,
-  TaskHistory,
-} from "@/lib/db/schema";
-import { and, count, eq, gte, lt, lte } from "drizzle-orm";
-
-import { db } from "@/lib/db/connection";
 import { addDays } from "@/lib/logic/dates";
 import { calculateBaseStreaks, displayStreak } from "@/lib/logic/streaks";
 import { create } from "zustand";
@@ -53,29 +44,12 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       // Last 7 days = 6 finalized days from history + today's live data
       const today = useTimeStore.getState().getCurrentDate();
       const windowStart = addDays(today, -6);
+      const yesterday = addDays(today, -1);
 
       const [pastTasksCompleted, pastHabitRows, todaySnapshot] =
         await Promise.all([
-          db
-            .select({ count: count() })
-            .from(taskHistory)
-            .where(
-              and(
-                gte(taskHistory.date, windowStart),
-                lt(taskHistory.date, today),
-                eq(taskHistory.completed, true)
-              )
-            )
-            .then((result) => result[0]?.count || 0),
-          db
-            .select({
-              date: habitHistory.date,
-              completed: habitHistory.completed,
-            })
-            .from(habitHistory)
-            .where(
-              and(gte(habitHistory.date, windowStart), lt(habitHistory.date, today))
-            ),
+          repo.countCompletedTaskHistory(windowStart, yesterday),
+          repo.listHabitHistory(windowStart, yesterday),
           repo.getDaySnapshot(today, today),
         ]);
 
@@ -141,25 +115,10 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         today >= startOfMonth && today <= endOfMonth;
 
       // Load history data for the month
-      const habitData = await db
-        .select()
-        .from(habitHistory)
-        .where(
-          and(
-            gte(habitHistory.date, startOfMonth),
-            lte(habitHistory.date, endOfMonth)
-          )
-        );
-
-      const taskData = await db
-        .select()
-        .from(taskHistory)
-        .where(
-          and(
-            gte(taskHistory.date, startOfMonth),
-            lte(taskHistory.date, endOfMonth)
-          )
-        );
+      const [habitData, taskData] = await Promise.all([
+        repo.listHabitHistory(startOfMonth, endOfMonth),
+        repo.listTaskHistory(startOfMonth, endOfMonth),
+      ]);
 
       // Process data into calendar format
       const calendarData: Record<
@@ -176,12 +135,12 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       const habitByDate: Record<string, boolean[]> = {};
       const taskByDate: Record<string, boolean[]> = {};
 
-      habitData.forEach((record: HabitHistory) => {
+      habitData.forEach((record) => {
         if (!habitByDate[record.date]) habitByDate[record.date] = [];
         habitByDate[record.date].push(record.completed);
       });
 
-      taskData.forEach((record: TaskHistory) => {
+      taskData.forEach((record) => {
         if (!taskByDate[record.date]) taskByDate[record.date] = [];
         taskByDate[record.date].push(record.completed);
       });

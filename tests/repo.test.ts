@@ -18,6 +18,8 @@ import {
 export async function run() {
   await testTodayListUsesLogicalCompletionDay();
   await testTodayListIncludesStalePastDoDates();
+  await testTodayListOrder();
+  await testHistoryRangesAreInclusive();
   await testPastDaySnapshotReadsBooleans();
   await testBaseStreaks();
   await testMigrationBackfillsCompletedDate();
@@ -76,6 +78,34 @@ async function testPastDaySnapshotReadsBooleans() {
   assert.strictEqual(snapshot.habits.length, 1);
   assert.strictEqual(snapshot.habits[0].isCompleted, true);
   assert.strictEqual(snapshot.isPerfectDay, true);
+}
+
+async function testTodayListOrder() {
+  resetDatabase();
+  const today = "2024-07-10";
+  const at = (d: string) => `2024-07-0${d}T08:00:00.000Z`;
+  await insertTask({ title: "Undated, newer", scheduledFor: today, createdAt: at("5") });
+  await insertTask({ title: "Undated, older", scheduledFor: today, createdAt: at("2") });
+  await insertTask({ title: "Due later", scheduledFor: today, dueDate: "2024-07-20", createdAt: at("1") });
+  await insertTask({ title: "Overdue", scheduledFor: today, dueDate: "2024-07-08", createdAt: at("6") });
+
+  const list = await repo.listTodayTasks(today);
+  assert.deepStrictEqual(
+    list.map((t) => t.title),
+    ["Overdue", "Due later", "Undated, older", "Undated, newer"]
+  );
+}
+
+async function testHistoryRangesAreInclusive() {
+  resetDatabase();
+  const habit = await insertHabit();
+  for (const [d, done] of [["2024-07-01", true], ["2024-07-02", false], ["2024-07-03", true], ["2024-07-04", true]] as const) {
+    await insertHabitHistory(habit.id, d, done);
+  }
+  const rows = await repo.listHabitHistory("2024-07-01", "2024-07-03");
+  assert.deepStrictEqual(rows.map((r) => r.date).sort(), ["2024-07-01", "2024-07-02", "2024-07-03"]);
+  const done = await repo.listCompletedHabitDays("2024-07-02", "2024-07-04");
+  assert.deepStrictEqual(done.map((r) => r.date).sort(), ["2024-07-03", "2024-07-04"]);
 }
 
 async function testBaseStreaks() {

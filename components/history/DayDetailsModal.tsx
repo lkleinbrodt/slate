@@ -18,19 +18,19 @@ export const DayDetailsModal: React.FC<DayDetailsModalProps> = ({
   payload,
 }) => {
   const { colors } = useTheme();
-  const { snapshot } = payload || {};
+  const snapshot = payload?.snapshot;
 
   if (!snapshot) return null;
 
-  const habits = snapshot.habits.map((h: any) => ({
-    id: h.habit_history.id as string,
-    title: h.habits?.title as string,
-    done: !!h.habit_history.completed,
+  const habits = snapshot.habits.map((h) => ({
+    id: h.habit.id,
+    title: h.habit.title,
+    done: h.isCompleted,
   }));
-  const tasks = snapshot.tasks.map((t: any) => ({
-    id: t.task_history.id as string,
-    title: t.tasks?.title as string,
-    done: !!t.task_history.completed,
+  const tasks = snapshot.tasks.map((t) => ({
+    id: t.task.id,
+    title: t.task.title,
+    done: t.isCompleted,
   }));
   const habitsDone = habits.filter((h) => h.done).length;
   const tasksDone = tasks.filter((t) => t.done).length;

@@ -1,5 +1,7 @@
 import { SheetDefinition, registerSheet } from "react-native-actions-sheet";
 
+import type { DaySnapshot } from "./lib/logic/repo";
+
 import AddEditModal from "./components/AddEditModal";
 import DatePickerActionSheet from "./components/DatePickerModal";
 import DependencyPickerModal from "./components/DependencyPickerModal";
@@ -45,15 +47,7 @@ declare module "react-native-actions-sheet" {
       };
     }>;
     "day-details-sheet": SheetDefinition<{
-      payload: {
-        snapshot: {
-          date: string;
-          tasks: any[];
-          habits: any[];
-          isPerfectDay: boolean;
-        } | null;
-        onClose: () => void;
-      };
+      payload: { snapshot: DaySnapshot };
     }>;
     "voice-start": SheetDefinition;
     "voice-review": SheetDefinition;

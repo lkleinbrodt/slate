@@ -1,8 +1,5 @@
-import { and, eq, gte, lt } from "drizzle-orm";
-
-import { db } from "@/lib/db/connection";
-import { habitHistory } from "@/lib/db/schema";
 import { addDays } from "./dates";
+import { listCompletedHabitDays } from "./repo";
 
 const MAX_STREAK_LOOKBACK_DAYS = 365;
 
@@ -21,19 +18,10 @@ export async function calculateBaseStreaks(
   for (const id of habitIds) streaks[id] = 0;
   if (habitIds.length === 0) return streaks;
 
-  const rows = await db
-    .select({
-      habitId: habitHistory.habitId,
-      date: habitHistory.date,
-    })
-    .from(habitHistory)
-    .where(
-      and(
-        eq(habitHistory.completed, true),
-        gte(habitHistory.date, addDays(today, -MAX_STREAK_LOOKBACK_DAYS)),
-        lt(habitHistory.date, today)
-      )
-    );
+  const rows = await listCompletedHabitDays(
+    addDays(today, -MAX_STREAK_LOOKBACK_DAYS),
+    addDays(today, -1)
+  );
 
   const completedDates = new Map<string, Set<string>>();
   for (const row of rows) {

@@ -39,6 +39,7 @@ export interface WidgetSnapshot {
 const MAX_ITEMS = 30;
 
 // Due or overdue first (earliest due date first), otherwise keep Today's order
+// (repo.listTodayTasks: due soonest first, undated last, then oldest)
 function orderPending(tasks: Task[], date: string): WidgetTask[] {
   return tasks
     .map((task, index) => ({ task, index, isDue: !!task.dueDate && task.dueDate <= date }))

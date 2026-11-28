@@ -90,7 +90,8 @@ one. Tests run the same migrations against better-sqlite3.
 
   Runs are serialized, and re-running a day is harmless.
 - **Today list** = open tasks with `scheduled_for <= today` + done tasks whose do date
-  or `completed_date` is today.
+  or `completed_date` is today. Ordered like the Slate: due soonest first (so overdue on
+  top), undated last, then oldest (`repo.listTodayTasks`, `planOrder` in the section).
 - **Due dates**: tasks due on or before today join Today at rollover and on
   create/edit. Moving one out of Today sticks until the next morning.
 - **Past do dates** are clamped to today on create/edit; rollover never revisits past days.
