@@ -22,11 +22,12 @@ const NOTIFICATION_IDS = {
   VOICE_PLAN_READY: "voice_plan_ready",
 } as const;
 
-// Habit reminders are one-shot notifications scheduled this many days ahead
-// (re-filled whenever the app opens). iOS keeps at most 64 pending, and 2 are
-// the daily plan/review ones, so cap the total.
-const HABIT_REMINDER_DAYS_AHEAD = 7;
-const MAX_HABIT_REMINDERS = 60;
+// Habit reminders are one-shot notifications, re-filled whenever the app opens. iOS
+// keeps at most 64 pending; the daily plan/review ones and a voice "plan ready" take up
+// to 3, so fill as many days as fit under the cap (the default 3 a day lasts 20 days),
+// so reminders keep coming for weeks without opening the app.
+const HABIT_REMINDER_DAYS_AHEAD = 30;
+export const MAX_HABIT_REMINDERS = 60;
 
 // Rescheduling cancels and re-adds notifications across many awaits. Two
 // overlapping runs (e.g. two habits checked off in quick succession) can
@@ -163,7 +164,11 @@ async function scheduleHabitReminders(
   const endMinutes = toMinutes(end);
   let scheduled = 0;
 
-  for (let dayOffset = 0; dayOffset < HABIT_REMINDER_DAYS_AHEAD; dayOffset++) {
+  for (
+    let dayOffset = 0;
+    dayOffset < HABIT_REMINDER_DAYS_AHEAD && scheduled < MAX_HABIT_REMINDERS;
+    dayOffset++
+  ) {
     const day = now.add(dayOffset, "day").startOf("day");
     const isAppToday = day.format("YYYY-MM-DD") === appToday;
     if (isAppToday && incomplete === 0) continue;

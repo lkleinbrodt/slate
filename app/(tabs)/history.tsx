@@ -32,37 +32,7 @@ export default function HistoryScreen() {
       const today = useTimeStore.getState().getCurrentDate();
       const snapshot = await repo.getDaySnapshot(date, today);
 
-      // Transform to the format expected by DayDetailsModal
-      const dayData = {
-        date: snapshot.date,
-        tasks: snapshot.tasks.map((item) => ({
-          task_history: {
-            id: `th-${item.task.id}-${date}`,
-            date,
-            taskId: item.task.id,
-            planned: item.isPlanned ? 1 : 0,
-            completed: item.isCompleted ? 1 : 0,
-          },
-          tasks: item.task,
-        })),
-        habits: snapshot.habits.map((item) => ({
-          habit_history: {
-            id: `hh-${item.habit.id}-${date}`,
-            date,
-            habitId: item.habit.id,
-            completed: item.isCompleted ? 1 : 0,
-          },
-          habits: item.habit,
-        })),
-        isPerfectDay: snapshot.isPerfectDay,
-      };
-
-      SheetManager.show("day-details-sheet", {
-        payload: {
-          snapshot: dayData,
-          onClose: () => {},
-        },
-      });
+      SheetManager.show("day-details-sheet", { payload: { snapshot } });
     } catch (error) {
       console.error("Failed to fetch day data:", error);
     }

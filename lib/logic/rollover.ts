@@ -139,6 +139,28 @@ async function runRollover(nowLocalDate: string) {
     await storage.setItem("last_processed_date", lastProcessedDate);
   }
 
+  // The day went backwards (flew west across the day start, or the clock was set back).
+  // Tasks already carried to the later day would sit in the future and drop out of
+  // Today, so bring them back, and restart from today so the next forward rollover
+  // finalizes it (history inserts ignore duplicates).
+  if (nowLocalDate < lastProcessedDate) {
+    const later = lastProcessedDate;
+    db.transaction((tx) => {
+      tx.update(tasks)
+        .set({ scheduledFor: nowLocalDate, startTime: null })
+        .where(
+          and(
+            eq(tasks.status, "open"),
+            sql`scheduled_for > ${nowLocalDate} AND scheduled_for <= ${later}`
+          )
+        )
+        .run();
+    });
+    lastProcessedDate = nowLocalDate;
+    await storage.setItem("last_processed_date", lastProcessedDate);
+    return;
+  }
+
   console.log(`Processing rollover from ${lastProcessedDate} to ${nowLocalDate}`);
 
   while (

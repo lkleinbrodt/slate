@@ -16,6 +16,7 @@ export async function run() {
   await testDeletedOpenTaskNotInHistory();
   await testHabitHistoryOnlyForHabitsThatExisted();
   await testDueTasksPulledIntoNewDay();
+  await testClockGoingBackwardsKeepsTasksInToday();
 }
 
 function reset() {
@@ -194,4 +195,33 @@ async function testDueTasksPulledIntoNewDay() {
   await db.update(tasks).set({ scheduledFor: null }).where(eq(tasks.id, overdue.id));
   await processRollover(today);
   assert.strictEqual((await getTask(overdue.id))?.scheduledFor, null);
+}
+
+// Flying west across the day start (or setting the clock back) moves the logical day
+// back. Tasks already carried to the later day must come back to Today.
+async function testClockGoingBackwardsKeepsTasksInToday() {
+  reset();
+  const earlier = "2024-05-09";
+  const later = "2024-05-10";
+  const carried = await insertTask({ scheduledFor: later, startTime: "09:00" });
+  const tomorrow = await insertTask({ scheduledFor: "2024-05-11" });
+  const done = await insertTask({ scheduledFor: later, status: "done", completedDate: later });
+
+  await storage.setItem("last_processed_date", later);
+  await processRollover(earlier);
+
+  const back = await getTask(carried.id);
+  assert.strictEqual(back?.scheduledFor, earlier, "carried task returns to today");
+  assert.strictEqual(back?.startTime, null, "its slot was for the later day");
+  assert.strictEqual((await getTask(tomorrow.id))?.scheduledFor, "2024-05-11", "later plans stay");
+  assert.strictEqual((await getTask(done.id))?.scheduledFor, later, "done tasks stay put");
+  assert.strictEqual(await storage.getItem("last_processed_date"), earlier);
+
+  // Moving forward again finalizes the earlier day and carries the task on as usual
+  const habit = await insertHabit({ createdAt: "2024-05-01T08:00:00.000Z" });
+  await completeHabitOn(habit.id, earlier);
+  await processRollover(later);
+  assert.strictEqual((await getTask(carried.id))?.scheduledFor, later);
+  const history = await db.select().from(habitHistory).where(eq(habitHistory.date, earlier));
+  assert.deepStrictEqual(history.map((h) => h.completed), [true], "earlier day's habit is recorded");
 }

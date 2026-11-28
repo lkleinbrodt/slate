@@ -30,7 +30,7 @@ import type { Task } from "@/components/types";
 import { TaskItem } from "@/components/TaskItem";
 import { ThemedText } from "@/components/themed-text";
 import { type FixedBlock, type PlanBlock, PlanTimeline } from "@/components/schedule/PlanTimeline";
-import { DEFAULT_DURATION, taskInterval, toHHmm, toMinutes, workBlock } from "@/lib/logic/schedule";
+import { DEFAULT_DURATION, planOrder, taskInterval, toHHmm, toMinutes, workBlock } from "@/lib/logic/schedule";
 import { useAppStore } from "@/lib/stores/appStore";
 import { useCalendarStore } from "@/lib/stores/calendarStore";
 import { useDaySchedule } from "@/hooks/use-day-schedule";
@@ -200,7 +200,8 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
   };
 
   const timed = tasks.filter((t) => t.startTime);
-  const untimed = tasks.filter((t) => !t.startTime);
+  // Like the Slate and "Fit these in": overdue and due soonest first, then oldest
+  const untimed = tasks.filter((t) => !t.startTime).sort(planOrder);
 
   // Done tasks that have already sunk to the bottom. One just ticked isn't here yet.
   const settled = useRef<Set<string> | null>(null);
@@ -238,7 +239,7 @@ export const TodayTasksSection: React.FC<TodayTasksSectionProps> = ({
   const sortedUntimed = [...untimed].sort((a, b) => Number(sinks(a)) - Number(sinks(b)));
   // The list: no time, then by time, then done
   const group = (t: Task) => (sinks(t) ? 2 : t.startTime ? 1 : 0);
-  const listed = [...tasks].sort(
+  const listed = [...untimed, ...timed].sort(
     (a, b) =>
       group(a) - group(b) ||
       (group(a) === 1 ? toMinutes(a.startTime!) - toMinutes(b.startTime!) : 0)

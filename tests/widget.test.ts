@@ -80,8 +80,9 @@ async function testDueTasksFirst() {
     [
       ["Overdue", true],
       ["Due today", true],
-      ["Plain", false],
+      // Then Today's order: due soonest first, undated last
       ["Due later", false],
+      ["Plain", false],
     ]
   );
 }

@@ -7,7 +7,7 @@ import {
   tasks,
   voiceSessions,
 } from "@/lib/db/schema";
-import { and, desc, eq, notInArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, lte, notInArray, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/connection";
 import { nextOccurrence, parseRule } from "@/lib/logic/repeat";
@@ -44,7 +44,9 @@ export const listTodayTasks = (date: string) =>
         (status = 'open' AND scheduled_for <= ${date})
         OR (status = 'done' AND (scheduled_for = ${date} OR completed_date = ${date}))
       )`
-    );
+    )
+    // Due soonest first (undated last), then oldest: the order Today shows
+    .orderBy(sql`due_date IS NULL`, tasks.dueDate, tasks.createdAt);
 export const getTask = (id: string) =>
   db.select().from(tasks).where(eq(tasks.id, id)).get();
 
@@ -240,6 +242,35 @@ export const getDayTasksHistory = (date: string) =>
     .from(taskHistory)
     .leftJoin(tasks, eq(taskHistory.taskId, tasks.id))
     .where(eq(taskHistory.date, date));
+
+// History rows between two days, both inclusive (History's calendar and stats)
+export const listHabitHistory = (from: string, to: string) =>
+  db
+    .select()
+    .from(habitHistory)
+    .where(and(gte(habitHistory.date, from), lte(habitHistory.date, to)));
+export const listTaskHistory = (from: string, to: string) =>
+  db
+    .select()
+    .from(taskHistory)
+    .where(and(gte(taskHistory.date, from), lte(taskHistory.date, to)));
+export const countCompletedTaskHistory = async (from: string, to: string) => {
+  const [row] = await db
+    .select({ count: count() })
+    .from(taskHistory)
+    .where(
+      and(gte(taskHistory.date, from), lte(taskHistory.date, to), eq(taskHistory.completed, true))
+    );
+  return row?.count ?? 0;
+};
+/** (habit, day) pairs completed between two days, both inclusive (streaks) */
+export const listCompletedHabitDays = (from: string, to: string) =>
+  db
+    .select({ habitId: habitHistory.habitId, date: habitHistory.date })
+    .from(habitHistory)
+    .where(
+      and(eq(habitHistory.completed, true), gte(habitHistory.date, from), lte(habitHistory.date, to))
+    );
 
 // ====== Voice sessions ======
 // One row per voice call (docs/voice.md). The JSON columns are opaque here; the voice
