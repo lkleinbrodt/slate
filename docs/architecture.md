@@ -89,6 +89,9 @@ one. Tests run the same migrations against better-sqlite3.
   4. on the final day only, pulls in open tasks due on or before it
 
   Runs are serialized, and re-running a day is harmless.
+  If the day goes *backwards* (flying west across the day start, clock set back), open
+  tasks already carried to the later day come back to today (slots cleared) and
+  `last_processed_date` resets to today, so the next forward run finalizes it.
 - **Today list** = open tasks with `scheduled_for <= today` + done tasks whose do date
   or `completed_date` is today. Ordered like the Slate: due soonest first (so overdue on
   top), undated last, then oldest (`repo.listTodayTasks`, `planOrder` in the section).

@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 
 // The relative path loads the real module (the runner mocks the "@/" one)
 import {
+  MAX_HABIT_REMINDERS,
   rescheduleAllNotifications,
   updateHabitRemindersIfNeeded,
 } from "../lib/services/notifications";
@@ -14,6 +15,7 @@ import { useTimeStore } from "@/lib/stores/timeStore";
 
 export async function run() {
   await testOverlappingReschedulesUseLatestState();
+  await testRemindersFillUpToTheCap();
 }
 
 const waitFor = async (condition: () => boolean) => {
@@ -66,4 +68,28 @@ async function testOverlappingReschedulesUseLatestState() {
   // A full reschedule goes through the same queue
   await rescheduleAllNotifications();
   assert.deepStrictEqual(todaysReminders(), []);
+}
+
+// Reminders are refilled only when the app opens, so schedule as far ahead as the iOS
+// pending limit allows instead of a fixed week.
+async function testRemindersFillUpToTheCap() {
+  const now = dayjs();
+  resetDatabase();
+  resetScheduled();
+  useTimeStore.setState({ currentDate: now.format("YYYY-MM-DD"), isInitialized: true });
+  useSettingsStore.setState({
+    notificationPermissionStatus: "granted",
+    habitRemindersEnabled: true,
+    habitReminderInterval: 4,
+    habitReminderStart: "10:00",
+    habitReminderEnd: "20:00",
+  });
+  await insertHabit();
+
+  await updateHabitRemindersIfNeeded();
+  const reminders = scheduledIds().filter((id) => id.startsWith("habit_reminder_"));
+  assert.strictEqual(reminders.length, MAX_HABIT_REMINDERS, "3 a day fills the cap");
+  // 60 reminders at 3 a day reach ~20 days out, well past the old 7
+  const last = reminders.map((id) => id.slice("habit_reminder_".length, -4)).sort().at(-1)!;
+  assert.ok(dayjs(last).diff(now.startOf("day"), "day") >= 19, `last reminder on ${last}`);
 }
